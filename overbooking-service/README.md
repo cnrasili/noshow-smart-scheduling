@@ -43,12 +43,19 @@ The service loads the model from `models/` at startup:
 
 | File | Content |
 |---|---|
-| `model.joblib` | Trained classifier with `predict_proba` |
-| `feature_schema.json` | Model version and feature names in training order |
+| `model.joblib` | Trained classifier or Pipeline with `predict_proba` |
+| `feature_schema.json` | Model version, feature names, no-show label, scikit-learn version |
 
-The service rejects a model whose feature count does not match the schema, and a request whose features do not match the schema.
+Both files are written by [`ml/export_model.py`](../ml/export_model.py). At startup the service refuses a model when:
 
-The current model is a placeholder (`dummy-v0`) created by `scripts/make_dummy_model.py`. It is replaced by the trained model once the feature list in [model features](../docs/features.md) is agreed.
+- the feature count or trained column names do not match the schema,
+- the no-show label (`positive_class`) is not one of the model classes.
+
+Models trained on named columns receive a DataFrame; others receive an array in schema order. Requests whose features do not match the schema are rejected.
+
+`tests/test_model_acceptance.py` checks any model placed in `models/`. See [model features](../docs/features.md) for the delivery steps.
+
+The current model is a placeholder (`dummy-v0`) created by `scripts/make_dummy_model.py`.
 
 ## Patient Data
 

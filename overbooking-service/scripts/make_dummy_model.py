@@ -1,11 +1,14 @@
 """Create the placeholder no-show model used until the trained model is delivered."""
 
-import json
+import sys
 from pathlib import Path
 
-import joblib
 import numpy as np
 from sklearn.linear_model import LogisticRegression
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO_ROOT / "ml"))
+from export_model import export_model  # noqa: E402
 
 VERSION = "dummy-v0"
 OUTPUT_DIR = Path(__file__).resolve().parents[1] / "models"
@@ -36,10 +39,7 @@ def main() -> None:
     model.intercept_ = np.array([INTERCEPT])
     model.n_features_in_ = len(features)
 
-    OUTPUT_DIR.mkdir(exist_ok=True)
-    joblib.dump(model, OUTPUT_DIR / "model.joblib")
-    schema = {"version": VERSION, "features": features}
-    (OUTPUT_DIR / "feature_schema.json").write_text(json.dumps(schema, indent=2) + "\n")
+    export_model(model, features, VERSION, positive_class=1, output_dir=OUTPUT_DIR)
 
 
 if __name__ == "__main__":

@@ -29,3 +29,7 @@ python -m venv .venv
 pip install -r requirements.txt
 jupyter lab
 ```
+
+## Exporting the Model
+
+Export the selected model with `export_model.py`. It writes `model.joblib` and `feature_schema.json` into `overbooking-service/models/`. The steps and the required features are in [model features](../docs/features.md).

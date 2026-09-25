@@ -12,5 +12,7 @@
     "handcap",
     "prior_appt_count",
     "prior_noshow_count"
-  ]
+  ],
+  "positive_class": 1,
+  "sklearn_version": "1.9.1"
 }

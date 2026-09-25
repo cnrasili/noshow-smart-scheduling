@@ -12,6 +12,7 @@ dependencies = [
     "uvicorn[standard]>=0.30",
     "pydantic-settings>=2.4",
     "numpy>=1.26",
+    "pandas>=2.2",
     "scikit-learn>=1.5,<2",
     "joblib>=1.4",
 ]
