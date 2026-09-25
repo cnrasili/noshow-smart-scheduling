@@ -1,6 +1,6 @@
 # Model Features
 
-**Status:** Draft.
+**Status:** Proposal. The feature list and encoding below are proposed by the overbooking service and are final only when the prediction model is trained on them. The overbooking service follows the agreed list.
 
 The model may only use features that are known at booking time. The overbooking service computes the same features when it calls the model.
 
@@ -19,6 +19,15 @@ The model may only use features that are known at booking time. The overbooking 
 | `prior_noshow_count` | Patient's earlier appointments | Yes | Only appointments before the booking date |
 | `SMS_received` | — | **No** | Sent after booking; excluded |
 | `Neighbourhood` | — | — | No equivalent in the application; proposed to exclude |
+
+## Required Booking Data
+
+To compute the features, the booking application stores the following data. The exact columns follow the agreed feature list.
+
+| Record | Fields |
+|---|---|
+| Patient | Age (or date of birth), gender, scholarship, hipertension, diabetes, alcoholism, handcap |
+| Appointment | Patient, appointment date, booking date, attended / no-show |
 
 ## Model Delivery
 
@@ -40,6 +49,8 @@ The model may only use features that are known at booking time. The overbooking 
 3. Run the overbooking service tests. `tests/test_model_acceptance.py` checks that the model loads, returns valid probabilities, matches the computed features and scores high-risk patients higher than low-risk ones.
 
 Train with the same scikit-learn minor version as the service (see `overbooking-service/pyproject.toml`); the service logs a warning otherwise.
+
+`ml/export_model.py` is a shared contract between the prediction model and the overbooking service; changes to it are agreed by both sides.
 
 ## Open Questions
 

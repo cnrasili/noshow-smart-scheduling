@@ -99,12 +99,13 @@ The dataset is licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/lice
 
 ## Shared Contracts
 
-Components depend on each other through the documents in [`docs/`](docs/).
+Components depend on each other through the files below. Changes to them are agreed by all components involved.
 
 | Document | Between |
 |---|---|
 | [API contract](docs/api-contract.md) | Web backend and overbooking service |
-| [Model features](docs/features.md) | Prediction model and overbooking service |
+| [Model features](docs/features.md) | Prediction model, overbooking service and web backend |
+| [Model export](ml/export_model.py) | Prediction model and overbooking service |
 | [KPI definitions](docs/kpi-definitions.md) | Simulation and KPI dashboard |
 
 ## Workflow
