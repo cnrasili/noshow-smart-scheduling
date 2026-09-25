@@ -7,27 +7,67 @@ The project is developed as an interdisciplinary study combining industrial engi
 ## System Overview
 
 ```
-[Web application] --HTTP--> [Overbooking service]
-                                 |-- Feature builder --> No-show model --> p_noshow
-                                 |-- Overbooking rule engine
-                                 |-- Reminder scheduler
-                                 |-- A/B assignment and logging
-                                 `-- KPI calculator --> Admin dashboard
-                                          |
-                                   [Shared database]
+[Web frontend] --> [Web backend] --HTTP--> [Overbooking service]
+                        |                       |-- Feature builder --> No-show model --> p_noshow
+                        |                       |-- Overbooking rule engine
+                        |                       |-- Reminder scheduler --> Email (SMTP)
+                        |                       |-- A/B assignment and logging
+                        |                       `-- KPI calculator --> Admin dashboard
+                        |                               |
+                        `-------> [PostgreSQL] <--------'
 
-[Simulation] <-- no-show probabilities + overbooking rule
+[ML pipeline] --> model file --> Overbooking service
+[Simulation]  <-- no-show probabilities + overbooking rule
 ```
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Web frontend | React 19, TypeScript, Vite |
+| Web backend | FastAPI, Pydantic |
+| Overbooking service | FastAPI, Pydantic, APScheduler, scikit-learn, joblib |
+| KPI dashboard | Jinja2, Chart.js (served by the overbooking service) |
+| Database | PostgreSQL 16, SQLAlchemy 2, Alembic |
+| Email | SMTP; Mailpit in development |
+| Prediction model | Python, pandas, scikit-learn, Jupyter |
+| Simulation | Python, SimPy |
+| Infrastructure | Docker Compose, GitHub Actions |
+| Code quality | ruff, pytest, oxlint, Prettier |
 
 ## Repository Structure
 
 | Folder | Content |
 |---|---|
-| [`web/`](web/) | Appointment web application, patient and doctor interfaces, database, calendar/slot algorithm |
+| [`web/frontend/`](web/frontend/) | Patient and doctor interfaces |
+| [`web/backend/`](web/backend/) | Booking API, calendar/slot algorithm |
 | [`overbooking-service/`](overbooking-service/) | Model-serving REST API, overbooking rule engine, reminder jobs, A/B logging, KPI dashboard |
+| [`db/`](db/) | Shared SQLAlchemy models and Alembic migrations |
 | [`ml/`](ml/) | Data preparation, no-show prediction model (logistic regression / random forest), AUC and calibration |
-| [`simulation/`](simulation/) | Appointment template, overbooking policy, Arena discrete-event simulation |
+| [`simulation/`](simulation/) | Appointment template, overbooking policy, SimPy discrete-event simulation |
 | [`docs/`](docs/) | Shared contracts between components: API, model features, KPI definitions |
+
+## Getting Started
+
+Requirements: Docker Desktop.
+
+```bash
+git clone https://github.com/cnrasili/noshow-smart-scheduling.git
+cd noshow-smart-scheduling
+docker compose up --build
+```
+
+| Service | URL |
+|---|---|
+| Web frontend | http://localhost:5173 |
+| Web backend API docs | http://localhost:8000/docs |
+| Overbooking service API docs | http://localhost:8001/docs |
+| Mailpit (sent emails) | http://localhost:8025 |
+| PostgreSQL | `localhost:5432` |
+
+Default settings work without configuration. To change them, copy `.env.example` to `.env`.
+
+Each component can also be run without Docker; see its README.
 
 ## Dataset
 
@@ -46,7 +86,7 @@ Components depend on each other through the documents in [`docs/`](docs/).
 
 | Document | Between |
 |---|---|
-| [API contract](docs/api-contract.md) | Web application and overbooking service |
+| [API contract](docs/api-contract.md) | Web backend and overbooking service |
 | [Model features](docs/features.md) | Prediction model and overbooking service |
 | [KPI definitions](docs/kpi-definitions.md) | Simulation and KPI dashboard |
 
@@ -55,8 +95,9 @@ Components depend on each other through the documents in [`docs/`](docs/).
 - `main` always contains working code.
 - Work on a feature branch, for example `feature/predict-api`, and merge through a pull request.
 - Commit messages are one line in the form `type: Imperative short message`, for example `feat: Add prediction endpoint` or `fix: Correct lead time calculation`.
+- Database changes go through Alembic migrations in [`db/`](db/).
 - Never commit secrets. Copy `.env.example` to `.env` and fill in local values.
-- Arena model files are binary and cannot be merged. Only one person edits a model file at a time.
+- CI runs linters, tests and the frontend build on every push and pull request.
 
 ## Course
 

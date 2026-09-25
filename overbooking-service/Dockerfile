@@ -1,0 +1,11 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+COPY db/ db/
+COPY overbooking-service/ overbooking-service/
+RUN pip install --no-cache-dir ./db && pip install --no-cache-dir -e ./overbooking-service
+
+WORKDIR /app/overbooking-service
+EXPOSE 8001
+CMD ["uvicorn", "overbooking_service.main:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]

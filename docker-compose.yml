@@ -1,0 +1,80 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-noshow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-noshow}
+      POSTGRES_DB: ${POSTGRES_DB:-noshow}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-noshow} -d ${POSTGRES_DB:-noshow}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: .
+      dockerfile: db/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-noshow}:${POSTGRES_PASSWORD:-noshow}@db:5432/${POSTGRES_DB:-noshow}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+
+  web-backend:
+    build:
+      context: .
+      dockerfile: web/backend/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-noshow}:${POSTGRES_PASSWORD:-noshow}@db:5432/${POSTGRES_DB:-noshow}
+      OVERBOOKING_SERVICE_URL: http://overbooking-service:8001
+      FRONTEND_ORIGIN: http://localhost:5173
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./web/backend/web_backend:/app/web/backend/web_backend
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  web-frontend:
+    build:
+      context: web/frontend
+    environment:
+      VITE_API_URL: http://localhost:8000
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./web/frontend/src:/app/src
+    depends_on:
+      - web-backend
+
+  overbooking-service:
+    build:
+      context: .
+      dockerfile: overbooking-service/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-noshow}:${POSTGRES_PASSWORD:-noshow}@db:5432/${POSTGRES_DB:-noshow}
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      MAIL_FROM: ${MAIL_FROM:-clinic@noshow.local}
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./overbooking-service/overbooking_service:/app/overbooking-service/overbooking_service
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  db-data:

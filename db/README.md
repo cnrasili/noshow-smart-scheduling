@@ -1,0 +1,29 @@
+# Shared Database
+
+SQLAlchemy models and Alembic migrations shared by the web backend and the overbooking service. Both use the same PostgreSQL database and a single migration history.
+
+## Tech Stack
+
+- PostgreSQL 16
+- SQLAlchemy 2
+- Alembic
+
+## Layout
+
+| Path | Content |
+|---|---|
+| `noshow_db/models/core.py` | Patients, doctors, slots, appointments |
+| `noshow_db/models/service.py` | Predictions, overbooking decisions, reminders, A/B assignments |
+| `migrations/` | Alembic migration history |
+
+## Migrations
+
+The connection is read from `DATABASE_URL`.
+
+```bash
+pip install -e .
+alembic revision --autogenerate -m "Add appointment tables"
+alembic upgrade head
+```
+
+With Docker Compose, the `migrate` service runs `alembic upgrade head` before the backends start.

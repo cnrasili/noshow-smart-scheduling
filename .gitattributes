@@ -2,7 +2,6 @@
 * text=auto
 
 # Binary files that cannot be merged
-*.doe binary
 *.joblib binary
 *.pkl binary
 *.png binary

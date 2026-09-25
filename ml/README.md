@@ -2,6 +2,14 @@
 
 Data preparation and training of the no-show prediction model.
 
+## Tech Stack
+
+- Python 3.12
+- pandas for data preparation
+- scikit-learn for logistic regression, random forest, AUC and calibration
+- joblib for exporting the model
+- Jupyter and matplotlib for analysis
+
 ## Scope
 
 - Cleaning and exploratory analysis of the Medical Appointment No Shows dataset
@@ -13,3 +21,11 @@ Data preparation and training of the no-show prediction model.
 ## Data
 
 Place the downloaded dataset in `data/raw/`. Raw and processed data are not committed.
+
+## Development
+
+```bash
+python -m venv .venv
+pip install -r requirements.txt
+jupyter lab
+```

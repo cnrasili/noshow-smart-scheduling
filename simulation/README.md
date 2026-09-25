@@ -1,15 +1,25 @@
 # Simulation
 
-Appointment template, overbooking policy and discrete-event simulation in Arena.
+Appointment template, overbooking policy and discrete-event simulation of a clinic session.
+
+## Tech Stack
+
+- Python 3.12
+- SimPy for discrete-event simulation
+- NumPy and pandas for input distributions and results
+- matplotlib for charts
 
 ## Scope
 
 - Clinic session parameters: slot length, number of slots, service time, patient punctuality
 - Appointment template design
 - No-show-aware overbooking policy
-- Arena models for fixed-interval booking and selective overbooking
+- Simulation of fixed-interval booking and selective overbooking
 - Comparison of patient waiting time, physician idle time and overtime (see [KPI definitions](../docs/kpi-definitions.md))
 
-## Notes
+## Development
 
-Arena model files (`.doe`) are binary. Only one person edits a model file at a time.
+```bash
+python -m venv .venv
+pip install -r requirements.txt
+```
