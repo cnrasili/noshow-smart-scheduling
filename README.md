@@ -76,6 +76,16 @@ Default settings work without configuration. To change them, copy `.env.example`
 
 Each component can also be run without Docker; see its README.
 
+### Troubleshooting
+
+| Problem | Solution |
+|---|---|
+| `error during connect` or `cannot find the file specified` | Start Docker Desktop and wait until it is running. |
+| `port is already allocated` | Copy `.env.example` to `.env` and change the port of that service, for example `DB_PORT=5433`. |
+| Code changes are not picked up | File watching uses polling in Docker; wait a few seconds or restart the service with `docker compose restart <service>`. |
+| Database schema is out of date | Run `docker compose up --build migrate`. |
+| Start from a clean database | Run `docker compose down -v`. This deletes all local data. |
+
 ## Dataset
 
 The prediction model is trained on the public [Medical Appointment No Shows](https://www.kaggle.com/datasets/joniarroba/noshowappointments) dataset (Hoppen, 2016), which contains about 110,000 appointments from public clinics in Vitória, Brazil.

@@ -2,7 +2,7 @@
 
 **Status:** Draft.
 
-Interface between the web application and the overbooking service.
+Interface between the web backend and the overbooking service. The web frontend does not call the overbooking service directly.
 
 ## `POST /predict`
 
@@ -29,7 +29,7 @@ Response:
 
 ## `POST /booking-decision`
 
-Called by the web application before a patient is booked into a slot.
+Called by the web backend before a patient is booked into a slot.
 
 Request:
 

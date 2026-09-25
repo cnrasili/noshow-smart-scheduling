@@ -1,6 +1,10 @@
 # Normalize line endings
 * text=auto
 
+# Files run inside Linux containers keep LF endings
+*.sh text eol=lf
+Dockerfile text eol=lf
+
 # Binary files that cannot be merged
 *.joblib binary
 *.pkl binary

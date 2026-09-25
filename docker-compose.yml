@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-noshow}
       POSTGRES_DB: ${POSTGRES_DB:-noshow}
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
@@ -28,8 +28,8 @@ services:
   mailpit:
     image: axllent/mailpit
     ports:
-      - "8025:8025"
-      - "1025:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
 
   web-backend:
     build:
@@ -38,9 +38,10 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-noshow}:${POSTGRES_PASSWORD:-noshow}@db:5432/${POSTGRES_DB:-noshow}
       OVERBOOKING_SERVICE_URL: http://overbooking-service:8001
-      FRONTEND_ORIGIN: http://localhost:5173
+      FRONTEND_ORIGIN: http://localhost:${WEB_FRONTEND_PORT:-5173}
+      WATCHFILES_FORCE_POLLING: "true"
     ports:
-      - "8000:8000"
+      - "${WEB_BACKEND_PORT:-8000}:8000"
     volumes:
       - ./web/backend/web_backend:/app/web/backend/web_backend
     depends_on:
@@ -51,9 +52,10 @@ services:
     build:
       context: web/frontend
     environment:
-      VITE_API_URL: http://localhost:8000
+      VITE_API_URL: http://localhost:${WEB_BACKEND_PORT:-8000}
+      WATCH_POLLING: "true"
     ports:
-      - "5173:5173"
+      - "${WEB_FRONTEND_PORT:-5173}:5173"
     volumes:
       - ./web/frontend/src:/app/src
     depends_on:
@@ -68,8 +70,9 @@ services:
       SMTP_HOST: mailpit
       SMTP_PORT: 1025
       MAIL_FROM: ${MAIL_FROM:-clinic@noshow.local}
+      WATCHFILES_FORCE_POLLING: "true"
     ports:
-      - "8001:8001"
+      - "${OVERBOOKING_SERVICE_PORT:-8001}:8001"
     volumes:
       - ./overbooking-service/overbooking_service:/app/overbooking-service/overbooking_service
     depends_on:
