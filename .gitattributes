@@ -1,0 +1,12 @@
+# Normalize line endings
+* text=auto
+
+# Binary files that cannot be merged
+*.doe binary
+*.joblib binary
+*.pkl binary
+*.png binary
+*.jpg binary
+*.pdf binary
+*.docx binary
+*.xlsx binary
