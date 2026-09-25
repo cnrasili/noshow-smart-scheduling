@@ -1,6 +1,21 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
-app = FastAPI(title="Overbooking Service")
+from overbooking_service import predict
+from overbooking_service.config import settings
+from overbooking_service.predictor import Predictor
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    app.state.predictor = Predictor.load(settings.model_dir)
+    yield
+
+
+app = FastAPI(title="Overbooking Service", lifespan=lifespan)
+app.include_router(predict.router)
 
 
 @app.get("/health")

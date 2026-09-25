@@ -27,6 +27,14 @@ Response:
 }
 ```
 
+Errors:
+
+| Status | Reason |
+|---|---|
+| 404 | Patient not found |
+| 422 | Invalid request, or `appointment_date` is before `booking_date` |
+| 503 | Patient data cannot be read |
+
 ## `POST /booking-decision`
 
 Called by the web backend before a patient is booked into a slot.

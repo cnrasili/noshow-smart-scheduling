@@ -1,0 +1,16 @@
+{
+  "version": "dummy-v0",
+  "features": [
+    "lead_days",
+    "weekday",
+    "age",
+    "gender_male",
+    "scholarship",
+    "hipertension",
+    "diabetes",
+    "alcoholism",
+    "handcap",
+    "prior_appt_count",
+    "prior_noshow_count"
+  ]
+}
