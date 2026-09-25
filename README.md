@@ -4,6 +4,13 @@ Outpatient clinics lose capacity when patients miss their appointments without n
 
 The project is developed as an interdisciplinary study combining industrial engineering (appointment template design, overbooking policy, simulation) and computer engineering (web application, model-serving API, reminder engine).
 
+## Scope
+
+- One outpatient clinic session with one physician and fixed-length appointment slots.
+- The prediction model is trained on the public Medical Appointment No Shows dataset; the application and the simulation use simulated data.
+- Selective overbooking is compared with fixed-interval booking.
+- Real patient data and integration with hospital information systems are outside the scope.
+
 ## System Overview
 
 ```
