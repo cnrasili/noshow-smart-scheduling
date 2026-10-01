@@ -60,3 +60,21 @@ The current model is a placeholder (`dummy-v0`) created by `scripts/make_dummy_m
 ## Patient Data
 
 Features are computed from the patient record and appointment history. Access goes through the `PatientDataSource` interface in `overbooking_service/data_source.py`. Until the booking application tables exist, `/predict` returns `503`.
+
+## Overbooking Rule
+
+`POST /booking-decision` decides whether a patient may be booked into a slot. The rule is the pure function `decide` in `overbooking_service/rules.py`; the decision table is in the [API contract](../docs/api-contract.md#post-booking-decision).
+
+Slot state is read through the `SlotDataSource` interface in `overbooking_service/data_source.py`. Until the booking application tables exist, `/booking-decision` returns `503`.
+
+Rule parameters are read from `config.yaml`. The current values are defaults until the simulation study sets the final ones.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `threshold` | 0.30 | Minimum `p_noshow` of the booked patient for an overbook |
+| `max_patients_per_slot` | 2 | Maximum patients in one slot, including overbooks |
+| `daily_overbook_limit` | 2 | Maximum overbooks per doctor per day |
+
+Environment variables override the file, for example `OVERBOOKING__THRESHOLD=0.25`. With Docker Compose, rebuild the service after editing `config.yaml`.
+
+Every decision is logged in the `booking_decisions` table.

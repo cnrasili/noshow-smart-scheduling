@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -11,6 +12,22 @@ from overbooking_service.predictor import Predictor
 from overbooking_service.schemas import PredictRequest, PredictResponse
 
 router = APIRouter()
+
+
+def score_patient(
+    data_source: PatientDataSource,
+    predictor: Predictor,
+    patient_id: int,
+    appointment_date: date,
+    booking_date: date,
+) -> tuple[dict[str, float], float] | None:
+    """Return features and no-show probability, or None if the patient is unknown."""
+    patient = data_source.get_patient(patient_id)
+    if patient is None:
+        return None
+    history = data_source.get_history(patient_id)
+    features = build_features(patient, history, appointment_date, booking_date)
+    return features, predictor.predict(features)
 
 
 @router.post(
@@ -30,15 +47,14 @@ def predict(
         raise HTTPException(422, "appointment_date must not be before booking_date")
 
     try:
-        patient = data_source.get_patient(body.patient_id)
-        if patient is None:
-            raise HTTPException(404, f"Patient {body.patient_id} not found")
-        history = data_source.get_history(body.patient_id)
+        scored = score_patient(
+            data_source, predictor, body.patient_id, body.appointment_date, body.booking_date
+        )
     except DataSourceUnavailable as exc:
         raise HTTPException(503, str(exc)) from exc
-
-    features = build_features(patient, history, body.appointment_date, body.booking_date)
-    p_noshow = predictor.predict(features)
+    if scored is None:
+        raise HTTPException(404, f"Patient {body.patient_id} not found")
+    features, p_noshow = scored
 
     # Prediction log
     session.add(

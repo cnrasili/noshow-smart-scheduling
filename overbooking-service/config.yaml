@@ -1,0 +1,5 @@
+# Overbooking rule defaults; final values come from the simulation study
+overbooking:
+  threshold: 0.30
+  max_patients_per_slot: 2
+  daily_overbook_limit: 2

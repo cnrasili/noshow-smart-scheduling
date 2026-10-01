@@ -60,6 +60,27 @@ Response:
 }
 ```
 
+`p_noshow` is the risk of the requesting patient for the slot date. `overbook` is `true` when the patient is added to an already booked slot.
+
+Rule (parameters in `overbooking-service/config.yaml`):
+
+| Slot state | Decision |
+|---|---|
+| Empty | Allow, normal booking |
+| Patient already booked in the slot | Reject |
+| Patients in slot >= `max_patients_per_slot` | Reject |
+| Any booked patient's `p_noshow` < `threshold` | Reject |
+| Overbooks of the doctor on the slot date >= `daily_overbook_limit` | Reject |
+| Otherwise | Allow as overbook |
+
+Errors:
+
+| Status | Reason |
+|---|---|
+| 404 | Patient or slot not found |
+| 422 | Invalid request, or `booking_date` is after the slot date |
+| 503 | Patient or slot data cannot be read |
+
 ## `GET /kpi`
 
 Returns schedule KPIs for a doctor and a date. Definitions are in [KPI definitions](kpi-definitions.md).
