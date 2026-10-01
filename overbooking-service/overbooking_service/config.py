@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from pydantic import BaseModel, Field
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -12,6 +13,15 @@ from overbooking_service.rules import OverbookingRule
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
 
 
+class ReminderSettings(BaseModel):
+    """Confirmation and reminder message settings."""
+
+    enabled: bool
+    hours_before: float = Field(gt=0)
+    dispatch_interval_seconds: int = Field(ge=1)
+    max_attempts: int = Field(ge=1)
+
+
 class Settings(BaseSettings):
     """Service settings read from environment variables and config.yaml."""
 
@@ -22,6 +32,10 @@ class Settings(BaseSettings):
 
     model_dir: Path = SERVICE_ROOT / "models"
     overbooking: OverbookingRule
+    reminders: ReminderSettings
+    smtp_host: str | None = None
+    smtp_port: int = 1025
+    mail_from: str = "clinic@noshow.local"
 
     @classmethod
     def settings_customise_sources(

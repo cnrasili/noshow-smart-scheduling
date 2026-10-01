@@ -78,3 +78,35 @@ Rule parameters are read from `config.yaml`. The current values are defaults unt
 Environment variables override the file, for example `OVERBOOKING__THRESHOLD=0.25`. With Docker Compose, rebuild the service after editing `config.yaml`.
 
 Every decision is logged in the `booking_decisions` table.
+
+## Confirmation and Reminder Messages
+
+The web backend reports booked and cancelled appointments to `POST /events/appointment-booked` and `POST /events/appointment-cancelled` (see the [API contract](../docs/api-contract.md)). Each event stores its messages in the `messages` table:
+
+| Message | Sent |
+|---|---|
+| Confirmation | Within a minute of booking |
+| Reminder | `hours_before` hours before the appointment |
+
+A background job (APScheduler) sends due messages every `dispatch_interval_seconds`. Because messages are stored in the database, scheduled reminders survive a restart.
+
+| Status | Meaning |
+|---|---|
+| `pending` | Waiting to be sent |
+| `sent` | Delivered to the mail server |
+| `cancelled` | Appointment cancelled before sending |
+| `expired` | Appointment started before sending |
+| `failed` | Sending failed `max_attempts` times |
+
+Each appointment gets at most one message of each kind, and a sent message is never sent again.
+
+Settings in `config.yaml`:
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `enabled` | true | Run the background sender |
+| `hours_before` | 24 | Reminder lead time in hours |
+| `dispatch_interval_seconds` | 60 | How often due messages are sent |
+| `max_attempts` | 3 | Send attempts before a message is marked `failed` |
+
+Messages are sent by email when `SMTP_HOST` is set; otherwise they are written to the service log. With Docker Compose, emails go to Mailpit at http://localhost:8025.

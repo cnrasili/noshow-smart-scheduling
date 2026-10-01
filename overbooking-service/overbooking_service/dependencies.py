@@ -1,10 +1,11 @@
 from collections.abc import Iterator
+from datetime import UTC, datetime
 
 from fastapi import Request
 from sqlalchemy.orm import Session
 
 from noshow_db import SessionLocal
-from overbooking_service.config import settings
+from overbooking_service.config import ReminderSettings, settings
 from overbooking_service.data_source import (
     PatientDataSource,
     SlotDataSource,
@@ -29,6 +30,14 @@ def get_slot_source() -> SlotDataSource:
 
 def get_rule() -> OverbookingRule:
     return settings.overbooking
+
+
+def get_reminder_settings() -> ReminderSettings:
+    return settings.reminders
+
+
+def get_now() -> datetime:
+    return datetime.now(UTC)
 
 
 def get_session() -> Iterator[Session]:

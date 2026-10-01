@@ -9,6 +9,7 @@ from sqlalchemy.pool import StaticPool
 
 import noshow_db.models  # noqa: F401
 from noshow_db.base import Base
+from overbooking_service.config import settings
 from overbooking_service.dependencies import get_data_source, get_session
 from overbooking_service.features import PastAppointment, PatientRecord
 from overbooking_service.main import app
@@ -45,7 +46,12 @@ def session_factory() -> sessionmaker[Session]:
 
 
 @pytest.fixture
-def client(session_factory: sessionmaker[Session]) -> Iterator[TestClient]:
+def client(
+    session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> Iterator[TestClient]:
+    # Background dispatcher would use the real database
+    monkeypatch.setattr(settings.reminders, "enabled", False)
+
     def override_session() -> Iterator[Session]:
         with session_factory() as session:
             yield session

@@ -81,6 +81,70 @@ Errors:
 | 422 | Invalid request, or `booking_date` is after the slot date |
 | 503 | Patient or slot data cannot be read |
 
+## `POST /events/appointment-booked`
+
+Called by the web backend after an appointment is booked. Schedules a confirmation message, sent within a minute, and a reminder message before the appointment.
+
+Request:
+
+```json
+{
+  "appointment_id": 501,
+  "patient_id": 123,
+  "email": "patient@example.com",
+  "appointment_start": "2026-11-10T09:30:00+03:00"
+}
+```
+
+`appointment_start` must include a time zone offset. Message texts show the time as sent.
+
+Response:
+
+```json
+{
+  "messages": [
+    { "kind": "confirmation", "send_at": "2026-11-02T06:00:00Z", "status": "pending" },
+    { "kind": "reminder", "send_at": "2026-11-09T06:30:00Z", "status": "pending" }
+  ]
+}
+```
+
+- No reminder is scheduled when the appointment is closer than the reminder lead time.
+- Sending the same event again returns the existing messages and creates no duplicates.
+- A message is not sent once the appointment has started.
+
+Errors:
+
+| Status | Reason |
+|---|---|
+| 422 | Invalid request, `appointment_start` without time zone, or appointment in the past |
+
+## `POST /events/appointment-cancelled`
+
+Called by the web backend after an appointment is cancelled. Cancels its messages that are not sent yet.
+
+Request:
+
+```json
+{
+  "appointment_id": 501
+}
+```
+
+Response:
+
+```json
+{
+  "cancelled": 1
+}
+```
+
+Errors:
+
+| Status | Reason |
+|---|---|
+| 422 | Invalid request |
+
 ## `GET /kpi`
 
 Returns schedule KPIs for a doctor and a date. Definitions are in [KPI definitions](kpi-definitions.md).

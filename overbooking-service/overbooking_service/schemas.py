@@ -1,6 +1,6 @@
-from datetime import date
+from datetime import date, datetime
 
-from pydantic import BaseModel, Field
+from pydantic import AwareDatetime, BaseModel, Field
 
 
 class PredictRequest(BaseModel):
@@ -25,3 +25,28 @@ class BookingDecisionResponse(BaseModel):
     overbook: bool
     p_noshow: float = Field(ge=0, le=1)
     reason: str
+
+
+class AppointmentBooked(BaseModel):
+    appointment_id: int = Field(gt=0)
+    patient_id: int = Field(gt=0)
+    email: str = Field(max_length=255, pattern=r"^[^@\s]+@[^@\s]+$")
+    appointment_start: AwareDatetime
+
+
+class AppointmentCancelled(BaseModel):
+    appointment_id: int = Field(gt=0)
+
+
+class ScheduledMessage(BaseModel):
+    kind: str
+    send_at: datetime
+    status: str
+
+
+class ScheduledMessages(BaseModel):
+    messages: list[ScheduledMessage]
+
+
+class CancelledMessages(BaseModel):
+    cancelled: int
