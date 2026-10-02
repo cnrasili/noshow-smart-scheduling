@@ -87,7 +87,7 @@ h1{font-size:21px;margin:0}h2{font-size:16px;margin:22px 0 8px}p{color:var(--mut
 button,select,input{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:7px 12px;font-size:14px}button{cursor:pointer}
 button.primary{background:var(--acc);color:#fff;border-color:var(--acc)}input[type=range]{flex:1;min-width:200px;padding:0}
 .clock{font-size:26px;font-weight:700;min-width:80px}.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:12px}
-canvas{width:100%;display:block}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+canvas{width:100%;display:block}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:900px){.two{grid-template-columns:1fr}}.stat{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--mute);margin:2px 0 6px}.stat b{color:var(--ink);font-size:17px;display:block}h3{margin:0 0 4px;font-size:14px}#tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--bg);padding:5px 9px;border-radius:6px;font-size:12px;display:none;z-index:9}canvas.tiles{cursor:pointer}
 .k h3{margin:0;font-size:12px;color:var(--mute);font-weight:600}.k .v{font-size:24px;font-weight:700}.k .s{font-size:12px;color:var(--mute)}
 .good{color:var(--good)}.bad{color:var(--bad)}table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--line)}
 th:first-child,td:first-child{text-align:left}th{color:var(--mute);position:sticky;top:0;background:var(--card)}.scroll{overflow:auto;max-height:420px}
@@ -99,30 +99,36 @@ th:first-child,td:first-child{text-align:left}th{color:var(--mute);position:stic
 <h2>Day totals</h2><div class="grid" id="kpis"></div>
 <div class="card" style="margin-top:12px"><div class="scroll" style="max-height:none"><table id="ptable"></table></div></div>
 <h2>The day, minute by minute</h2>
+<p>Each square is <b>one doctor</b> (one clinic session). <b style="color:#2a6f97">Blue</b>: seeing a patient. <b style="color:#e07a5f">Orange</b>: seeing an overbooked patient. <b style="color:#d98a97">Pink</b>: idle although the session is still running, which is wasted time. <b>Grey</b>: finished for the day. The small amber number is how many patients are waiting for that doctor. Hover a square for details; click it to list that doctor's patients below.</p>
 <div class="bar"><button class="primary" id="play">Pause</button><button id="restart">Restart</button>
 <label>Speed <select id="speed"><option value="10">x10</option><option value="20" selected>x20</option><option value="40">x40</option><option value="100">x100</option></select></label>
 <span class="clock" id="clock">08:00</span><input type="range" id="scrub" min="0" max="1000" value="0"></div>
-<div class="legend"><span><i style="background:#2a6f97"></i>physician busy</span><span><i style="background:#e07a5f"></i>busy with an overbooked patient</span><span><i style="background:#f2a93b"></i>patient waiting</span><span>each row = one clinic session</span></div>
-<div class="card"><canvas id="cf" width="1100" height="520"></canvas></div>
-<div class="card"><canvas id="co" width="1100" height="520"></canvas></div>
-<div class="card"><canvas id="cq" width="1100" height="150"></canvas></div>
+<div class="two">
+<div class="card"><h3>Fixed interval: one patient per slot</h3><div class="stat" id="sf"></div><canvas id="cf" width="560" height="380"></canvas></div>
+<div class="card"><h3 id="otitle">Selective overbooking</h3><div class="stat" id="so"></div><canvas id="co" width="560" height="380"></canvas></div>
+</div>
+<div class="two">
+<div class="card"><canvas id="cq" width="560" height="190"></canvas></div>
+<div class="card"><canvas id="ci" width="560" height="190"></canvas></div>
+</div>
 <h2>Every record of the day</h2>
 <div class="bar"><select id="fstatus"><option value="all">All records</option><option value="seen">Seen (overbooking)</option><option value="noshow">No-show</option><option value="deferred">No slot (overbooking)</option><option value="ob">Overbooked</option></select>
-<input id="fsearch" placeholder="Appointment ID" size="14"><button id="prev">&lt;</button><span id="pageinfo" style="color:var(--mute)"></span><button id="next">&gt;</button></div>
+<input id="fsearch" placeholder="Appointment ID" size="14"><span id="sessinfo"></span><button id="prev">&lt;</button><span id="pageinfo" style="color:var(--mute)"></span><button id="next">&gt;</button></div>
 <div class="card"><div class="scroll"><table id="rtable"></table></div></div>
 <p>Risk columns: random forest (RF), logistic regression (LR), rule R4. The simulation decides with __SRC__ at threshold __THR__. "Wait" is the simulated waiting time in minutes (fixed interval / overbooking). "No slot" = no free slot in the session, booked for another day.</p>
-</main><script>
+</main><div id="tip"></div><script>
+if(!CanvasRenderingContext2D.prototype.roundRect){CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h){this.rect(x,y,w,h);};}
 const D=__DATA__, META=__META__, T=META.session_min, dark=matchMedia('(prefers-color-scheme: dark)').matches;
 const INK=dark?'#e8ecf3':'#1d2433', MUTE=dark?'#93a0b4':'#667085', BOX=dark?'#1f2937':'#eef0f3';
 const f1=x=>x.toFixed(1), fm=m=>{const x=Math.round(480+m);return String(Math.floor(x/60)).padStart(2,'0')+':'+String(x%60).padStart(2,'0');};
 // record columns: 0 id,1 booked,2 age,3 lead,4 rf,5 lr,6 r4,7 y,8 session, fixed:9 slot,10 ready,11 start,12 end,13 ob, over:14 slot,15 ready,16 start,17 end,18 ob
 const daySel=document.getElementById('day');D.days.forEach((d,i)=>daySel.add(new Option(d.date+' ('+d.records.length+' appointments)',i)));
-let day,tEnd,arr,t=0,playing=true,last=null,page=0,rows=[];
+let day,tEnd,arr,t=0,playing=true,last=null,page=0,rows=[],sessFilter=-1;
 function curves(recs,c0){const n=Math.ceil(tEnd)+2,w=new Array(n).fill(0),b=new Array(n).fill(0),dn=new Array(n).fill(0);
   for(const r of recs){if(r[c0+2]==null)continue;const rd=r[c0+1],s=r[c0+2],e=r[c0+3];
     for(let m=Math.max(0,Math.floor(rd));m<Math.min(n,Math.ceil(s));m++)w[m]++;for(let m=Math.floor(s);m<Math.min(n,Math.ceil(e));m++)b[m]++;if(Math.ceil(e)<n)dn[Math.ceil(e)]++;}
   for(let m=1;m<n;m++)dn[m]+=dn[m-1];return {w,b,dn};}
-function setDay(i){day=D.days[i];const recs=day.records;let mx=T;for(const r of recs){if(r[12]!=null)mx=Math.max(mx,r[12]);if(r[17]!=null)mx=Math.max(mx,r[17]);}
+function setDay(i){day=D.days[i];sessFilter=-1;const recs=day.records;let mx=T;for(const r of recs){if(r[12]!=null)mx=Math.max(mx,r[12]);if(r[17]!=null)mx=Math.max(mx,r[17]);}
   tEnd=mx+6;arr={f:curves(recs,9),o:curves(recs,14)};t=0;page=0;
   document.getElementById('daynote').textContent=day.sessions+' clinic sessions of up to '+META.n_requests+' booking requests; real records, real attendance';renderKpis();applyFilter();}
 function renderKpis(){const P=day.policies,F=P.fixed,O=P[META.animate];
@@ -132,30 +138,49 @@ function renderKpis(){const P=day.policies,F=P.fixed,O=P[META.animate];
    return `<div class="card k"><h3>${c[0]}</h3><div class="v">${c[2].toFixed(c[3])}${c[0]==='Utilization'?'%':''}</div><div class="s">fixed interval: ${c[1].toFixed(c[3])}</div><div class="s ${g}">${d>=0?'+':''}${d.toFixed(c[3])} with overbooking</div></div>`;}).join('');
   const names=Object.keys(P);document.getElementById('ptable').innerHTML='<tr><th>Policy</th><th>Seen</th><th>No slot</th><th>Mean wait</th><th>Idle (h)</th><th>Overtime (h)</th><th>Utilization</th><th>Overbooked slots</th></tr>'+
    names.map(n=>{const p=P[n];return `<tr><td>${n}${n===META.animate?' (shown below)':''}</td><td>${p.seen}</td><td>${p.deferred}</td><td>${f1(p.mean_wait)}</td><td>${f1(p.idle_h)}</td><td>${f1(p.overtime_h)}</td><td>${(p.utilization*100).toFixed(1)}%</td><td>${p.ob_slots}</td></tr>`}).join('');}
-function heat(cv,c0,title,cur){const g=cv.getContext('2d'),W=cv.width,H=cv.height;g.clearRect(0,0,W,H);g.fillStyle=INK;g.font='600 14px system-ui,sans-serif';g.fillText(title,10,18);
-  const x0=40,x1=W-10,sc=(x1-x0)/tEnd,y0=30,rh=Math.max(1,(H-y0-26)/day.sessions);
-  g.fillStyle=BOX;g.fillRect(x0,y0,x1-x0,rh*day.sessions);
-  for(const r of day.records){if(r[c0+2]==null)continue;const y=y0+r[8]*rh,rd=r[c0+1],s=r[c0+2],e=r[c0+3];
-    if(rd<=t){g.fillStyle='#f2a93b';g.fillRect(x0+rd*sc,y,Math.max(0,Math.min(s,t)-rd)*sc,rh);}
-    if(s<=t){g.fillStyle=r[c0+4]?'#e07a5f':'#2a6f97';g.fillRect(x0+s*sc,y,Math.max(0.5,Math.min(e,t)-s)*sc,rh);}}
-  g.fillStyle='#d64545';g.fillRect(x0+T*sc,y0-4,1.5,rh*day.sessions+8);g.fillStyle=MUTE;g.font='11px system-ui,sans-serif';
-  for(let m=0;m<=tEnd;m+=60){g.fillText(fm(m),x0+m*sc-12,H-8);}g.fillText('planned end '+fm(T),x0+T*sc+4,y0-8);
-  const m=Math.min(Math.floor(t),cur.b.length-1);let busyT=0,idle=0,ot=0;for(let i=0;i<=m;i++){busyT+=cur.b[i];if(i<T)idle+=day.sessions-cur.b[i];else ot+=cur.b[i];}
-  g.fillStyle=INK;g.font='12px system-ui,sans-serif';
-  g.fillText('seen '+cur.dn[m]+'   waiting now '+cur.w[m]+'   busy now '+cur.b[m]+' / '+day.sessions+'   idle so far '+(idle/60).toFixed(0)+' h   overtime so far '+(ot/60).toFixed(1)+' h',x0,H-26+10-10+0);}
-function qchart(cv){const g=cv.getContext('2d'),W=cv.width,H=cv.height;g.clearRect(0,0,W,H);const x0=40,x1=W-10,sc=(x1-x0)/tEnd;
-  const mx=Math.max(...arr.f.w,...arr.o.w,1);g.fillStyle=INK;g.font='600 14px system-ui,sans-serif';g.fillText('Patients waiting across all sessions',10,16);
-  g.fillStyle=MUTE;g.font='11px system-ui,sans-serif';g.fillText(mx,8,34);g.fillText('0',20,H-14);
-  [[arr.f.w,'#8d99ae','fixed'],[arr.o.w,'#e07a5f','overbooking']].forEach(([w,c,l],k)=>{g.strokeStyle=c;g.lineWidth=2;g.beginPath();
-    for(let m=0;m<=Math.min(t,w.length-1);m++){const x=x0+m*sc,y=H-20-(H-50)*w[m]/mx;m?g.lineTo(x,y):g.moveTo(x,y);}g.stroke();g.fillStyle=c;g.fillText(l,W-110,22+k*14);});
-  g.fillStyle='#d64545';g.fillRect(x0+T*sc,28,1.5,H-48);}
+const COL={busy:'#2a6f97',ob:'#e07a5f',idle:dark?'#8a4553':'#f1b7c0',done:dark?'#2e3645':'#d9dde4',amber:'#f2a93b'};
+let tileW=30,tileCols=18;
+function prep(){if(day.S)return;const S=day.sessions,mk=c0=>{const a=Array.from({length:S},()=>[]);for(const r of day.records){if(r[c0+2]!=null)a[r[8]].push([r[c0+1],r[c0+2],r[c0+3],r[c0+4]]);}return a;};
+  day.S={f:mk(9),o:mk(14)};tileCols=Math.min(18,Math.ceil(S/1));tileW=Math.floor(520/tileCols);const rowsN=Math.ceil(S/tileCols);
+  for(const id of['cf','co']){const cv=document.getElementById(id);cv.height=rowsN*tileW+6;cv.className='tiles';}
+  const mx=Math.max(1,...arr.f.w,...arr.o.w);day.qmax=mx;}
+function sstate(list,t){let cur=null,w=0,dn=0;for(const p of list){if(p[1]<=t&&t<p[2])cur=p;if(p[0]<=t&&t<p[1])w++;if(p[2]<=t)dn++;}return {cur,w,dn};}
+function tiles(cv,list,t){const g=cv.getContext('2d');g.clearRect(0,0,cv.width,cv.height);
+  for(let s=0;s<list.length;s++){const x=4+(s%tileCols)*tileW,y=3+Math.floor(s/tileCols)*tileW,st=sstate(list[s],t);
+    let col=COL.done;if(st.cur)col=st.cur[3]?COL.ob:COL.busy;else if(t<T)col=COL.idle;
+    g.fillStyle=col;g.beginPath();g.roundRect(x,y,tileW-3,tileW-3,4);g.fill();
+    if(st.cur&&t>T){g.strokeStyle='#d64545';g.lineWidth=2;g.stroke();g.lineWidth=1;}
+    if(st.w>0){g.fillStyle=COL.amber;g.beginPath();g.arc(x+tileW-11,y+tileW-11,8,0,7);g.fill();g.fillStyle='#1d2433';g.font='600 11px system-ui,sans-serif';g.textAlign='center';g.fillText(st.w,x+tileW-11,y+tileW-7);g.textAlign='left';}}}
+function stats(el,cur,total,t){const m=Math.min(Math.floor(t),cur.b.length-1);let idle=0;for(let i=0;i<=m&&i<T;i++)idle+=day.sessions-cur.b[i];
+  const idleNow=t<T?day.sessions-cur.b[m]:0;
+  el.innerHTML=`<div>Patients seen<b>${cur.dn[m]} / ${total}</b></div><div>Waiting now<b>${cur.w[m]}</b></div><div>Doctors idle now<b>${idleNow} of ${day.sessions}</b></div><div>Wasted idle time so far<b>${(idle/60).toFixed(0)} h</b></div>`;}
+function line(cv,title,sf,so,ymax,note){const g=cv.getContext('2d'),W=cv.width,H=cv.height,x0=44,x1=W-12,y0=34,y1=H-28,sc=(x1-x0)/tEnd;g.clearRect(0,0,W,H);
+  g.fillStyle=INK;g.font='600 13px system-ui,sans-serif';g.fillText(title,10,16);g.font='11px system-ui,sans-serif';g.fillStyle=MUTE;g.fillText(note,10,30);
+  g.strokeStyle=dark?'#2a3445':'#e4e7ec';g.beginPath();for(let k=0;k<=4;k++){const y=y1-(y1-y0)*k/4;g.moveTo(x0,y);g.lineTo(x1,y);g.fillStyle=MUTE;g.fillText(Math.round(ymax*k/4),6,y+4);}g.stroke();
+  for(let m=0;m<=tEnd;m+=60)g.fillText(fm(m),x0+m*sc-12,H-10);
+  g.strokeStyle='#d64545';g.beginPath();g.moveTo(x0+T*sc,y0);g.lineTo(x0+T*sc,y1);g.stroke();g.fillStyle='#d64545';g.fillText('planned end',x0+T*sc+3,y0+10);
+  [[sf,'#8d99ae','fixed interval'],[so,'#e07a5f','overbooking']].forEach(([w,c,l],k)=>{g.strokeStyle=c;g.lineWidth=2;g.beginPath();
+    for(let m=0;m<=Math.min(Math.floor(t),w.length-1);m++){const x=x0+m*sc,y=y1-(y1-y0)*w[m]/ymax;m?g.lineTo(x,y):g.moveTo(x,y);}g.stroke();
+    g.fillStyle=c;g.fillRect(W-130,8+k*14,10,8);g.fillStyle=MUTE;g.fillText(l,W-116,16+k*14);});g.lineWidth=1;}
+function charts(){const S=day.sessions,idle=c=>c.b.map((b,m)=>m<T?S-b:0);
+  line(document.getElementById('cq'),'Patients waiting (all doctors)',arr.f.w,arr.o.w,day.qmax,'patients who have arrived and are waiting to be seen');
+  const iF=idle(arr.f),iO=idle(arr.o);line(document.getElementById('ci'),'Doctors idle although the session is running',iF,iO,S,'wasted capacity: fewer is better');}
+const tip=document.getElementById('tip');
+function hit(cv,list,e){const r=cv.getBoundingClientRect(),k=cv.width/r.width,x=(e.clientX-r.left)*k-4,y=(e.clientY-r.top)*k-3,c=Math.floor(x/tileW),rw=Math.floor(y/tileW),s=rw*tileCols+c;return (c>=0&&c<tileCols&&rw>=0&&s>=0&&s<list.length)?s:-1;}
+function wire(id,key){const cv=document.getElementById(id);
+  cv.onmousemove=e=>{if(!day.S)return;const list=day.S[key],s=hit(cv,list,e);if(s<0){tip.style.display='none';return;}const st=sstate(list[s],t);
+    const state=st.cur?(st.cur[3]?'seeing an overbooked patient':'seeing a patient'):(t<T?'idle (wasted time)':'finished');
+    tip.textContent=`Doctor ${s+1}: ${state}; ${st.w} waiting; ${st.dn} of ${list[s].length} patients done`;tip.style.display='block';tip.style.left=(e.clientX+12)+'px';tip.style.top=(e.clientY+12)+'px';};
+  cv.onmouseleave=()=>tip.style.display='none';
+  cv.onclick=e=>{const s=hit(cv,day.S[key],e);if(s>=0){sessFilter=s;applyFilter();document.getElementById('rtable').scrollIntoView({block:'center'});}};}
+
 function frame(now){if(last===null)last=now;const dt=(now-last)/1000;last=now;
   if(playing){t+=dt*Number(document.getElementById('speed').value);if(t>=tEnd){t=tEnd;playing=false;document.getElementById('play').textContent='Replay';}}
   document.getElementById('clock').textContent=fm(t);document.getElementById('scrub').value=1000*t/tEnd;
-  heat(document.getElementById('cf'),9,'Fixed interval: one patient per slot',arr.f);heat(document.getElementById('co'),14,META.animate_name,arr.o);qchart(document.getElementById('cq'));requestAnimationFrame(frame);}
+  prep();tiles(document.getElementById('cf'),day.S.f,t);tiles(document.getElementById('co'),day.S.o,t);stats(document.getElementById('sf'),arr.f,day.policies.fixed.seen,t);stats(document.getElementById('so'),arr.o,day.policies[META.animate].seen,t);charts();requestAnimationFrame(frame);}
 function status(r){return r[14]<0?'No slot':(r[16]==null?'No-show':'Seen');}
 function applyFilter(){const f=document.getElementById('fstatus').value,q=document.getElementById('fsearch').value.trim();
-  rows=day.records.filter(r=>(f==='all'||(f==='seen'&&status(r)==='Seen')||(f==='noshow'&&status(r)==='No-show')||(f==='deferred'&&status(r)==='No slot')||(f==='ob'&&r[18]))&&(!q||String(r[0]).includes(q)));page=0;renderRows();}
+  rows=day.records.filter(r=>(f==='all'||(f==='seen'&&status(r)==='Seen')||(f==='noshow'&&status(r)==='No-show')||(f==='deferred'&&status(r)==='No slot')||(f==='ob'&&r[18]))&&(sessFilter<0||r[8]===sessFilter)&&(!q||String(r[0]).includes(q)));page=0;renderRows();}
 function renderRows(){const PS=50,np=Math.max(1,Math.ceil(rows.length/PS));page=Math.min(page,np-1);
   document.getElementById('pageinfo').textContent=(rows.length?page*PS+1:0)+'-'+Math.min(rows.length,(page+1)*PS)+' of '+rows.length;
   const w=(a,b)=>a==null?'-':f1(a-b);
@@ -167,7 +192,7 @@ document.getElementById('scrub').oninput=e=>{t=tEnd*e.target.value/1000;playing=
 daySel.onchange=()=>{setDay(Number(daySel.value));playing=true;last=null;};
 document.getElementById('fstatus').onchange=applyFilter;document.getElementById('fsearch').oninput=applyFilter;
 document.getElementById('prev').onclick=()=>{page=Math.max(0,page-1);renderRows();};document.getElementById('next').onclick=()=>{page++;renderRows();};
-setDay(0);requestAnimationFrame(frame);
+document.getElementById('otitle').textContent=META.animate_name;wire('cf','f');wire('co','o');setDay(0);requestAnimationFrame(frame);
 </script></body></html>"""
 
 
