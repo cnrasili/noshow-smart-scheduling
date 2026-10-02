@@ -9,6 +9,7 @@ Each day is one SimPy run (simpy.Environment + a Resource for the physician). Th
 patients, show-ups, arrival times and consultation lengths; only the booking policy differs.
 """
 import argparse
+import dataclasses
 import json
 import webbrowser
 from pathlib import Path
@@ -28,29 +29,36 @@ def clock(minutes: float) -> str:
     return f"{m // 60:02d}:{m % 60:02d}"
 
 
-def run_day(cfg: SessionConfig, policy, draws) -> dict:
+def run_day(cfg: SessionConfig, policy, draws, info=None) -> dict:
+    """info: optional per-request details (age, days booked ahead) of real appointment records."""
     r = simulate_session(cfg, policy, draws, detail=True)
     patients = [{"id": int(p["patient"]) + 1, "slot": p["slot"], "appt": p["appointment"],
                  "ready": max(p["appointment"], p["arrival"]), "start": p["start"], "end": p["end"],
-                 "ob": bool(p["overbooked"]), "risk": round(float(draws.risk[p["patient"]]), 3)} for p in r["detail"]]
+                 "ob": bool(p["overbooked"]), "risk": round(float(draws.risk[p["patient"]]), 3),
+                 **(info[p["patient"]] if info else {})} for p in r["detail"]]
     per_slot = {}
     for p in patients:
         per_slot[p["slot"]] = per_slot.get(p["slot"], 0) + 1
     for _, s in r["no_shows"]:
         per_slot[int(s)] = per_slot.get(int(s), 0) + 1
-    noshows = [{"id": int(i) + 1, "slot": int(s), "risk": round(float(draws.risk[i]), 3), "ob": per_slot[int(s)] > 1}
-               for i, s in r["no_shows"]]
+    noshows = [{"id": int(i) + 1, "slot": int(s), "risk": round(float(draws.risk[i]), 3), "ob": per_slot[int(s)] > 1,
+                **(info[i] if info else {})} for i, s in r["no_shows"]]
     return {"patients": patients, "noshows": noshows, "seen": r["seen"], "mean_wait": r["mean_wait"], "idle": r["idle"],
             "overtime": r["overtime"], "overbooked_slots": r["overbooked_slots"]}
+
+
+def real(p: dict) -> str:
+    """Details of the real appointment record (only in real-data mode)."""
+    return f", age {p['age']}, booked {p['lead']} days ahead" if "age" in p else ""
 
 
 def print_trace(name: str, day: dict) -> None:
     events = []
     for p in day["patients"]:
-        events += [(p["ready"], f"patient {p['id']:>2} arrives (slot {p['slot'] + 1}{', overbooked' if p['ob'] else ''}, risk {p['risk']:.2f})"),
+        events += [(p["ready"], f"patient {p['id']:>2} arrives (slot {p['slot'] + 1}{', overbooked' if p['ob'] else ''}, risk {p['risk']:.2f}{real(p)})"),
                    (p["start"], f"doctor starts patient {p['id']:>2}  (waited {p['start'] - p['ready']:.1f} min)"),
                    (p["end"], f"doctor finishes patient {p['id']:>2}")]
-    events += [(n["slot"] * 15.0, f"patient {n['id']:>2} does NOT show up (slot {n['slot'] + 1}, risk {n['risk']:.2f})") for n in day["noshows"]]
+    events += [(n["slot"] * 15.0, f"patient {n['id']:>2} does NOT show up (slot {n['slot'] + 1}, risk {n['risk']:.2f}{real(n)})") for n in day["noshows"]]
     print(f"\n--- SimPy event log: {name} ---")
     for t, text in sorted(events, key=lambda e: e[0]):
         print(f"{clock(t)}  {text}")
@@ -72,7 +80,7 @@ canvas{width:100%;display:block}.legend span{display:inline-block;margin-right:1
 .legend i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:5px;vertical-align:-1px}
 </style></head><body><main>
 <h1>Live clinic simulation</h1>
-<p>One clinic day replayed from a SimPy run. Both panels have the same patients; only the booking policy differs.</p>
+<p>__NOTE__</p>
 <div class="bar"><button class="primary" id="play">Pause</button><button id="restart">Restart</button>
 <label>Day <select id="day"></select></label><label>Speed <select id="speed"><option value="4">x4</option><option value="8" selected>x8</option><option value="16">x16</option><option value="40">x40</option></select></label>
 <span class="clock" id="clock">08:00</span><input type="range" id="scrub" min="0" max="1000" value="0"></div>
@@ -86,7 +94,7 @@ const cols=getComputedStyle(document.documentElement);
 const dark=matchMedia('(prefers-color-scheme: dark)').matches;
 const INK=dark?'#e8ecf3':'#1d2433', MUTE=dark?'#93a0b4':'#667085', LINE=dark?'#2a3445':'#d0d5dd', BOX=dark?'#1f2937':'#f2f4f7';
 const daySel=document.getElementById('day'), speedSel=document.getElementById('speed'), scrub=document.getElementById('scrub');
-DATA.days.forEach((d,i)=>daySel.add(new Option(`Day ${i+1} (${d.policy_b.overbooked_slots} overbooked slots)`,i)));
+DATA.days.forEach((d,i)=>daySel.add(new Option(`${d.label||('Day '+(i+1))} (${d.policy_b.overbooked_slots} overbooked slots)`,i)));
 let day=DATA.days[0], t=0, playing=true, last=null, tEnd=T+20;
 function setDay(i){day=DATA.days[i];tEnd=Math.max(T,...[day.fixed,day.policy_b].map(p=>Math.max(...p.patients.map(x=>x.end))))+8;t=0;}
 function busy(p){return p.patients.map(x=>[x.start,x.end]);}
@@ -147,19 +155,47 @@ def main() -> None:
     cfg = SessionConfig()
     pool = pd.read_csv(args.risks) if args.risks else None
     policy_b = threshold_rule(args.threshold)
+    real_data = pool is not None and "AppointmentDay" in pool.columns
+    if real_data:
+        pool["AppointmentDay"] = pd.to_datetime(pool["AppointmentDay"])
+        pool["ScheduledDay"] = pd.to_datetime(pool["ScheduledDay"])
+        dates = sorted(pool["AppointmentDay"].unique())
     days = []
     for d in range(DAYS):
-        draws = draw_session(cfg, np.random.default_rng([args.seed, d]), pool)
-        days.append({"fixed": run_day(cfg, fixed_interval(), draws), "policy_b": run_day(cfg, policy_b, draws)})
+        rng = np.random.default_rng([args.seed, d])
+        if real_data:
+            # real appointments of one real date, in the order the patients booked; risk and attendance are real
+            date = dates[d % len(dates)]
+            rows = pool[pool["AppointmentDay"] == date]
+            rows = rows.iloc[np.sort(rng.choice(len(rows), cfg.n_requests, replace=False))] \
+                .sort_values("ScheduledDay", kind="stable")
+            draws = dataclasses.replace(draw_session(cfg, rng, None), risk=rows["p"].to_numpy(),
+                                        shows=(rows["y"].to_numpy() == 0))
+            info = [{"age": int(a), "lead": int(l)} for a, l in zip(rows["Age"], rows["LeadDays"])]
+            label = f"{pd.Timestamp(date):%d %b %Y} #{d // len(dates) + 1}"
+        else:
+            draws, info, label = draw_session(cfg, rng, pool), None, f"Day {d + 1}"
+        days.append({"label": label, "fixed": run_day(cfg, fixed_interval(), draws, info),
+                     "policy_b": run_day(cfg, policy_b, draws, info)})
+    source = ("Patients, risks and attendance are real appointment records of the Medical Appointment No Shows data "
+              "(test period 2-8 June 2016; risks = random forest predictions; booking order = real booking time). "
+              "Consultation length and lateness are simulated: they are not in the data."
+              if real_data else
+              "Synthetic patients (Beta-distributed risks); run ml/build_reports.py to use the real appointment records. "
+              "Consultation length and lateness are simulated.")
     if args.trace:
         d = days[args.day - 1]
-        print(f"Day {args.day}: {cfg.n_slots} slots x {cfg.slot_min:g} min, risk source: {'model predictions' if pool is not None else 'synthetic'}")
+        print(f"Day {args.day} ({d['label']}): {cfg.n_slots} slots x {cfg.slot_min:g} min")
+        print("Patients:", "real appointment records of the test period (model risk, real attendance)" if real_data else "synthetic")
+        print("Simulated, not in the data: consultation length, lateness")
         print_trace("Fixed interval", d["fixed"])
         print_trace(f"Overbooking, threshold {args.threshold:.2f}", d["policy_b"])
     data = {"days": days}
     meta = {"n_slots": cfg.n_slots, "slot_min": cfg.slot_min, "session_min": cfg.session_min,
             "policy_b_name": f"Selective overbooking, threshold {args.threshold:.2f}"}
-    html = HTML.replace("__DATA__", json.dumps(data)).replace("__CFG__", json.dumps(meta))
+    html = (HTML.replace("__DATA__", json.dumps(data)).replace("__CFG__", json.dumps(meta))
+            .replace("__NOTE__", "One clinic day replayed from a SimPy run; both panels have the same patients, only the booking "
+                     "policy differs. " + source))
     OUT.mkdir(exist_ok=True)
     path = OUT / "live_simulation.html"
     path.write_text(html, encoding="utf-8")
