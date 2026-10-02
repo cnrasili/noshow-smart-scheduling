@@ -85,11 +85,53 @@ Worked example ($k=0$ for illustration): ophthalmology, 100 earlier appointments
 
 Bands MUST be mutually exclusive and cover all valid ages. An age that is missing, negative or implausible (e.g. above 120) MUST be treated as invalid: the record is excluded from band statistics and the patient is scored with $1-\bar{s}$ and $n_g=0$. A0 MAY be merged into A1 if it contains fewer than $n_{\min}$ appointments after cleaning.
 
+### R4 — Combined Estimate (cold-start rule)
+
+R4 combines R1–R3 into a single probability and MUST be defined for every appointment, including patients with no history, patients outside the training data, and records with missing attributes. It is the rule the overbooking service calls at booking time when no trained model is available, and the fallback when the model cannot score a request.
+
+**Step 1 — Context prior (department and age).** Work on the log-odds scale, $\operatorname{logit}(x) = \ln\frac{x}{1-x}$. Each available context rule contributes its deviation from the global rate:
+
+$$z_0 = \operatorname{logit}(\bar{s}) \;+\; w_D\big[\operatorname{logit}(\hat{s}_D) - \operatorname{logit}(\bar{s})\big] \;+\; w_A\big[\operatorname{logit}(\hat{s}_A) - \operatorname{logit}(\bar{s})\big], \qquad \pi_0 = \frac{1}{1+e^{-z_0}}$$
+
+where $\hat{s}_D$ is the R2 and $\hat{s}_A$ the R3 smoothed show probability. A term is omitted (its deviation set to 0) when its attribute is missing or invalid. Defaults $w_D = w_A = 1$. Values passed to $\operatorname{logit}$ MUST be clipped to $[\varepsilon, 1-\varepsilon]$ with $\varepsilon = 0.001$.
+
+**Step 2 — Patient update.** The context prior replaces the global rate as the smoothing target of the patient's own history:
+
+$$\hat{s}_{R4} = \frac{s_P + k_P\,\pi_0}{n_P + k_P}, \qquad \hat{p}_{R4} = 1 - \hat{s}_{R4}$$
+
+with $s_P, n_P$ from R1 (earlier appointments only, CE-5) and $k_P$ the patient smoothing strength (default 5). The more history a patient has, the less the context prior matters.
+
+**Cold-start behaviour (normative).**
+
+| Situation | $n_P$ | Department | Age | Result |
+|---|---|---|---|---|
+| Returning patient, full data | $>0$ | known | valid | $\hat{s}_{R4}$ (history pulled towards the context prior) |
+| New patient, full data | $0$ | known | valid | $\pi_0$ |
+| New patient, department unknown | $0$ | unknown | valid | age-only prior |
+| New patient, age unknown | $0$ | known | invalid | department-only prior |
+| New patient, nothing known | $0$ | unknown | invalid | $\bar{s}$ |
+
+A new department or age band with $n_g = 0$ already returns $\bar{s}$ through CE-4, so it adds no deviation.
+
+**Output.** R4 MUST return $(\hat{p}_{R4},\; n_P,\; \text{source})$, where `source` is one of `patient+context`, `context`, `age`, `department`, `global`, so the consumer and the audit log know which information was used.
+
+Worked example ($\bar{s}=0.80$, $k_P=5$): department show rate $0.60$, age band show rate $0.75$.
+
+$$z_0 = 1.386 + (0.405 - 1.386) + (1.099 - 1.386) = 0.118, \qquad \pi_0 = 0.530$$
+
+- New patient: $\hat{s}_{R4} = 0.530$, no-show probability $0.470$.
+- Returning patient with 7 of 10 attended: $\hat{s}_{R4} = (7 + 5\cdot0.530)/(10+5) = 0.643$, no-show probability $0.357$.
+
+**Assumption.** Adding the two log-odds deviations assumes department and age affect attendance independently. This is an approximation; it is acceptable for a rule-based baseline and MUST be checked with the calibration test in section 6. When a trained model is available it supersedes R4 for scoring, and R4 remains the fallback and the reference baseline.
+
 ## 4. Parameters
 
 | Parameter | Default | Tuning |
 |---|---|---|
-| $k$ | 5 | Validation set, minimising Brier score |
+| $k$ (R2, R3) | 5 | Validation set, minimising Brier score |
+| $k_P$ (R1, R4) | 5 | Same |
+| $w_D$, $w_A$ | 1 | Validation set; MAY be lowered if department and age overlap |
+| $\varepsilon$ | 0.001 | Fixed |
 | $n_{\min}$ | 1 | Optional hard threshold for consumers |
 | Age band edges | 18 / 25 / 35 / 55 | Revisit after exploratory analysis |
 
@@ -105,10 +147,12 @@ Each rule is evaluated against realised outcomes on appointments later than thos
 
 The rules MUST be compared with the trained no-show model on the same evaluation set (see `overbooking.md`, section 1).
 
+R4 MUST additionally be evaluated separately on **new patients** (appointments with $n_P = 0$), since this is the case it exists for. If its calibration on that subset is poor, adjust $w_D$, $w_A$ or add an interaction term before use.
+
 ## 6. Open Decisions
 
 | # | Decision | Options |
 |---|---|---|
-| 1 | Combining R1–R3 | Separate features for the logistic regression / random forest (recommended); weighted average; patient rule when $n_g$ is large, fallback to R2/R3 otherwise |
-| 2 | Source of department for the public dataset | Not available; simulate, or drop R2 for model training |
-| 3 | Value of $k$ and age band edges | Tune per section 4 |
+| 1 | Use of R1–R3 as model inputs | Separate features for the logistic regression / random forest alongside R4 (recommended) |
+| 2 | Source of department for the public dataset | Not available; simulate, or drop R2 (and the department term of R4) for model training |
+| 3 | Value of $k$, $k_P$, $w_D$, $w_A$ and age band edges | Tune per section 4 |
