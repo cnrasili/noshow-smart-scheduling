@@ -292,6 +292,8 @@ def main():
     for k, p in preds.items():
         print(k, {a: round(b, 4) for a, b in metrics(y, p).items()})
     comparison_report(train, test, cut, preds, info)
+    # model risks and outcomes for the simulation (simulation/clinic_sim.py --risks ...)
+    pd.DataFrame({"p": p_rf, "y": y.to_numpy()}).to_csv(DATA / "risks_random_forest.csv", index=False)
 
 
 if __name__ == "__main__":
