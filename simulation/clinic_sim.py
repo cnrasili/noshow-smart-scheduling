@@ -112,22 +112,27 @@ def book(cfg: SessionConfig, policy: Policy, d: Draws) -> tuple[list[list[int]],
     return slots, deferred
 
 
-def simulate_session(cfg: SessionConfig, policy: Policy, d: Draws) -> dict:
+def simulate_session(cfg: SessionConfig, policy: Policy, d: Draws, detail: bool = False) -> dict:
     slots, deferred = book(cfg, policy, d)
     env = simpy.Environment()
     doctor = simpy.Resource(env, capacity=1)
     waits: list[float] = []
     busy: list[tuple[float, float]] = []
+    log: list[dict] = []
 
     def patient(i: int, appt_time: float):
         arrival = max(0.0, appt_time + d.arrival_offset[i])
-        yield env.timeout(arrival)
+        ready = max(appt_time, arrival)                       # a consultation never starts before the appointment time
+        yield env.timeout(ready)
         with doctor.request() as req:
             yield req
             start = env.now
-            waits.append(start - max(appt_time, arrival))     # KPI: waiting time
+            waits.append(start - ready)                       # KPI: start - max(appointment time, arrival)
             yield env.timeout(d.service[i])
             busy.append((start, env.now))
+            log.append({"patient": i, "slot": int(appt_time // cfg.slot_min), "appointment": appt_time,
+                        "arrival": arrival, "start": start, "end": env.now,
+                        "overbooked": len(slots[int(appt_time // cfg.slot_min)]) > 1})
 
     seen = 0
     for s, booked in enumerate(slots):
@@ -140,7 +145,7 @@ def simulate_session(cfg: SessionConfig, policy: Policy, d: Draws) -> dict:
     session_end = cfg.session_min
     last_end = max((e for _, e in busy), default=0.0)
     busy_in_session = sum(max(0.0, min(e, session_end) - min(s, session_end)) for s, e in busy)
-    return {
+    result = {
         "booked": sum(len(b) for b in slots),
         "seen": seen,
         "deferred": deferred,
@@ -151,6 +156,10 @@ def simulate_session(cfg: SessionConfig, policy: Policy, d: Draws) -> dict:
         "overtime": max(0.0, last_end - session_end),
         "utilization": sum(e - s for s, e in busy) / session_end,
     }
+    if detail:
+        result["detail"] = log
+        result["no_shows"] = [(i, s) for s, b in enumerate(slots) for i in b if not d.shows[i]]
+    return result
 
 
 # --------------------------------------------------------------------------- experiment
