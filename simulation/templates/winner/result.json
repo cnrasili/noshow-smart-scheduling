@@ -8,21 +8,21 @@
   "overbook_slots": null,
   "offset": 0.5,
   "rule": "feasible = mean wait <= 5.0 and overtime <= 5.0; most patients seen",
-  "sessions": 150,
+  "sessions": 1000,
   "metrics": {
-    "seen": 13.2,
-    "mean_wait": 2.393,
-    "idle": 85.481,
-    "overtime": 4.178,
-    "utilization": 0.661,
-    "overbooked_slots": 0.293
+    "seen": 13.31,
+    "mean_wait": 2.469,
+    "idle": 83.703,
+    "overtime": 3.282,
+    "utilization": 0.665,
+    "overbooked_slots": 0.373
   },
   "vs_current_fixed": {
-    "seen": 0.233,
-    "mean_wait": 0.307,
-    "idle": -2.142,
-    "overtime": 0.695,
-    "utilization": 0.012,
-    "overbooked_slots": 0.293
+    "seen": 0.304,
+    "mean_wait": 0.368,
+    "idle": -3.042,
+    "overtime": 0.406,
+    "utilization": 0.014,
+    "overbooked_slots": 0.373
   }
 }
