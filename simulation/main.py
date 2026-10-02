@@ -27,6 +27,7 @@ HERE = Path(__file__).resolve().parent
 OUT = HERE / "output"
 TEMPLATES = HERE / "templates"
 RISKS = HERE.parent / "ml" / "data" / "processed" / "risks_random_forest.csv"
+RISKS_ALL = HERE.parent / "ml" / "data" / "processed" / "risks_all_days.csv"  # out-of-sample risks for every day
 
 
 def step(number: int, total: int, title: str, args: list[str]) -> None:
@@ -98,7 +99,7 @@ def main() -> None:
     step(2, 6, "What each layer adds (blind overbooking, model, oracle)", ["value_ladder.py", "--reps", str(reps), *risks])
     step(3, 6, "Dashboard and charts", ["dashboard.py", "--reps", str(reps), *risks])
     step(4, 6, "Appointment templates (compare and pick the winner)",
-         [str(TEMPLATES / "compare_templates.py"), "--reps", str(reps), *(["--risks", str(RISKS)] if risks else [])])
+         [str(TEMPLATES / "compare_templates.py"), "--reps", str(reps), *(["--risks", str(RISKS_ALL if RISKS_ALL.exists() else RISKS)] if risks else [])])
     for t in ("t1_short_slots", "t2_staggered_overbooking", "t3_buffer_late_overbooking"):
         subprocess.run([sys.executable, str(TEMPLATES / f"{t}.py")], cwd=TEMPLATES, env={**os.environ, "PYTHONIOENCODING": "utf-8"},
                        stdout=subprocess.DEVNULL, check=True)
