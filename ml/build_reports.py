@@ -281,6 +281,31 @@ def comparison_report(train, test, cut, preds, r4info):
     wb.save(DATA / "auc_calibration.xlsx")
 
 
+def cv_risks(df, folds: int = 5) -> pd.DataFrame:
+    """Out-of-sample risks for EVERY appointment day: days are dealt to folds (round robin over the calendar),
+    each fold is predicted by models trained on the other folds. Written to risks_all_days.csv for the simulation."""
+    days = sorted(df["AppointmentDay"].dt.normalize().unique())
+    fold_of = {d: i % folds for i, d in enumerate(days)}
+    df = df.copy()
+    df["fold"] = df["AppointmentDay"].dt.normalize().map(fold_of)
+    parts = []
+    for k in range(folds):
+        tr, te = df[df.fold != k], df[df.fold == k]
+        sc = StandardScaler().fit(tr[FEATURES])
+        lr = LogisticRegression(max_iter=1000).fit(sc.transform(tr[FEATURES]), tr["NoShow"])
+        rf = RandomForestClassifier(n_estimators=300, min_samples_leaf=50, n_jobs=-1, random_state=42).fit(tr[FEATURES], tr["NoShow"])
+        p_r4, _ = r4_predict(tr, te)
+        part = te[["AppointmentID", "ScheduledDay", "AppointmentDay", "Age", "LeadDays", "PriorApptCount"]].copy()
+        part["p"], part["y"] = rf.predict_proba(te[FEATURES])[:, 1], te["NoShow"].to_numpy()
+        part["p_lr"], part["p_r4"], part["fold"] = lr.predict_proba(sc.transform(te[FEATURES]))[:, 1], p_r4, k
+        parts.append(part)
+    out = pd.concat(parts).sort_values(["AppointmentDay", "ScheduledDay"])
+    out.to_csv(DATA / "risks_all_days.csv", index=False)
+    print(f"All-days out-of-sample risks: {len(out)} appointments, {len(days)} days, AUC "
+          + ", ".join(f"{n} {roc_auc_score(out['y'], out[c]):.3f}" for n, c in (("RF", "p"), ("LR", "p_lr"), ("R4", "p_r4"))))
+    return out
+
+
 def main():
     df, train, test, cut = load()
     print(f"train {len(train)}, test {len(test)}, cut {cut:%Y-%m-%d}")
@@ -297,6 +322,7 @@ def main():
     out["p"], out["y"] = p_rf, y.to_numpy()
     out["p_lr"], out["p_r4"] = p_lr, p_r4  # other risk sources, for comparison (p = random forest)
     out.to_csv(DATA / "risks_random_forest.csv", index=False)
+    cv_risks(df)
 
 
 if __name__ == "__main__":

@@ -23,7 +23,7 @@ Hastaların bir kısmı randevuya gelmiyor. Gelmeyen hasta, doktorun boş durmas
 | Grafikler ve dashboard | KPI kartlı bir sayfa ve üç grafik hazırladık. | `simulation/dashboard.py`, `simulation/plots.py`, `simulation/value_ladder.py` |
 | Tüm gün simülasyonu | Test haftasının her gününün **tüm gerçek randevu kayıtları** (günde 4.000+) yaklaşık 220 klinik oturumuna dağıtılıp simüle edilir. Gün toplamları, dakika dakika animasyon ve tüm kayıtların tablosu (her kayıt için model, lojistik regresyon ve R4 riski, gerçek sonuç, simülasyon sonucu). `python real_days.py --source r4` ile kararı R4 kuralının riskiyle de verdirebilirsiniz. | `simulation/real_days.py` |
 | Canlı simülasyon | Bir klinik gününü animasyonla izleyebileceğiniz sayfa ve terminalde SimPy olay kaydı. Tek komutla her şey: `python simulation/main.py`. | `simulation/live_day.py`, `simulation/main.py` |
-| Randevu şablonları | 3 farklı şablon tasarlayıp test ettik, kazananı ayrı klasöre kaydettik. Karşılaştırma sayfasının altında **gün gün tablo** var: hiçbir kural yokken görülen hasta, gelmeyen, bekleme süresi ve her kural/şablon uygulandığında sayı ve yüzde olarak değişim. | `simulation/templates/` (`day_by_day.py`) |
+| Randevu şablonları | 3 farklı şablon tasarlayıp test ettik, kazananı ayrı klasöre kaydettik. Karşılaştırma artık verinin **27 gününün tüm gerçek randevuları** (110.521 kayıt) üzerinden yapılıyor. Sayfanın üstünde "Overall" kartları (kazanan şablon ve hiçbir kural yokken, sayı ve yüzde olarak), altında her gün için açılır tablolar var: görülen hasta, gelmeyen, boş slot bulamayan, bekleme, boş zaman, mesai aşımı. | `simulation/templates/` (`day_by_day.py`) |
 
 ## 3. Bulduklarımız (en önemli sonuçlar)
 
