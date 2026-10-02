@@ -29,6 +29,8 @@ pip install -r requirements.txt
 [`clinic_sim.py`](clinic_sim.py) simulates one physician session with SimPy and compares booking policies on the KPIs in [`docs/kpi-definitions.md`](../docs/kpi-definitions.md).
 
 ```bash
+python main.py                          # everything in one go (about 30 s), then opens output/index.html
+python main.py --quick                  # fast preview
 python clinic_sim.py                    # fixed-interval vs threshold rule vs cost-based rule R5-A
 python clinic_sim.py --sweep            # sweep the threshold of the threshold rule
 python clinic_sim.py --risks risks.csv  # empirical risks (column p, optional y = 1 for no-show)

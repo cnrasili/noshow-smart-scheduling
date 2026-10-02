@@ -105,10 +105,16 @@ cd ml
 python build_reports.py
 ```
 
-5. Simülasyonu çalıştırın (`simulation` klasöründe):
+5. Simülasyonu çalıştırın. **Tek komut yeter** (yaklaşık 30 saniye): VS Code'da `simulation/main.py` dosyasını açıp çalıştırın ya da terminalde:
 
 ```bash
 cd ../simulation
+python main.py
+```
+
+Bu komut tüm adımları sırayla çalıştırır ve sonuçları toplayan `simulation/output/index.html` sayfasını tarayıcıda açar. Hızlı deneme için `python main.py --quick`. İsterseniz adımları tek tek de çalıştırabilirsiniz:
+
+```bash
 python clinic_sim.py
 python plots.py
 python value_ladder.py --risks ../ml/data/processed/risks_random_forest.csv

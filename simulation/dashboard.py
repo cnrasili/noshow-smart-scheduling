@@ -136,7 +136,7 @@ def main() -> None:
             [("model", "Random forest (test period)", pd.read_csv(args.risks))] if args.risks else []):
         data[key], sources[key] = summarize(simulate(cfg, pool, args.reps, args.seed)), label
 
-    plots.tradeoff_chart(cfg)
+    plots.tradeoff_chart(cfg, reps=args.reps)
     plots.timeline_chart(cfg)
     images = "".join(
         f'<h2>{title}</h2><img alt="{title}" src="data:image/png;base64,{b64(f)}">'
