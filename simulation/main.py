@@ -6,7 +6,8 @@
     python main.py --no-open    # do not open the browser
 
 Steps: 1 policy comparison, 2 what each layer adds, 3 dashboard (with charts), 4 appointment templates,
-5 live simulation of one clinic day (SimPy event log in the terminal + animation in the browser).
+5 live simulation of one clinic day (SimPy event log in the terminal + animation in the browser),
+6 whole days: every real appointment record of each test day.
 Everything is collected on output/index.html, which opens in the browser at the end.
 
 Risk source: ../ml/data/processed/risks_random_forest.csv if it exists (created by ml/build_reports.py),
@@ -41,6 +42,7 @@ def step(number: int, total: int, title: str, args: list[str]) -> None:
 def write_index() -> Path:
     cards = [
         ("Live simulation (animation)", "live_simulation.html", "Watch a clinic day run: patients, waiting room, physician; fixed interval vs overbooking"),
+        ("Whole days (all records)", "whole_day.html", "Every real appointment of a day over ~220 clinic sessions: totals, animation, record table"),
         ("Dashboard", "dashboard.html", "KPI cards: pick a policy and compare it with fixed-interval booking"),
         ("Template comparison", "../templates/results/comparison.html", "The three appointment templates tested on identical sessions"),
         ("Winning template", "../templates/winner/winner.html", "The template picked by the stated rule"),
@@ -92,16 +94,18 @@ def main() -> None:
     print(f"Sessions per policy: {reps}")
     print("Risk source:", "random forest predictions" if risks else "synthetic only (run ml/build_reports.py to create the model risks)")
     began = time.time()
-    step(1, 5, "Policy comparison (fixed interval vs threshold vs cost rule)", ["clinic_sim.py", "--reps", str(reps), *risks])
-    step(2, 5, "What each layer adds (blind overbooking, model, oracle)", ["value_ladder.py", "--reps", str(reps), *risks])
-    step(3, 5, "Dashboard and charts", ["dashboard.py", "--reps", str(reps), *risks])
-    step(4, 5, "Appointment templates (compare and pick the winner)",
+    step(1, 6, "Policy comparison (fixed interval vs threshold vs cost rule)", ["clinic_sim.py", "--reps", str(reps), *risks])
+    step(2, 6, "What each layer adds (blind overbooking, model, oracle)", ["value_ladder.py", "--reps", str(reps), *risks])
+    step(3, 6, "Dashboard and charts", ["dashboard.py", "--reps", str(reps), *risks])
+    step(4, 6, "Appointment templates (compare and pick the winner)",
          [str(TEMPLATES / "compare_templates.py"), "--reps", str(reps), *(["--risks", str(RISKS)] if risks else [])])
     for t in ("t1_short_slots", "t2_staggered_overbooking", "t3_buffer_late_overbooking"):
         subprocess.run([sys.executable, str(TEMPLATES / f"{t}.py")], cwd=TEMPLATES, env={**os.environ, "PYTHONIOENCODING": "utf-8"},
                        stdout=subprocess.DEVNULL, check=True)
 
-    step(5, 5, "Live simulation of one clinic day (SimPy event log, day 1)", ["live_day.py", "--trace", "--day", "1", "--no-open", *risks])
+    step(5, 6, "Live simulation of one clinic day (SimPy event log, day 1)", ["live_day.py", "--trace", "--day", "1", "--no-open", *risks])
+
+    step(6, 6, "Whole days: every real appointment record of each day", ["real_days.py", "--no-open"])
 
     index = write_index()
     live = OUT / "live_simulation.html"

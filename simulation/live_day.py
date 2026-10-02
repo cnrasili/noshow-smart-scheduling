@@ -172,14 +172,15 @@ def main() -> None:
             draws = dataclasses.replace(draw_session(cfg, rng, None), risk=rows["p"].to_numpy(),
                                         shows=(rows["y"].to_numpy() == 0))
             info = [{"age": int(a), "lead": int(l)} for a, l in zip(rows["Age"], rows["LeadDays"])]
-            label = f"{pd.Timestamp(date):%d %b %Y} #{d // len(dates) + 1}"
+            label = f"{pd.Timestamp(date):%d %b %Y}: sample {d // len(dates) + 1}, {cfg.n_requests} of {len(pool[pool.AppointmentDay == date])} appointments"
         else:
             draws, info, label = draw_session(cfg, rng, pool), None, f"Day {d + 1}"
         days.append({"label": label, "fixed": run_day(cfg, fixed_interval(), draws, info),
                      "policy_b": run_day(cfg, policy_b, draws, info)})
     source = ("Patients, risks and attendance are real appointment records of the Medical Appointment No Shows data "
               "(test period 2-8 June 2016; risks = random forest predictions; booking order = real booking time). "
-              "Consultation length and lateness are simulated: they are not in the data."
+              "Consultation length and lateness are simulated: they are not in the data. "
+              "This is ONE sample session of a day: open whole_day.html to see every record of the day."
               if real_data else
               "Synthetic patients (Beta-distributed risks); run ml/build_reports.py to use the real appointment records. "
               "Consultation length and lateness are simulated.")
