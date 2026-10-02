@@ -10,4 +10,4 @@ Projede kullanılan hesaplama formülleri. Her formül için ayrı bir bölüm a
 - Kod: `path/to/file.py`
 ```
 
-Dosyalar: `forecast.md` (tahmin formülleri), `overbooking.md` (overbooking hesapları), `rules.md` (hasta, bölüm ve yaş gruplarına göre gelme olasılığı kuralları), `statistics.md` (olasılık ve istatistik dersi formülleri ve hesap kontrolleri).
+Dosyalar: `forecast.md` (tahmin formülleri), `overbooking.md` (overbooking hesapları), `rules.md` (hasta, bölüm ve yaş gruplarına göre gelme olasılığı kuralları), `probability.md` (olasılık dersi formülleri ve hesap kontrolleri).
