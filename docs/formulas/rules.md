@@ -117,9 +117,9 @@ A new department or age band with $n_g = 0$ already returns $\bar{s}$ through CE
 
 Worked example ($\bar{s}=0.80$, $k_P=5$): department show rate $0.60$, age band show rate $0.75$.
 
-$$z_0 = 1.386 + (0.405 - 1.386) + (1.099 - 1.386) = 0.118, \qquad \pi_0 = 0.530$$
+$$z_0 = 1.386 + (0.405 - 1.386) + (1.099 - 1.386) = 0.118, \qquad \pi_0 = 0.529$$
 
-- New patient: $\hat{s}_{R4} = 0.530$, no-show probability $0.470$.
+- New patient: $\hat{s}_{R4} = 0.529$, no-show probability $0.471$.
 - Returning patient with 7 of 10 attended: $\hat{s}_{R4} = (7 + 5\cdot0.530)/(10+5) = 0.643$, no-show probability $0.357$.
 
 **Assumption.** Adding the two log-odds deviations assumes department and age affect attendance independently. This is an approximation; it is acceptable for a rule-based baseline and MUST be checked with the calibration test in section 6. When a trained model is available it supersedes R4 for scoring, and R4 remains the fallback and the reference baseline.
