@@ -40,3 +40,6 @@ Thumbs.db
 
 # Simulation charts
 simulation/output/
+
+# Local course notes (not tracked)
+notes/
