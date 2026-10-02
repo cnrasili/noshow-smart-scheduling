@@ -65,7 +65,7 @@ def table(res: pd.DataFrame) -> pd.DataFrame:
                          ("overtime", "overtime (min)"), ("overbooked_slots", "overbooked slots")]:
             row[label] = f"{g[m].mean():.1f}"
         d_seen, d_wait, d_idle = (g[m] - base[m] for m in ("seen", "mean_wait", "idle"))
-        row["Δ seen"], row["Δ wait"], row["Δ idle"] = f"{d_seen.mean():+.2f}", f"{d_wait.mean():+.2f}", f"{d_idle.mean():+.1f}"
+        row["d_seen"], row["d_wait"], row["d_idle"] = f"{d_seen.mean():+.2f}", f"{d_wait.mean():+.2f}", f"{d_idle.mean():+.1f}"
         # cost of an extra patient: added waiting minutes per extra patient seen
         row["wait cost / extra patient"] = f"{d_wait.mean() / d_seen.mean():.2f}" if abs(d_seen.mean()) > 0.05 else "-"
         out.append(row)
