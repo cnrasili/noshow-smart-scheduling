@@ -162,5 +162,5 @@ h3{font-size:15px;margin:22px 0 6px}h2{font-size:17px;margin:30px 0 6px}
 .kc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}.kc h4{margin:0;font-size:12px;color:var(--mute);font-weight:600}
 .kc .v{font-size:24px;font-weight:700}.kc .s{font-size:12px;color:var(--mute)}.kc .d{font-size:13px;margin-top:4px}
 details{background:var(--card);border:1px solid var(--line);border-radius:10px;margin:6px 0;padding:6px 12px}summary{cursor:pointer;padding:4px 0}
-summary small{color:var(--mute)}button{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer}
+summary small{color:var(--mute)}.backbtn{display:inline-block;margin-bottom:14px;padding:6px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--acc,var(--accent,#2a6f97));text-decoration:none;font-size:14px}.backbtn:hover{opacity:.8}button{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer}
 """

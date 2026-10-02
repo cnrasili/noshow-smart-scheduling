@@ -50,11 +50,12 @@ h1{font-size:22px;margin:0}h2{font-size:17px;margin:28px 0 8px}p,small,span.d{co
 a.link:hover{border-color:var(--acc)}a.link b{font-size:17px}a.link .d{display:block;margin-top:6px}a.link .go{display:block;margin-top:10px;color:var(--acc);font-size:13px;font-weight:600}
 .badge{background:var(--acc);color:#fff;border-radius:6px;padding:1px 8px;font-size:11px;margin-left:8px;vertical-align:2px}
 img{max-width:100%;border:1px solid var(--line);border-radius:10px;background:#fff}ul{color:var(--mute)}li{margin:4px 0}
+.backbtn{display:inline-block;margin-bottom:14px;padding:6px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--acc,var(--accent,#2a6f97));text-decoration:none;font-size:14px}.backbtn:hover{opacity:.8}
 """
 
 
-def page(title: str, intro: str, body: str, back: bool = True) -> str:
-    link = '<a class="back" href="index.html">&larr; All results</a><br><br>' if back else ""
+def page(title: str, intro: str, body: str, back: tuple[str, str] | None = ("index.html", "Main page")) -> str:
+    link = f'<a class="backbtn" href="{back[0]}">&larr; Back to {back[1]}</a><br>' if back else ""
     return (f'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
             f"<title>{html.escape(title)}</title><style>{PAGE_CSS}</style></head><body><main>{link}"
             f"<h1>{html.escape(title)}</h1><p>{intro}</p>{body}</main></body></html>")
@@ -137,9 +138,7 @@ def write_index() -> Path:
     for title, fname, img, what, how in charts:
         body = (f"<div class='card'><b>What is this?</b><br>{what}</div><h2>How to read it</h2><ul>{''.join(f'<li>{h}</li>' for h in how)}</ul>"
                 + (f"<img src='{img}' alt='{html.escape(title)}'>" if (OUT / img).exists() else "<p>Chart not found: run main.py.</p>"))
-        (OUT / fname).write_text(page(title, what, body).replace('<a class="back" href="index.html">&larr; All results</a>',
-                                  '<a class="back" href="charts_hub.html">&larr; All charts</a> &middot; <a class="back" href="index.html">Main page</a>'),
-                                 encoding="utf-8")
+        (OUT / fname).write_text(page(title, what, body, back=("charts_hub.html", "Charts")), encoding="utf-8")
     ch = page("Charts", "Three charts that explain the results. Pick the one that answers your question.",
               cards_html([(t, f, w, "Open the chart") for t, f, _, w, _ in charts]))
     (OUT / "charts_hub.html").write_text(ch, encoding="utf-8")
@@ -158,7 +157,7 @@ def write_index() -> Path:
              ("Winning template", "../templates/winner/winner.html",
               "The template picked by the stated rule, with its layout and rules.", "See the winner")]
     index = page("Simulation results", f"Generated {time.strftime('%Y-%m-%d %H:%M')}. Parameters (slot length, consultation time, lateness) "
-                 "are assumptions, not measured values.", winner_html + cards_html(cards), back=False)
+                 "are assumptions, not measured values.", winner_html + cards_html(cards), back=None)
     path = OUT / "index.html"
     path.write_text(index, encoding="utf-8")
     return path

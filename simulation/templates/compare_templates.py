@@ -110,7 +110,7 @@ def comparison_html(rows, winner_key, max_wait, max_ot, intro, tuned, overall: s
 body{{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,Segoe UI,sans-serif}}main{{max-width:1180px;margin:0 auto;padding:24px 16px}}
 h1{{font-size:21px;margin:0 0 4px}}p,small{{color:var(--mute)}}table{{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);font-size:13px}}
 th,td{{padding:9px 10px;text-align:right;border-bottom:1px solid var(--line)}}th:first-child,td:first-child{{text-align:left}}th{{color:var(--mute)}}tr.win td{{background:var(--win);font-weight:600}}
-.wrap{{overflow-x:auto}}{day_by_day.CSS}</style></head><body><main><h1>Template comparison</h1>
+.wrap{{overflow-x:auto}}{day_by_day.CSS}</style></head><body><main><a class="backbtn" href="../../output/index.html">&larr; Back to Main page</a><h1>Template comparison</h1>
 <h2>Overall</h2>{overall}<h3>All templates, per clinic session</h3><p>{intro}</p>
 <p>Winner rule: feasible = mean wait ≤ {max_wait:g} min and mean overtime ≤ {max_ot:g} min; among feasible templates, the most patients seen. Tuned: {html.escape(tuned_txt)}.</p>
 <div class="wrap"><table><tr>{head}</tr>{body}</table></div>
@@ -182,7 +182,8 @@ def main() -> None:
     if WINNER.exists():
         shutil.rmtree(WINNER)
     WINNER.mkdir()
-    render_html(winner, WINNER / "winner.html", note=f"WINNER: {winner.name} (threshold {winner.threshold})")
+    render_html(winner, WINNER / "winner.html", note=f"WINNER: {winner.name} (threshold {winner.threshold})",
+                back=("../../output/index.html", "Main page"))
     src = HERE / (winner.key.split("@")[0] + ".py")
     shutil.copy(src, WINNER / ("winner_" + src.name))
     shutil.copy(HERE / "template_base.py", WINNER / "template_base.py")

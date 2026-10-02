@@ -92,7 +92,8 @@ canvas{width:100%;display:block}.grid{display:grid;grid-template-columns:repeat(
 .good{color:var(--good)}.bad{color:var(--bad)}table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--line)}
 th:first-child,td:first-child{text-align:left}th{color:var(--mute);position:sticky;top:0;background:var(--card)}.scroll{overflow:auto;max-height:420px}
 .legend span{display:inline-block;margin-right:14px;font-size:13px;color:var(--mute)}.legend i{display:inline-block;width:11px;height:11px;margin-right:5px;vertical-align:-1px}
-</style></head><body><main>
+.backbtn{display:inline-block;margin-bottom:14px;padding:6px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--acc,var(--accent,#2a6f97));text-decoration:none;font-size:14px}.backbtn:hover{opacity:.8}</style></head><body><main>
+<a class="backbtn" href="simulation_hub.html">&larr; Back to Simulation</a>
 <h1>Whole-day simulation</h1>
 <p>__NOTE__</p>
 <div class="bar"><label>Date <select id="day"></select></label><span id="daynote" style="color:var(--mute)"></span></div>

@@ -68,12 +68,12 @@ h1{font-size:21px;margin:0}p{color:var(--mute)}.card{background:var(--card);bord
 .slot b{font-size:13px;position:relative;z-index:1}.std{background:var(--std)}.ob{background:var(--ob)}
 .buffer{background:repeating-linear-gradient(45deg,var(--buf),var(--buf) 6px,transparent 6px,transparent 12px);border:1px dashed var(--mute)}
 .slot i{position:absolute;bottom:0;right:0;height:14px;background:var(--acc);opacity:.55;border-radius:0 0 6px 6px}
-.axis{position:relative;height:20px;font-size:11px;color:var(--mute)}.axis span{position:absolute;top:0;transform:translateX(-50%)}
+.axis{position:relative;height:20px;font-size:11px;color:var(--mute)}.backbtn{display:inline-block;margin-bottom:14px;padding:6px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--acc,var(--accent,#2a6f97));text-decoration:none;font-size:14px}.backbtn:hover{opacity:.8}.axis span{position:absolute;top:0;transform:translateX(-50%)}
 .legend span{display:inline-block;margin-right:16px;font-size:13px}.legend em{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:6px}
 """
 
 
-def render_html(t: Template, path: Path | None = None, note: str = "") -> Path:
+def render_html(t: Template, path: Path | None = None, note: str = "", back: tuple[str, str] = ("../../output/templates_hub.html", "Templates")) -> Path:
     """Write a self-contained HTML picture of the template."""
     scale = 4.2  # px per minute
     cells = []
@@ -99,6 +99,7 @@ def render_html(t: Template, path: Path | None = None, note: str = "") -> Path:
         '<!doctype html><html lang="en"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width,initial-scale=1">'
         f"<title>{html.escape(t.name)}</title><style>{CSS}</style></head><body><main>"
+        f'<a class="backbtn" href="{back[0]}">&larr; Back to {back[1]}</a>'
         f"<h1>{html.escape(t.name)}</h1><p>{html.escape(t.idea)}</p>{banner}"
         f'<div class="card"><div class="scroll"><div style="width:{width:.0f}px">'
         f'<div class="bar">{"".join(cells)}</div><div class="axis">{ticks}</div></div></div>'
