@@ -21,6 +21,7 @@ Hastaların bir kısmı randevuya gelmiyor. Gelmeyen hasta, doktorun boş durmas
 | Modeller | Lojistik regresyon ve random forest kurduk. AUC ve kalibrasyonu ölçtük, üç Excel dosyası hazırladık. | `ml/build_reports.py` |
 | Simülasyon | Python SimPy ile bir klinik günü simüle ettik (Arena yerine, hoca izin verdi). | `simulation/clinic_sim.py` |
 | Grafikler ve dashboard | KPI kartlı bir sayfa ve üç grafik hazırladık. | `simulation/dashboard.py`, `simulation/plots.py`, `simulation/value_ladder.py` |
+| Canlı simülasyon | Bir klinik gününü animasyonla izleyebileceğiniz sayfa ve terminalde SimPy olay kaydı. Tek komutla her şey: `python simulation/main.py`. | `simulation/live_day.py`, `simulation/main.py` |
 | Randevu şablonları | 3 farklı şablon tasarlayıp test ettik, kazananı ayrı klasöre kaydettik. | `simulation/templates/` |
 
 ## 3. Bulduklarımız (en önemli sonuçlar)
@@ -112,7 +113,7 @@ cd ../simulation
 python main.py
 ```
 
-Bu komut tüm adımları sırayla çalıştırır ve sonuçları toplayan `simulation/output/index.html` sayfasını tarayıcıda açar. Hızlı deneme için `python main.py --quick`. İsterseniz adımları tek tek de çalıştırabilirsiniz:
+Bu komut 5 adımı sırayla çalıştırır, son adımda SimPy'ın olay kaydını terminale yazar (kim ne zaman geldi, doktor ne zaman başladı) ve sonuçları toplayan `simulation/output/index.html` sayfasını tarayıcıda açar. Sayfadaki **Live simulation** bağlantısı bir klinik gününü animasyonla oynatır: bekleme odası, doktor, gelmeyen hastalar; yanda sabit randevu ve overbooking aynı gün üzerinde karşılaştırılır. Hızlı deneme için `python main.py --quick`. İsterseniz adımları tek tek de çalıştırabilirsiniz:
 
 ```bash
 python clinic_sim.py
