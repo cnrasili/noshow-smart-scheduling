@@ -78,7 +78,8 @@ button.primary{background:var(--acc);color:#fff;border-color:var(--acc)}input[ty
 .clock{font-size:26px;font-weight:700;min-width:80px}.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px;margin-bottom:12px}
 canvas{width:100%;display:block}.legend span{display:inline-block;margin-right:14px;font-size:13px;color:var(--mute)}
 .legend i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:5px;vertical-align:-1px}
-</style></head><body><main>
+.backbtn{display:inline-block;margin-bottom:14px;padding:6px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--acc,var(--accent,#2a6f97));text-decoration:none;font-size:14px}.backbtn:hover{opacity:.8}</style></head><body><main>
+<a class="backbtn" href="simulation_hub.html">&larr; Back to Simulation</a>
 <h1>Live clinic simulation</h1>
 <p>__NOTE__</p>
 <div class="bar"><button class="primary" id="play">Pause</button><button id="restart">Restart</button>

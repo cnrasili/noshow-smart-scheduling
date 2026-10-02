@@ -83,7 +83,8 @@ select{background:var(--card);color:var(--ink);border:1px solid var(--line);bord
 h2{font-size:17px;margin:34px 0 10px}img{max-width:100%;border:1px solid var(--line);border-radius:10px;background:#fff}
 table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:13px}
 th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line)}th:first-child,td:first-child{text-align:left}th{color:var(--mute);font-weight:600}
-</style></head><body><main>
+.backbtn{display:inline-block;margin-bottom:14px;padding:6px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--acc,var(--accent,#2a6f97));text-decoration:none;font-size:14px}.backbtn:hover{opacity:.8}</style></head><body><main>
+<a class="backbtn" href="index.html">&larr; Back to Main page</a>
 <h1>Overbooking Simulation Dashboard</h1>
 <p class="sub">__CONFIG__</p>
 <div class="controls">
