@@ -18,6 +18,7 @@ import numpy as np
 import pandas as pd
 
 from template_base import REQUESTS, Template, render_html
+import day_by_day
 from t1_short_slots import TEMPLATE as T1
 from t2_staggered_overbooking import TEMPLATE as T2
 from t3_buffer_late_overbooking import TEMPLATE as T3
@@ -81,7 +82,7 @@ def fmt(v, ci=None, sign=False):
     return s + (f" ±{ci:.1f}" if ci is not None else "")
 
 
-def comparison_html(rows, winner_key, max_wait, max_ot, reps, tuned) -> str:
+def comparison_html(rows, winner_key, max_wait, max_ot, reps, tuned, extra: str = "") -> str:
     head = "".join(f"<th>{h}</th>" for h in ["Template", "Patients seen", "Mean wait (min)", "Idle (min)", "Overtime (min)",
                                               "Utilization", "Feasible"])
     body = ""
@@ -102,11 +103,11 @@ def comparison_html(rows, winner_key, max_wait, max_ot, reps, tuned) -> str:
 body{{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,Segoe UI,sans-serif}}main{{max-width:1180px;margin:0 auto;padding:24px 16px}}
 h1{{font-size:21px;margin:0 0 4px}}p,small{{color:var(--mute)}}table{{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);font-size:13px}}
 th,td{{padding:9px 10px;text-align:right;border-bottom:1px solid var(--line)}}th:first-child,td:first-child{{text-align:left}}th{{color:var(--mute)}}tr.win td{{background:var(--win);font-weight:600}}
-.wrap{{overflow-x:auto}}</style></head><body><main><h1>Template comparison</h1>
+.wrap{{overflow-x:auto}}{day_by_day.CSS}</style></head><body><main><h1>Template comparison</h1>
 <p>{reps} simulated sessions, {REQUESTS} booking requests per session, identical sessions for every template. Values: mean ±95% CI (difference to the current fixed-interval template).</p>
 <p>Winner rule: feasible = mean wait ≤ {max_wait:g} min and mean overtime ≤ {max_ot:g} min; among feasible templates, the most patients seen. Tuned: {html.escape(tuned_txt)}.</p>
 <div class="wrap"><table><tr>{head}</tr>{body}</table></div>
-<p><small>Thresholds, buffer position and the feasibility limits are assumptions to be agreed. Results hold for the simulation parameters in clinic_sim.py.</small></p></main></body></html>"""
+<p><small>Thresholds, buffer position and the feasibility limits are assumptions to be agreed. Results hold for the simulation parameters in clinic_sim.py.</small></p>{extra}</main></body></html>"""
 
 
 def main() -> None:
@@ -119,6 +120,10 @@ def main() -> None:
     args = ap.parse_args()
     base = SessionConfig()
     pool = pd.read_csv(args.risks) if Path(args.risks).exists() else None
+    real_days = pool is not None and "AppointmentDay" in pool.columns
+    if real_days:
+        pool["AppointmentDay"] = pd.to_datetime(pool["AppointmentDay"])
+        pool["ScheduledDay"] = pd.to_datetime(pool["ScheduledDay"])
     print("Risk source:", "random forest predictions" if pool is not None else "synthetic Beta risks")
 
     tuned_templates, tuned = [], {}
@@ -141,8 +146,12 @@ def main() -> None:
     w = s.loc[winner_key]
 
     RESULTS.mkdir(exist_ok=True)
-    (RESULTS / "comparison.html").write_text(comparison_html(rows, winner_key, args.max_wait, args.max_overtime, args.reps, tuned),
-                                            encoding="utf-8")
+    extra = ""
+    if real_days:
+        labels, dd = day_by_day.compute(pool, tuned_templates, base)
+        extra = day_by_day.section_html(labels, dd, "random forest")
+    (RESULTS / "comparison.html").write_text(
+        comparison_html(rows, winner_key, args.max_wait, args.max_overtime, args.reps, tuned, extra), encoding="utf-8")
     s.to_csv(RESULTS / "results.csv")
     print(pd.DataFrame({"template": [names[k][:48] for k in s.index], "seen": s.seen.round(1), "wait": s.mean_wait.round(1),
                         "idle": s.idle.round(1), "overtime": s.overtime.round(1), "feasible": s.feasible}).to_string(index=False))
