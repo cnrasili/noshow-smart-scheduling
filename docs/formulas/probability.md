@@ -1,6 +1,6 @@
-# Statistics Formulas
+# Probability Formulas
 
-**Source:** Probability and Statistics course notes (weeks 1–11, sampling distributions, estimation and confidence intervals). The three textbooks in the notes folder (Miller & Freund, two Schaum's outlines) are used only as references.
+**Source:** Probability course notes (weeks 1–11: probability rules, distributions, expectation, sampling distributions and confidence intervals). Real statistics course notes (hypothesis testing, regression) will go to `statistics.md`. The three textbooks in the notes folder (Miller & Freund, two Schaum's outlines) are used only as references.
 
 **Status:** Draft. Section 6 lists the checks made against the calculations already used in the project.
 
