@@ -37,3 +37,6 @@ logs/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Local course notes (not tracked)
+notes/
