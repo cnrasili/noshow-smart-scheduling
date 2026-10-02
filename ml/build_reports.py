@@ -295,6 +295,7 @@ def main():
     # model risks and outcomes for the simulation (simulation/clinic_sim.py --risks ...)
     out = test[["AppointmentID", "ScheduledDay", "AppointmentDay", "Age", "LeadDays", "PriorApptCount"]].copy()
     out["p"], out["y"] = p_rf, y.to_numpy()
+    out["p_lr"], out["p_r4"] = p_lr, p_r4  # other risk sources, for comparison (p = random forest)
     out.to_csv(DATA / "risks_random_forest.csv", index=False)
 
 

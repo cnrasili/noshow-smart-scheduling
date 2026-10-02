@@ -21,6 +21,7 @@ Hastaların bir kısmı randevuya gelmiyor. Gelmeyen hasta, doktorun boş durmas
 | Modeller | Lojistik regresyon ve random forest kurduk. AUC ve kalibrasyonu ölçtük, üç Excel dosyası hazırladık. | `ml/build_reports.py` |
 | Simülasyon | Python SimPy ile bir klinik günü simüle ettik (Arena yerine, hoca izin verdi). | `simulation/clinic_sim.py` |
 | Grafikler ve dashboard | KPI kartlı bir sayfa ve üç grafik hazırladık. | `simulation/dashboard.py`, `simulation/plots.py`, `simulation/value_ladder.py` |
+| Tüm gün simülasyonu | Test haftasının her gününün **tüm gerçek randevu kayıtları** (günde 4.000+) yaklaşık 220 klinik oturumuna dağıtılıp simüle edilir. Gün toplamları, dakika dakika animasyon ve tüm kayıtların tablosu (her kayıt için model, lojistik regresyon ve R4 riski, gerçek sonuç, simülasyon sonucu). `python real_days.py --source r4` ile kararı R4 kuralının riskiyle de verdirebilirsiniz. | `simulation/real_days.py` |
 | Canlı simülasyon | Bir klinik gününü animasyonla izleyebileceğiniz sayfa ve terminalde SimPy olay kaydı. Tek komutla her şey: `python simulation/main.py`. | `simulation/live_day.py`, `simulation/main.py` |
 | Randevu şablonları | 3 farklı şablon tasarlayıp test ettik, kazananı ayrı klasöre kaydettik. | `simulation/templates/` |
 
@@ -82,6 +83,8 @@ Tahmin modelinin katkısı: Fazladan her hasta için yaşanan bekleme, rastgele 
 8. **Excel formülleri açılıp bakılmadı.** Raporlardaki ROC ve kalibrasyon tabloları Excel formülü, ama bu bilgisayarda Excel olmadığı için açıp çalıştıramadık. Python ile aynı sonucu verdiğini ayrıca kontrol ettik. Excel'de bir kez açıp bakın.
 9. **Yapılan işin ne kadarının web/veritabanı/servis tarafıyla uyduğunu kontrol etmedik.** O tarafı CEN arkadaşlarımız yazdı, biz sadece okuduk.
 
+**Tüm gün simülasyonunda dikkat:** Kaggle'da doktor bilgisi yok. Bir günün randevuları doktorlara *rastgele* dağıtılıyor (oturum başına 20 randevu isteği, 16 slot). Oturum başına 4 fazla istek bizim varsayımımız ve "slotsuz kalan randevular" ile overbooking'in kazancını doğrudan etkiliyor. Gerçek doktor sayısı ve talep bilinmeden bu sayılar kesin sonuç değildir.
+
 ## 6. Nasıl çalıştırırım?
 
 Bazı dosyalar herkese açık repoya girmesin diye GitHub'da yok (ders notları, ham veri, model Excel'leri). Bunları kendi bilgisayarınızda şöyle üretirsiniz:
@@ -113,7 +116,7 @@ cd ../simulation
 python main.py
 ```
 
-Bu komut 5 adımı sırayla çalıştırır, son adımda SimPy'ın olay kaydını terminale yazar (kim ne zaman geldi, doktor ne zaman başladı) ve sonuçları toplayan `simulation/output/index.html` sayfasını tarayıcıda açar. Sayfadaki **Live simulation** bağlantısı bir klinik gününü animasyonla oynatır: bekleme odası, doktor, gelmeyen hastalar; yanda sabit randevu ve overbooking aynı gün üzerinde karşılaştırılır. Animasyondaki hastalar **gerçek randevu kayıtları**: test haftasının (2–8 Haziran 2016) gerçek günlerinden, hastaların gerçek randevu alma sırasıyla, modelin verdiği riskle ve gerçekten gelip gelmediğiyle çalışır. Muayene süresi ve geç kalma Kaggle verisinde olmadığı için simüle edilir. Hızlı deneme için `python main.py --quick`. İsterseniz adımları tek tek de çalıştırabilirsiniz:
+Bu komut 5 adımı sırayla çalıştırır, son adımda SimPy'ın olay kaydını terminale yazar (kim ne zaman geldi, doktor ne zaman başladı) ve sonuçları toplayan `simulation/output/index.html` sayfasını tarayıcıda açar. Sayfadaki **Whole days** bağlantısı bir günün tüm kayıtlarını gösterir. **Live simulation** bağlantısı bir klinik gününü animasyonla oynatır: bekleme odası, doktor, gelmeyen hastalar; yanda sabit randevu ve overbooking aynı gün üzerinde karşılaştırılır. Animasyondaki hastalar **gerçek randevu kayıtları**: test haftasının (2–8 Haziran 2016) gerçek günlerinden, hastaların gerçek randevu alma sırasıyla, modelin verdiği riskle ve gerçekten gelip gelmediğiyle çalışır. Muayene süresi ve geç kalma Kaggle verisinde olmadığı için simüle edilir. Hızlı deneme için `python main.py --quick`. İsterseniz adımları tek tek de çalıştırabilirsiniz:
 
 ```bash
 python clinic_sim.py
