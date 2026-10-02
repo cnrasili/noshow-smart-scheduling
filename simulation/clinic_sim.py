@@ -33,6 +33,11 @@ class SessionConfig:
     extra_requests: int = 4        # booking requests beyond the number of slots (demand pressure)
     risk_alpha: float = 2.0        # Beta(a, b) no-show risk of a patient; mean = a / (a + b)
     risk_beta: float = 8.0
+    requests: int | None = None    # booking requests per session; default n_slots + extra_requests
+
+    @property
+    def n_requests(self) -> int:
+        return self.requests if self.requests is not None else self.n_slots + self.extra_requests
 
     @property
     def session_min(self) -> float:
@@ -70,6 +75,14 @@ def cost_rule(r: float, max_per_slot: int = 2, daily_limit: int = 4, capacity: i
     return allow
 
 
+@dataclass(frozen=True)
+class Layout:
+    """Appointment template details beyond slot count and length."""
+    blocked: frozenset = frozenset()          # slots that stay empty (buffer)
+    overbook_slots: frozenset | None = None   # slots where overbooking is allowed (None = all)
+    offset: float = 0.0                       # start of the k-th patient of a slot = k * offset * slot length
+
+
 # --------------------------------------------------------------------------- one replication
 @dataclass
 class Draws:
@@ -81,7 +94,7 @@ class Draws:
 
 
 def draw_session(cfg: SessionConfig, rng: np.random.Generator, pool: pd.DataFrame | None) -> Draws:
-    n = cfg.n_slots + cfg.extra_requests
+    n = cfg.n_requests
     if pool is None:
         risk = rng.beta(cfg.risk_alpha, cfg.risk_beta, n)
         shows = rng.random(n) >= risk                      # risks are assumed calibrated
@@ -94,15 +107,19 @@ def draw_session(cfg: SessionConfig, rng: np.random.Generator, pool: pd.DataFram
     return Draws(risk, shows, rng.normal(0, cfg.punctuality_sd, n), service)
 
 
-def book(cfg: SessionConfig, policy: Policy, d: Draws) -> tuple[list[list[int]], int]:
+def book(cfg: SessionConfig, policy: Policy, d: Draws, layout: Layout = Layout()) -> tuple[list[list[int]], int]:
     """Assign requests in arrival order to the earliest slot the policy allows."""
     slots: list[list[int]] = [[] for _ in range(cfg.n_slots)]
     overbooks, deferred = 0, 0
     for i, risk in enumerate(d.risk):
         for s, booked in enumerate(slots):
+            if s in layout.blocked:
+                continue
             if not booked:
                 booked.append(i)
                 break
+            if layout.overbook_slots is not None and s not in layout.overbook_slots:
+                continue
             if policy([d.risk[j] for j in booked], overbooks):
                 booked.append(i)
                 overbooks += 1
@@ -112,8 +129,9 @@ def book(cfg: SessionConfig, policy: Policy, d: Draws) -> tuple[list[list[int]],
     return slots, deferred
 
 
-def simulate_session(cfg: SessionConfig, policy: Policy, d: Draws, detail: bool = False) -> dict:
-    slots, deferred = book(cfg, policy, d)
+def simulate_session(cfg: SessionConfig, policy: Policy, d: Draws, detail: bool = False,
+                     layout: Layout = Layout()) -> dict:
+    slots, deferred = book(cfg, policy, d, layout)
     env = simpy.Environment()
     doctor = simpy.Resource(env, capacity=1)
     waits: list[float] = []
@@ -130,15 +148,15 @@ def simulate_session(cfg: SessionConfig, policy: Policy, d: Draws, detail: bool 
             waits.append(start - ready)                       # KPI: start - max(appointment time, arrival)
             yield env.timeout(d.service[i])
             busy.append((start, env.now))
-            log.append({"patient": i, "slot": int(appt_time // cfg.slot_min), "appointment": appt_time,
+            log.append({"patient": i, "slot": int(appt_time // cfg.slot_min + 1e-9), "appointment": appt_time,
                         "arrival": arrival, "start": start, "end": env.now,
-                        "overbooked": len(slots[int(appt_time // cfg.slot_min)]) > 1})
+                        "overbooked": len(slots[int(appt_time // cfg.slot_min + 1e-9)]) > 1})
 
     seen = 0
     for s, booked in enumerate(slots):
-        for i in booked:
+        for k, i in enumerate(booked):
             if d.shows[i]:
-                env.process(patient(i, s * cfg.slot_min))
+                env.process(patient(i, (s + k * layout.offset) * cfg.slot_min))
                 seen += 1
     env.run()
 
