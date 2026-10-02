@@ -33,6 +33,7 @@ python clinic_sim.py                    # fixed-interval vs threshold rule vs co
 python clinic_sim.py --sweep            # sweep the threshold of the threshold rule
 python clinic_sim.py --risks risks.csv  # empirical risks (column p, optional y = 1 for no-show)
 python plots.py                         # trade-off chart and one-session timeline (PNG files in output/)
+python value_ladder.py --risks ../ml/data/processed/risks_random_forest.csv  # what each layer adds
 ```
 
 - Policies: `fixed_interval`, `threshold_rule` (same logic as `overbooking-service/overbooking_service/rules.py`), `cost_rule` (R5-A, see [`docs/formulas/overbooking.md`](../docs/formulas/overbooking.md)).
