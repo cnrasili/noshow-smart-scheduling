@@ -104,9 +104,15 @@ def main() -> None:
     step(5, 5, "Live simulation of one clinic day (SimPy event log, day 1)", ["live_day.py", "--trace", "--day", "1", "--no-open", *risks])
 
     index = write_index()
-    print(f"\nAll done in {time.time() - began:.0f} s. Results page: {index}")
+    live = OUT / "live_simulation.html"
+    print(f"\nAll done in {time.time() - began:.0f} s.")
+    print(f"  Live simulation (animation): {live}")
+    print(f"  Results page (all outputs):  {index}")
     if not args.no_open:
-        webbrowser.open(index.as_uri())
+        for page in (live, index):
+            if not webbrowser.open(page.as_uri()) and hasattr(os, "startfile"):
+                os.startfile(page)  # Windows fallback: opens the file in the default browser
+        print("Opened both pages in your browser. If nothing opened, double-click the two files above.")
 
 
 if __name__ == "__main__":

@@ -80,6 +80,7 @@ canvas{width:100%;display:block}.legend span{display:inline-block;margin-right:1
 <div class="card"><canvas id="c0" width="1100" height="270"></canvas></div>
 <div class="card"><canvas id="c1" width="1100" height="270"></canvas></div>
 </main><script>
+if(!CanvasRenderingContext2D.prototype.roundRect){CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h){this.rect(x,y,w,h);};}
 const DATA=__DATA__, CFG=__CFG__, T=CFG.session_min;
 const cols=getComputedStyle(document.documentElement);
 const dark=matchMedia('(prefers-color-scheme: dark)').matches;
