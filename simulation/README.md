@@ -41,6 +41,6 @@ python value_ladder.py --risks ../ml/data/processed/risks_random_forest.csv  # w
 python dashboard.py --risks ../ml/data/processed/risks_random_forest.csv    # KPI-card dashboard: output/dashboard.html
 ```
 
-- Policies: `fixed_interval`, `threshold_rule` (same logic as `overbooking-service/overbooking_service/rules.py`), `cost_rule` (R5-A, see [`docs/formulas/overbooking.md`](../docs/formulas/overbooking.md)).
+- Policies: `fixed_interval`, `threshold_rule` (same logic as `overbooking-service/overbooking_service/rules.py`), `cost_rule` (R5-A: add a patient if P(shows >= capacity) < 1/(1+r), adapted from airline overbooking).
 - All policies see the same booking requests, show-ups, arrival offsets and service times in each replication, so differences are paired.
 - Defaults (16 slots of 15 min, mean consultation 12 min, CV 0.5, arrival sd 4 min, 4 extra requests, Beta(2, 8) risks) are **assumptions**, not measured values. Replace them with agreed values before drawing conclusions.

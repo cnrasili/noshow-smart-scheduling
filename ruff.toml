@@ -4,3 +4,8 @@ src = ["db", "web/backend", "overbooking-service"]
 
 [lint]
 select = ["E", "F", "I", "B", "UP"]
+
+[lint.per-file-ignores]
+# Report pages are built from embedded HTML, CSS and JavaScript strings
+"simulation/{dashboard,live_day,main,real_days}.py" = ["E501"]
+"simulation/templates/{compare_templates,day_by_day,template_base}.py" = ["E501"]

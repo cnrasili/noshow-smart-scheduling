@@ -43,3 +43,8 @@ simulation/output/
 
 # Local course notes (not tracked)
 notes/
+
+# Simulation template outputs
+simulation/templates/html/
+simulation/templates/results/
+simulation/templates/winner/
