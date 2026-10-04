@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, getToken, onUnauthorized } from './api'
+import { DoctorPage } from './pages/DoctorPage'
 import { LoginPage } from './pages/LoginPage'
 import { PatientPage } from './pages/PatientPage'
 import type { Me } from './types'
@@ -46,13 +47,7 @@ function App() {
           </div>
         </div>
       </header>
-      <main className="app">
-        {me.role === 'patient' ? (
-          <PatientPage />
-        ) : (
-          <p className="muted">Doktor ekranı hazırlanıyor.</p>
-        )}
-      </main>
+      <main className="app">{me.role === 'patient' ? <PatientPage /> : <DoctorPage />}</main>
     </>
   )
 }

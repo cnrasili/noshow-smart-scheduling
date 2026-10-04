@@ -365,7 +365,7 @@ label.inline {
   display: grid;
 }
 
-.list li {
+.list > li {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -374,11 +374,11 @@ label.inline {
   border-bottom: 1px solid var(--border);
 }
 
-.list li:last-child {
+.list > li:last-child {
   border-bottom: none;
 }
 
-.list li > div:first-child {
+.list > li > div:first-child {
   display: grid;
 }
 
@@ -399,4 +399,74 @@ label.inline {
 .badge-miss {
   background: var(--danger-soft);
   color: var(--danger);
+}
+
+/* Doctor calendar */
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.stats div {
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.stats dt {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.stats dd {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.calendar > li {
+  align-items: baseline;
+  justify-content: flex-start;
+}
+
+.slot-time {
+  width: 110px;
+  flex-shrink: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.calendar-patients {
+  flex: 1;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.calendar-patients li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.patient-name {
+  min-width: 140px;
+}
+
+.hint {
+  font-size: 0.85rem;
+}
+
+.generate {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
 }
