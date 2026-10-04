@@ -54,3 +54,5 @@ Sign in as `doktor@demo.local` or as a patient such as `ayse@demo.local`. All de
 Before booking, `POST /appointments` asks the overbooking service (`OVERBOOKING_SERVICE_URL`, default `http://localhost:8001`) for a `/booking-decision`. A rejected booking returns `409`. If the service does not answer within 3 seconds or returns an error, empty slots are still booked but booked slots are never overbooked. A slot that has reached its `max_patients` is rejected without asking the service.
 
 `GET /slots` marks a slot `available` while it is below capacity, so partly booked slots can be requested as extra appointments; the service decides when the patient books.
+
+After a booking or a cancellation is saved, the web backend sends `/events/appointment-booked` or `/events/appointment-cancelled` so the service schedules or cancels the confirmation and reminder messages. The events are sent after the response; if one fails it is logged and the booking change stays.
