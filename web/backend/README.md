@@ -35,7 +35,7 @@ NOSHOW_TEST_DATABASE_URL=postgresql+psycopg://noshow:noshow@localhost:5432/nosho
 
 ## Demo Data
 
-`web_backend.seed` creates a fictional clinic: one doctor working weekdays 09:00–12:00, eight patients, their login accounts, slots from a week ago to two weeks ahead and a few example appointments. Running it again only adds missing slots.
+`web_backend.seed` creates a fictional clinic: four doctors in three branches (Dahiliye, Kardiyoloji, Göz Hastalıkları) with their own working hours, eight patients, the login accounts, slots from a week ago to two weeks ahead and a few example appointments per doctor. Running it again only adds missing doctors, patients and slots, so it also upgrades a database seeded by an earlier version.
 
 ```bash
 python -m web_backend.seed
@@ -43,11 +43,11 @@ python -m web_backend.seed
 docker compose exec web-backend python -m web_backend.seed
 ```
 
-Sign in as `doktor@demo.local` or as a patient such as `ayse@demo.local`. All demo accounts use the password `demo1234`; these are local demo values only.
+Doctors sign in at `/giris/hekim` (for example `doktor@demo.local`; the others are printed by the seed command) and patients at `/giris/hasta` (for example `ayse@demo.local`). All demo accounts use the password `demo1234`; these are local demo values only.
 
 ## Authentication
 
-`POST /auth/login` returns a bearer token that is valid for 12 hours; send it as `Authorization: Bearer <token>`. Passwords are hashed with scrypt and only a hash of each token is stored (`user_accounts` and `auth_sessions` tables).
+`POST /auth/login` takes the e-mail, the password and the role of the login form (`patient` or `doctor`); an account can only sign in through its own form, and a mismatch gets the same `401` as a wrong password. It returns a bearer token that is valid for 12 hours; send it as `Authorization: Bearer <token>`. Passwords are hashed with scrypt and only a hash of each token is stored (`user_accounts` and `auth_sessions` tables).
 
 ## Overbooking
 
