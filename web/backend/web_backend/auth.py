@@ -32,6 +32,8 @@ class Me(BaseModel):
     role: Literal["patient", "doctor"]
     name: str
     email: str
+    # Doctor's specialty; None for patients
+    specialty: str | None = None
 
 
 class LoginResponse(Me):
@@ -81,10 +83,10 @@ DoctorAccount = Annotated[UserAccount, Depends(require_doctor)]
 
 def _me(db: Session, account: UserAccount) -> Me:
     if account.role == "patient":
-        name = db.get(Patient, account.patient_id).full_name
-    else:
-        name = db.get(Doctor, account.doctor_id).full_name
-    return Me(role=account.role, name=name, email=account.email)
+        patient = db.get(Patient, account.patient_id)
+        return Me(role="patient", name=patient.full_name, email=account.email)
+    doctor = db.get(Doctor, account.doctor_id)
+    return Me(role="doctor", name=doctor.full_name, email=account.email, specialty=doctor.specialty)
 
 
 @router.post("/login")

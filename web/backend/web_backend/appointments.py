@@ -26,6 +26,7 @@ class AppointmentOut(BaseModel):
     id: int
     slot_id: int
     doctor_name: str
+    doctor_specialty: str | None
     start_at: datetime
     end_at: datetime
     appointment_date: date
@@ -38,6 +39,7 @@ def _appointment_out(appointment: Appointment, slot: Slot, doctor: Doctor) -> Ap
         id=appointment.id,
         slot_id=slot.id,
         doctor_name=doctor.full_name,
+        doctor_specialty=doctor.specialty,
         start_at=as_utc(slot.start_at),
         end_at=as_utc(slot.end_at),
         appointment_date=appointment.appointment_date,

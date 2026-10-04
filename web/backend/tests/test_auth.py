@@ -27,7 +27,12 @@ def test_patient_logs_in_and_reads_profile(client, make_patient, login) -> None:
     response = client.get("/auth/me", headers=headers)
 
     assert response.status_code == 200
-    assert response.json() == {"role": "patient", "name": "Ayse Demo", "email": "ayse@example.com"}
+    assert response.json() == {
+        "role": "patient",
+        "name": "Ayse Demo",
+        "email": "ayse@example.com",
+        "specialty": None,
+    }
 
 
 def test_login_ignores_email_case_and_spaces(client, make_doctor) -> None:
@@ -86,3 +91,11 @@ def test_token_is_stored_only_as_hash(client, db, make_patient) -> None:
     stored = db.scalars(select(AuthSession)).one()
     assert stored.token_hash != token
     assert len(stored.token_hash) == 64
+
+
+def test_doctor_profile_includes_specialty(client, make_doctor, login) -> None:
+    make_doctor()
+
+    response = client.get("/auth/me", headers=login("doctor@example.com"))
+
+    assert response.json()["specialty"] == "General"

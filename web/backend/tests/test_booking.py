@@ -50,6 +50,7 @@ def test_patient_books_an_empty_slot(client, db, make_slot, patient_headers) -> 
     assert response.status_code == 201
     body = response.json()
     assert body["doctor_name"] == "Dr. Test"
+    assert body["doctor_specialty"] == "General"
     assert body["attended"] is None
     assert body["booking_date"] == today().isoformat()
     expected_day = slot.start_at.replace(tzinfo=UTC).astimezone(CLINIC_TZ).date()

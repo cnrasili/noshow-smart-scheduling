@@ -2,7 +2,7 @@ from datetime import UTC, datetime, time, timedelta
 
 import pytest
 
-from noshow_db.models.core import Appointment, Slot
+from noshow_db.models.core import Appointment, DoctorSchedule, Slot
 from web_backend.clinic import CLINIC_TZ, today
 
 
@@ -54,8 +54,11 @@ def test_calendar_lists_the_days_slots_with_patients(
     assert response.status_code == 200
     calendar = response.json()
     assert [len(entry["appointments"]) for entry in calendar] == [1, 0]
-    assert calendar[0]["appointments"][0]["patient_name"] == "Ayse Demo"
-    assert calendar[0]["appointments"][0]["attended"] is None
+    entry = calendar[0]["appointments"][0]
+    assert entry["patient_name"] == "Ayse Demo"
+    assert (entry["patient_age"], entry["patient_gender"]) == (30, "F")
+    assert entry["booking_date"] == min(day, today()).isoformat()
+    assert entry["attended"] is None
 
 
 def test_calendar_shows_only_own_slots(db, client, doctor_headers, make_doctor):
@@ -119,3 +122,24 @@ def test_doctor_cannot_mark_other_doctors_appointments(
     )
 
     assert response.status_code == 404
+
+
+def test_doctor_reads_weekly_working_hours(db, client, doctor, doctor_headers):
+    db.add_all(
+        [
+            DoctorSchedule(
+                doctor_id=doctor.id, weekday=2, start_time=time(13, 0), end_time=time(16, 0)
+            ),
+            DoctorSchedule(
+                doctor_id=doctor.id, weekday=0, start_time=time(9, 0), end_time=time(12, 0)
+            ),
+        ]
+    )
+    db.commit()
+
+    response = client.get("/doctors/me/schedule", headers=doctor_headers)
+
+    assert response.json() == [
+        {"weekday": 0, "start_time": "09:00:00", "end_time": "12:00:00"},
+        {"weekday": 2, "start_time": "13:00:00", "end_time": "16:00:00"},
+    ]
