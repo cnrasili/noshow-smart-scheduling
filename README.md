@@ -69,6 +69,7 @@ docker compose up --build
 | Web frontend | http://localhost:5173 |
 | Web backend API docs | http://localhost:8000/docs |
 | Overbooking service API docs | http://localhost:8001/docs |
+| KPI dashboard | http://localhost:8001/dashboard |
 | Mailpit (sent emails) | http://localhost:8025 |
 | PostgreSQL | `localhost:5432` |
 

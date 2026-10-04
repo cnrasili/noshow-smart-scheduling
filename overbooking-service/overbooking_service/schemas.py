@@ -49,6 +49,15 @@ class ScheduledMessages(BaseModel):
     ab_group: str | None
 
 
+class KpiResponse(BaseModel):
+    utilization: float
+    idle_minutes: float
+    overtime_minutes: float
+    mean_wait_minutes: float
+    overbooked_slots: int
+    patients_seen: int
+
+
 class AbGroupSummary(BaseModel):
     group: str
     appointments: int

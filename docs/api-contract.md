@@ -169,7 +169,7 @@ Response:
 
 ## `GET /kpi`
 
-Returns schedule KPIs for a doctor and a date. Definitions are in [KPI definitions](kpi-definitions.md).
+Returns schedule KPIs for a doctor and a date. Definitions are in [KPI definitions](kpi-definitions.md). The date is a clinic calendar day.
 
 Request: `GET /kpi?doctor_id=1&date=2026-11-10`
 
@@ -178,8 +178,19 @@ Response:
 ```json
 {
   "utilization": 0.87,
-  "idle_minutes": 40,
-  "overtime_minutes": 15,
-  "overbooked_slots": 2
+  "idle_minutes": 40.0,
+  "overtime_minutes": 15.0,
+  "mean_wait_minutes": 6.5,
+  "overbooked_slots": 2,
+  "patients_seen": 14
 }
 ```
+
+The session runs from the doctor's first slot start to the last slot end on that date. Patients with `attended = true` are seen in slot order, each for a fixed consultation length, and are assumed to arrive on time; consultation start and end times are not recorded.
+
+Errors:
+
+| Status | Reason |
+|---|---|
+| 404 | Doctor not found, or the doctor has no slots on the date |
+| 422 | Invalid request |

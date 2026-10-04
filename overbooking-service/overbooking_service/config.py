@@ -30,6 +30,13 @@ class AbTestSettings(BaseModel):
     salt: str = Field(min_length=1)
 
 
+class KpiSettings(BaseModel):
+    """KPI calculation settings."""
+
+    service_minutes: float = Field(gt=0)
+    dashboard_days: int = Field(ge=1, le=31)
+
+
 class Settings(BaseSettings):
     """Service settings read from environment variables and config.yaml."""
 
@@ -44,6 +51,7 @@ class Settings(BaseSettings):
     overbooking: OverbookingRule
     reminders: ReminderSettings
     ab_test: AbTestSettings
+    kpi: KpiSettings
     smtp_host: str | None = None
     smtp_port: int = 1025
     mail_from: str = "clinic@noshow.local"

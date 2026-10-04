@@ -1,10 +1,12 @@
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
-from overbooking_service import ab, booking, events, predict
+from overbooking_service import ab, booking, dashboard, events, kpi, predict
 from overbooking_service.config import settings
 from overbooking_service.predictor import Predictor
 from overbooking_service.scheduler import start_scheduler
@@ -28,6 +30,9 @@ app.include_router(predict.router)
 app.include_router(booking.router)
 app.include_router(events.router)
 app.include_router(ab.router)
+app.include_router(kpi.router)
+app.include_router(dashboard.router)
+app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 
 @app.get("/health")

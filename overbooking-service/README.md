@@ -124,3 +124,20 @@ Each appointment that can get a reminder is assigned to the `reminder` or `contr
 |---|---|---|
 | `ab_test.enabled` | true | Assign groups; when false, every appointment gets a reminder |
 | `ab_test.salt` | `reminder-ab-v1` | Hash salt; changing it reassigns patients |
+
+## KPI Dashboard
+
+`GET /kpi` returns utilization, physician idle time, overtime, mean waiting time and overbooked slots for a doctor and a date (see the [API contract](../docs/api-contract.md#get-kpi) and [KPI definitions](../docs/kpi-definitions.md)). The dashboard at `/dashboard` shows the same KPIs for the selected date and the days before it, with a chart and a table.
+
+The booking application does not record consultation times, so the KPIs replay the day from the schedule:
+
+- The session runs from the doctor's first slot start to the last slot end.
+- Patients with `attended = true` are seen in slot order, each for `service_minutes`, and arrive on time.
+- Appointments without a recorded attendance are not counted as seen.
+
+The default consultation length is the simulation's mean service time.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `kpi.service_minutes` | 12 | Consultation length in minutes |
+| `kpi.dashboard_days` | 7 | Days shown in the dashboard chart and table |

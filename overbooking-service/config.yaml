@@ -19,3 +19,8 @@ reminders:
 ab_test:
   enabled: true
   salt: reminder-ab-v1
+
+# Schedule KPIs; consultation length matches the simulation's mean service time
+kpi:
+  service_minutes: 12
+  dashboard_days: 7

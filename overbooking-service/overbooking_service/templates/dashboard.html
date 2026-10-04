@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Schedule KPIs</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='dashboard.css') }}" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Schedule KPIs</h1>
+        <form method="get" action="{{ url_for('dashboard') }}">
+          <label>
+            Doctor
+            <select name="doctor_id">
+              {% for doctor in doctors %}
+              <option value="{{ doctor.id }}" {% if selected and doctor.id == selected.id %}selected{% endif %}>
+                {{ doctor.full_name }}
+              </option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>
+            Date
+            <input type="date" name="date" value="{{ day.isoformat() }}" />
+          </label>
+          <button type="submit">Show</button>
+        </form>
+      </header>
+
+      {% if not selected %}
+      <p class="empty">No doctors in the booking database yet.</p>
+      {% else %}
+      <section aria-label="KPIs on {{ day.isoformat() }}">
+        <h2>{{ selected.full_name }} · {{ day.strftime('%d %B %Y') }}</h2>
+        {% if today %}
+        <div class="tiles">
+          <div class="tile"><span>Utilization</span><strong>{{ '%.1f' % (today.utilization * 100) }}%</strong></div>
+          <div class="tile"><span>Physician idle time</span><strong>{{ '%.0f' % today.idle_minutes }} min</strong></div>
+          <div class="tile"><span>Overtime</span><strong>{{ '%.0f' % today.overtime_minutes }} min</strong></div>
+          <div class="tile"><span>Mean waiting time</span><strong>{{ '%.1f' % today.mean_wait_minutes }} min</strong></div>
+          <div class="tile"><span>Overbooked slots</span><strong>{{ today.overbooked_slots }}</strong></div>
+          <div class="tile"><span>Patients seen</span><strong>{{ today.patients_seen }}</strong></div>
+        </div>
+        {% else %}
+        <p class="empty">No slots on this date.</p>
+        {% endif %}
+      </section>
+
+      <section aria-label="Last {{ days | length }} days">
+        <h2>Last {{ days | length }} days</h2>
+        {% if chart %}
+        <div class="chart"><canvas id="kpi-chart" aria-label="Daily idle time, overtime and utilization" role="img"></canvas></div>
+        {% endif %}
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Date</th>
+              <th scope="col">Utilization</th>
+              <th scope="col">Idle (min)</th>
+              <th scope="col">Overtime (min)</th>
+              <th scope="col">Mean wait (min)</th>
+              <th scope="col">Overbooked slots</th>
+              <th scope="col">Seen</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in days | reverse %}
+            <tr>
+              <td>{{ row.date.isoformat() }}</td>
+              {% if row.kpis %}
+              <td>{{ '%.1f' % (row.kpis.utilization * 100) }}%</td>
+              <td>{{ '%.0f' % row.kpis.idle_minutes }}</td>
+              <td>{{ '%.0f' % row.kpis.overtime_minutes }}</td>
+              <td>{{ '%.1f' % row.kpis.mean_wait_minutes }}</td>
+              <td>{{ row.kpis.overbooked_slots }}</td>
+              <td>{{ row.kpis.patients_seen }}</td>
+              {% else %}
+              <td colspan="6" class="muted">No slots</td>
+              {% endif %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+      {% endif %}
+
+      <footer>
+        Definitions follow docs/kpi-definitions.md. Each attended patient is seen for {{ '%g' % service_minutes }} minutes and is assumed to arrive on time;
+        appointments without a recorded attendance are not counted as seen.
+      </footer>
+    </main>
+
+    {% if chart %}
+    <script type="application/json" id="kpi-data">{{ chart | tojson }}</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <script src="{{ url_for('static', path='dashboard.js') }}"></script>
+    {% endif %}
+  </body>
+</html>
