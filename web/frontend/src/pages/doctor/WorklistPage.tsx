@@ -170,11 +170,16 @@ export function WorklistPage() {
                         <AttendanceStatus appointment={appointment} started={started} />
                       </td>
                       <td data-label="Geliş kaydı" className="cell-actions">
-                        <div className="segmented" aria-label="Geliş kaydı">
+                        <div
+                          className="segmented"
+                          role="group"
+                          aria-label={`${appointment.patient_name}: geliş kaydı`}
+                        >
                           <button
                             type="button"
                             className={appointment.attended === true ? 'is-on is-ok' : ''}
                             aria-pressed={appointment.attended === true}
+                            aria-label={`${appointment.patient_name}: geldi`}
                             onClick={() => mark(appointment, true)}
                             disabled={!started || busyId === appointment.id}
                             title={started ? undefined : 'Randevu saati gelince işaretlenebilir'}
@@ -185,6 +190,7 @@ export function WorklistPage() {
                             type="button"
                             className={appointment.attended === false ? 'is-on is-miss' : ''}
                             aria-pressed={appointment.attended === false}
+                            aria-label={`${appointment.patient_name}: gelmedi`}
                             onClick={() => mark(appointment, false)}
                             disabled={!started || busyId === appointment.id}
                             title={started ? undefined : 'Randevu saati gelince işaretlenebilir'}
