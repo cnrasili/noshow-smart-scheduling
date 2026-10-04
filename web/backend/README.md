@@ -32,3 +32,21 @@ Slot capacity and appointment dates are enforced by PostgreSQL triggers. Their t
 ```bash
 NOSHOW_TEST_DATABASE_URL=postgresql+psycopg://noshow:noshow@localhost:5432/noshow_test pytest
 ```
+
+## Demo Data
+
+`web_backend.seed` creates a fictional clinic: one doctor working weekdays 09:00–12:00, eight patients, their login accounts, slots from a week ago to two weeks ahead and a few example appointments. Running it again only adds missing slots.
+
+```bash
+python -m web_backend.seed
+# or, with Docker Compose
+docker compose exec web-backend python -m web_backend.seed
+```
+
+Sign in as `doktor@demo.local` or as a patient such as `ayse@demo.local`. All demo accounts use the password `demo1234`; these are local demo values only.
+
+## Authentication
+
+`POST /auth/login` returns a bearer token that is valid for 12 hours; send it as `Authorization: Bearer <token>`. Passwords are hashed with scrypt and only a hash of each token is stored (`user_accounts` and `auth_sessions` tables).
+
+Until the `/booking-decision` call is added, a slot takes a single patient; overbooking will be decided by the overbooking service.
