@@ -9,7 +9,14 @@ from sqlalchemy.pool import StaticPool
 
 import noshow_db.models  # noqa: F401
 from noshow_db.base import Base
-from noshow_db.models.core import Appointment, Doctor, DoctorSchedule, Patient, Slot
+from noshow_db.models.core import (
+    Appointment,
+    Doctor,
+    DoctorSchedule,
+    Patient,
+    Slot,
+    UserAccount,
+)
 
 
 @pytest.fixture
@@ -53,7 +60,15 @@ def _slot(session: Session) -> Slot:
 
 def test_core_tables_exist(session: Session) -> None:
     tables = set(inspect(session.get_bind()).get_table_names())
-    assert {"patients", "doctors", "doctor_schedules", "slots", "appointments"} <= tables
+    assert {
+        "patients",
+        "doctors",
+        "doctor_schedules",
+        "slots",
+        "appointments",
+        "user_accounts",
+        "auth_sessions",
+    } <= tables
 
 
 def test_patient_stores_booking_features(session: Session) -> None:
@@ -211,6 +226,73 @@ def test_slot_must_end_after_it_starts(session: Session) -> None:
     session.flush()
     start = datetime(2026, 11, 10, 9, 0, tzinfo=UTC)
     session.add(Slot(doctor_id=1, start_at=start, end_at=start))
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def _owners(session: Session) -> tuple[int, int]:
+    patient = _patient()
+    doctor = Doctor(full_name="Dr. Test", specialty=None)
+    session.add_all([patient, doctor])
+    session.flush()
+    return patient.id, doctor.id
+
+
+def test_accounts_link_to_a_patient_or_a_doctor(session: Session) -> None:
+    patient_id, doctor_id = _owners(session)
+    session.add_all(
+        [
+            UserAccount(
+                email="patient@example.com",
+                password_hash="x",
+                role="patient",
+                patient_id=patient_id,
+            ),
+            UserAccount(
+                email="doctor@example.com", password_hash="x", role="doctor", doctor_id=doctor_id
+            ),
+        ]
+    )
+    session.commit()
+
+    assert session.scalar(select(func.count()).select_from(UserAccount)) == 2
+
+
+@pytest.mark.parametrize(
+    ("role", "link_patient", "link_doctor"),
+    [
+        ("patient", False, False),
+        ("patient", False, True),
+        ("doctor", True, False),
+        ("patient", True, True),
+        ("admin", True, False),
+    ],
+)
+def test_account_role_must_match_its_owner(
+    session: Session, role: str, link_patient: bool, link_doctor: bool
+) -> None:
+    patient_id, doctor_id = _owners(session)
+    session.add(
+        UserAccount(
+            email="user@example.com",
+            password_hash="x",
+            role=role,
+            patient_id=patient_id if link_patient else None,
+            doctor_id=doctor_id if link_doctor else None,
+        )
+    )
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_a_patient_has_at_most_one_account(session: Session) -> None:
+    patient_id, _ = _owners(session)
+    for email in ("first@example.com", "second@example.com"):
+        session.add(
+            UserAccount(email=email, password_hash="x", role="patient", patient_id=patient_id)
+        )
 
     with pytest.raises(IntegrityError):
         session.commit()
