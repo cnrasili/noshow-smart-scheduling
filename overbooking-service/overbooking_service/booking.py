@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -8,6 +9,7 @@ from overbooking_service.data_source import (
     DataSourceUnavailable,
     PatientDataSource,
     SlotDataSource,
+    SlotState,
 )
 from overbooking_service.dependencies import (
     get_data_source,
@@ -22,6 +24,39 @@ from overbooking_service.rules import Decision, OverbookingRule, decide
 from overbooking_service.schemas import BookingDecisionRequest, BookingDecisionResponse
 
 router = APIRouter()
+
+
+def evaluate(
+    patients: PatientDataSource,
+    slots: SlotDataSource,
+    predictor: Predictor,
+    rule: OverbookingRule,
+    patient_id: int,
+    slot: SlotState,
+    booking_date: date,
+) -> tuple[Decision, float, list[float]] | None:
+    """Decision, patient risk and booked patients' risks; None if the patient is unknown."""
+    scored = score_patient(patients, predictor, patient_id, slot.slot_date, booking_date)
+    if scored is None:
+        return None
+    p_noshow = scored[1]
+
+    if any(b.patient_id == patient_id for b in slot.bookings):
+        decision = Decision(
+            allow=False, overbook=False, reason="Patient is already booked in this slot"
+        )
+        return decision, p_noshow, []
+
+    booked_risks: list[float] = []
+    for booking in slot.bookings:
+        booked = score_patient(
+            patients, predictor, booking.patient_id, slot.slot_date, booking.booking_date
+        )
+        if booked is None:
+            raise DataSourceUnavailable(f"Booked patient {booking.patient_id} not found")
+        booked_risks.append(booked[1])
+    daily_overbooks = slots.count_overbooks(slot.doctor_id, slot.slot_date) if slot.bookings else 0
+    return decide(booked_risks, slot.max_patients, daily_overbooks, rule), p_noshow, booked_risks
 
 
 @router.post(
@@ -46,30 +81,12 @@ def booking_decision(
         if body.booking_date > slot.slot_date:
             raise HTTPException(422, "booking_date must not be after the slot date")
 
-        scored = score_patient(
-            patients, predictor, body.patient_id, slot.slot_date, body.booking_date
+        evaluated = evaluate(
+            patients, slots, predictor, rule, body.patient_id, slot, body.booking_date
         )
-        if scored is None:
+        if evaluated is None:
             raise HTTPException(404, f"Patient {body.patient_id} not found")
-        p_noshow = scored[1]
-
-        booked_risks: list[float] = []
-        if any(b.patient_id == body.patient_id for b in slot.bookings):
-            decision = Decision(
-                allow=False, overbook=False, reason="Patient is already booked in this slot"
-            )
-        else:
-            for booking in slot.bookings:
-                booked = score_patient(
-                    patients, predictor, booking.patient_id, slot.slot_date, booking.booking_date
-                )
-                if booked is None:
-                    raise DataSourceUnavailable(f"Booked patient {booking.patient_id} not found")
-                booked_risks.append(booked[1])
-            daily_overbooks = (
-                slots.count_overbooks(slot.doctor_id, slot.slot_date) if slot.bookings else 0
-            )
-            decision = decide(booked_risks, slot.max_patients, daily_overbooks, rule)
+        decision, p_noshow, booked_risks = evaluated
     except DataSourceUnavailable as exc:
         raise HTTPException(503, str(exc)) from exc
 

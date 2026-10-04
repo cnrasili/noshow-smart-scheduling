@@ -141,3 +141,36 @@ The default consultation length is the simulation's mean service time.
 |---|---|---|
 | `kpi.service_minutes` | 12 | Consultation length in minutes |
 | `kpi.dashboard_days` | 7 | Days shown in the dashboard chart and table |
+
+## Demo Data
+
+`python -m overbooking_service.demo` fills an empty booking database with simulated data:
+
+- Two doctors and 200 patients with attributes drawn at rates similar to the public dataset.
+- Sixteen 15-minute slots per doctor from 09:00 on the 10 working days before the demo date and the 5 working days from it.
+- Booking requests processed with the same overbooking rule as `/booking-decision`: the first empty slot, otherwise the first slot the rule allows to overbook.
+- Past appointments get an outcome drawn from the model's `p_noshow` and, when a reminder was possible, an A/B group. Future appointments have no outcome, so free slots remain for live bookings.
+
+| Option | Default | Meaning |
+|---|---|---|
+| `--today` | today | Demo date in the clinic time zone |
+| `--seed` | 42 | Random seed; the same seed gives the same data |
+| `--reminder-effect` | 0 | Relative no-show reduction in the reminder group; 0 means reminders have no simulated effect |
+
+The command refuses to run when the database already has doctors. To start from an empty database, remove the Docker volume with `docker compose down -v`; this deletes all local data.
+
+### Demo Scenario
+
+1. Start the stack and load the demo data:
+
+   ```bash
+   docker compose up --build -d
+   docker compose exec overbooking-service python -m overbooking_service.demo
+   ```
+
+   The command prints an empty and a booked slot of doctor 1 on the next working day.
+
+2. Open the KPI dashboard at http://localhost:8001/dashboard. The past days show utilization, idle time, overtime, waiting time and overbooked slots.
+3. Open http://localhost:8001/ab/summary to compare the no-show rates of the reminder and control groups.
+4. In the API docs at http://localhost:8001/docs, call `POST /booking-decision` for the empty slot (normal booking) and for the booked slot (overbook or reject, with the reason).
+5. Call `POST /events/appointment-booked` for a new appointment id. The response shows the A/B group and the scheduled messages; the confirmation appears in Mailpit at http://localhost:8025 within a minute.
