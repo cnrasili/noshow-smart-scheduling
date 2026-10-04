@@ -117,7 +117,8 @@ class SlotOut(BaseModel):
     end_at: datetime
     max_patients: int
     booked_count: int
-    # Overbooking needs the /booking-decision call; until then only empty slots are offered
+    # Bookable while below capacity; for an already booked slot the overbooking service
+    # makes the final decision at booking time
     available: bool
     booked_by_me: bool
 
@@ -167,7 +168,7 @@ def list_slots(
             end_at=as_utc(slot.end_at),
             max_patients=slot.max_patients,
             booked_count=booked_count,
-            available=booked_count == 0,
+            available=booked_count < slot.max_patients,
             booked_by_me=slot.id in mine,
         )
         for slot, booked_count in rows

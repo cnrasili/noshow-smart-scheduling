@@ -69,24 +69,13 @@ def test_slot_listing_shows_bookings(client, make_slot, make_patient, login, pat
         "/slots", params={"doctor_id": booked.doctor_id}, headers=other_headers
     ).json()
 
-    # The past slot is hidden
+    # The past slot is hidden; a booked slot stays bookable below its capacity of two
     assert [(s["id"], s["booked_count"], s["available"], s["booked_by_me"]) for s in slots] == [
-        (booked.id, 1, False, False),
+        (booked.id, 1, True, False),
         (free.id, 0, True, False),
     ]
     mine = client.get("/slots", params={"doctor_id": booked.doctor_id}, headers=patient_headers)
     assert mine.json()[0]["booked_by_me"] is True
-
-
-def test_booked_slot_is_not_offered_again(client, make_slot, make_patient, login, patient_headers):
-    slot = make_slot(hours_from_now=24)
-    _book(client, patient_headers, slot.id)
-    other_headers = login(make_patient(email="other@example.com").email)
-
-    response = _book(client, other_headers, slot.id)
-
-    assert response.status_code == 409
-    assert response.json()["detail"] == "Slot is already booked"
 
 
 def test_same_slot_cannot_be_booked_twice(client, make_slot, patient_headers) -> None:

@@ -12,6 +12,7 @@ from noshow_db.models.core import Appointment, Doctor, Slot
 from web_backend.auth import PatientAccount
 from web_backend.clinic import CLINIC_TZ, as_utc, today
 from web_backend.db import get_db
+from web_backend.overbooking import OverbookingClient, get_overbooking_client
 
 router = APIRouter(tags=["appointments"])
 
@@ -61,7 +62,12 @@ def my_appointments(account: PatientAccount, db: DbSession) -> list[AppointmentO
 
 
 @router.post("/appointments", status_code=status.HTTP_201_CREATED)
-def book(body: BookingRequest, account: PatientAccount, db: DbSession) -> AppointmentOut:
+def book(
+    body: BookingRequest,
+    account: PatientAccount,
+    db: DbSession,
+    overbooking: Annotated[OverbookingClient, Depends(get_overbooking_client)],
+) -> AppointmentOut:
     # Lock the slot so two concurrent bookings cannot both see it empty (PostgreSQL)
     slot = db.scalar(select(Slot).where(Slot.id == body.slot_id).with_for_update())
     if slot is None:
@@ -73,16 +79,25 @@ def book(body: BookingRequest, account: PatientAccount, db: DbSession) -> Appoin
     patients = set(db.scalars(select(Appointment.patient_id).where(Appointment.slot_id == slot.id)))
     if account.patient_id in patients:
         raise HTTPException(status.HTTP_409_CONFLICT, "You already booked this slot")
-    # Overbooking is decided by the overbooking service; until that call is wired in,
-    # a slot takes a single patient
-    if patients:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Slot is already booked")
+    if len(patients) >= slot.max_patients:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Slot is full")
+
+    # The overbooking service decides whether the patient may join the slot. The slot row
+    # stays locked meanwhile, so concurrent bookings of this slot wait for the decision.
+    booking_date = today()
+    decision = overbooking.booking_decision(account.patient_id, slot.id, booking_date)
+    if decision is None:
+        # Service unavailable: empty slots can still be booked, but never overbooked
+        if patients:
+            raise HTTPException(status.HTTP_409_CONFLICT, "Slot is already booked")
+    elif not decision.allow:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Slot is not available")
 
     appointment = Appointment(
         patient_id=account.patient_id,
         slot_id=slot.id,
         appointment_date=start_at.astimezone(CLINIC_TZ).date(),
-        booking_date=today(),
+        booking_date=booking_date,
     )
     db.add(appointment)
     try:
