@@ -434,6 +434,12 @@ label {
   border-color: var(--border-strong);
 }
 
+.time-extra {
+  border-style: dashed;
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
 .time-taken {
   background: var(--subtle);
   color: var(--muted);
@@ -487,6 +493,11 @@ label {
 .swatch.time-taken {
   background: var(--border);
   border-color: var(--border);
+}
+
+.swatch.time-extra {
+  background: var(--warn-tint);
+  border: 1px dashed var(--warn);
 }
 
 .swatch.time-mine {
