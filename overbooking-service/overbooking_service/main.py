@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from overbooking_service import booking, events, predict
+from overbooking_service import ab, booking, events, predict
 from overbooking_service.config import settings
 from overbooking_service.predictor import Predictor
 from overbooking_service.scheduler import start_scheduler
@@ -27,6 +27,7 @@ app = FastAPI(title="Overbooking Service", lifespan=lifespan)
 app.include_router(predict.router)
 app.include_router(booking.router)
 app.include_router(events.router)
+app.include_router(ab.router)
 
 
 @app.get("/health")

@@ -6,7 +6,7 @@ from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
 from noshow_db import SessionLocal
-from overbooking_service.config import ReminderSettings, settings
+from overbooking_service.config import AbTestSettings, ReminderSettings, settings
 from overbooking_service.data_source import (
     DbPatientSource,
     DbSlotSource,
@@ -40,6 +40,10 @@ def get_rule() -> OverbookingRule:
 
 def get_reminder_settings() -> ReminderSettings:
     return settings.reminders
+
+
+def get_ab_settings() -> AbTestSettings:
+    return settings.ab_test
 
 
 def get_now() -> datetime:

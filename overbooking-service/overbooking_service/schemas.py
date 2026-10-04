@@ -46,6 +46,21 @@ class ScheduledMessage(BaseModel):
 
 class ScheduledMessages(BaseModel):
     messages: list[ScheduledMessage]
+    ab_group: str | None
+
+
+class AbGroupSummary(BaseModel):
+    group: str
+    appointments: int
+    no_shows: int
+    no_show_rate: float | None
+
+
+class AbSummary(BaseModel):
+    groups: list[AbGroupSummary]
+    difference: float | None
+    z: float | None
+    p_value: float | None
 
 
 class CancelledMessages(BaseModel):

@@ -6,7 +6,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from noshow_db.models.service import Message
-from overbooking_service.dependencies import get_now
+from overbooking_service.config import AbTestSettings
+from overbooking_service.dependencies import get_ab_settings, get_now
 from overbooking_service.main import app
 
 NOW = datetime(2026, 11, 2, 9, 0, tzinfo=UTC)
@@ -21,6 +22,8 @@ BODY = {
 @pytest.fixture(autouse=True)
 def fixed_now(client: TestClient) -> None:
     app.dependency_overrides[get_now] = lambda: NOW
+    # A/B groups are tested in test_ab.py
+    app.dependency_overrides[get_ab_settings] = lambda: AbTestSettings(enabled=False, salt="x")
 
 
 def book(client: TestClient, **overrides) -> list[dict]:

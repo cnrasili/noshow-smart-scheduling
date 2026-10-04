@@ -105,11 +105,13 @@ Response:
   "messages": [
     { "kind": "confirmation", "send_at": "2026-11-02T06:00:00Z", "status": "pending" },
     { "kind": "reminder", "send_at": "2026-11-09T06:30:00Z", "status": "pending" }
-  ]
+  ],
+  "ab_group": "reminder"
 }
 ```
 
 - No reminder is scheduled when the appointment is closer than the reminder lead time.
+- Appointments that can get a reminder take part in the reminder A/B test. `ab_group` is `reminder` or `control`; the control group gets no reminder. The group depends only on the patient. `ab_group` is `null` when the appointment is too close for a reminder or the test is disabled.
 - Sending the same event again returns the existing messages and creates no duplicates.
 - A message is not sent once the appointment has started.
 
@@ -144,6 +146,26 @@ Errors:
 | Status | Reason |
 |---|---|
 | 422 | Invalid request |
+
+## `GET /ab/summary`
+
+Compares the no-show rate of the reminder and control groups. Only appointments with a recorded `attended` value count; deleted (cancelled) appointments are excluded.
+
+Response:
+
+```json
+{
+  "groups": [
+    { "group": "reminder", "appointments": 120, "no_shows": 18, "no_show_rate": 0.15 },
+    { "group": "control", "appointments": 115, "no_shows": 29, "no_show_rate": 0.252 }
+  ],
+  "difference": 0.102,
+  "z": 2.0,
+  "p_value": 0.046
+}
+```
+
+`difference` is the control rate minus the reminder rate. `z` and `p_value` come from a two-sided pooled two-proportion z-test. Values that cannot be computed yet are `null`.
 
 ## `GET /kpi`
 

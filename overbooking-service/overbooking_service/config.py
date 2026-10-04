@@ -23,6 +23,13 @@ class ReminderSettings(BaseModel):
     max_attempts: int = Field(ge=1)
 
 
+class AbTestSettings(BaseModel):
+    """Reminder A/B test settings."""
+
+    enabled: bool
+    salt: str = Field(min_length=1)
+
+
 class Settings(BaseSettings):
     """Service settings read from environment variables and config.yaml."""
 
@@ -36,6 +43,7 @@ class Settings(BaseSettings):
     clinic_timezone: ZoneInfo
     overbooking: OverbookingRule
     reminders: ReminderSettings
+    ab_test: AbTestSettings
     smtp_host: str | None = None
     smtp_port: int = 1025
     mail_from: str = "clinic@noshow.local"

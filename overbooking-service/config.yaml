@@ -13,3 +13,9 @@ reminders:
   hours_before: 24
   dispatch_interval_seconds: 60
   max_attempts: 3
+
+# Reminder A/B test; control group patients get no reminder
+# Changing the salt reassigns patients, so it stays fixed during the study
+ab_test:
+  enabled: true
+  salt: reminder-ab-v1

@@ -113,3 +113,14 @@ Settings in `config.yaml`:
 | `max_attempts` | 3 | Send attempts before a message is marked `failed` |
 
 Messages are sent by email when `SMTP_HOST` is set; otherwise they are written to the service log. With Docker Compose, emails go to Mailpit at http://localhost:8025.
+
+## Reminder A/B Test
+
+Each appointment that can get a reminder is assigned to the `reminder` or `control` group, and the assignment is logged in the `ab_assignments` table. The control group gets the confirmation but no reminder. The group is a hash of the patient id and `salt`, so a patient stays in the same group for all appointments and the groups are about equal in size.
+
+`GET /ab/summary` compares the no-show rates of the two groups using `appointments.attended` (see the [API contract](../docs/api-contract.md#get-absummary)).
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `ab_test.enabled` | true | Assign groups; when false, every appointment gets a reminder |
+| `ab_test.salt` | `reminder-ab-v1` | Hash salt; changing it reassigns patients |
