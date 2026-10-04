@@ -26,6 +26,8 @@ DbSession = Annotated[Session, Depends(get_db)]
 class LoginRequest(BaseModel):
     email: str
     password: str
+    # The login form the user chose; an account can only sign in through its own form
+    role: Literal["patient", "doctor"]
 
 
 class Me(BaseModel):
@@ -95,7 +97,8 @@ def login(body: LoginRequest, db: DbSession) -> LoginResponse:
     if account is None:
         verify_password(body.password, _DUMMY_HASH)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Wrong email or password")
-    if not verify_password(body.password, account.password_hash):
+    # A role mismatch gets the same answer, so the form does not reveal other roles' e-mails
+    if not verify_password(body.password, account.password_hash) or account.role != body.role:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Wrong email or password")
 
     token = new_token()

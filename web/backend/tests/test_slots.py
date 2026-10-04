@@ -91,6 +91,7 @@ def test_other_doctors_are_not_affected(db, doctor, make_doctor) -> None:
 
 
 def _next_monday() -> date:
+    # One to seven days ahead, so eight days before it is always in the past
     return today() + timedelta(days=7 - today().weekday())
 
 
@@ -108,7 +109,7 @@ def test_doctor_generates_own_slots(client, db, doctor, login) -> None:
 
 @pytest.mark.parametrize(
     ("offset_from", "offset_to"),
-    [(-7, 0), (2, 1), (0, 62)],
+    [(-8, 0), (2, 1), (0, 62)],
     ids=["past", "reversed", "too-long"],
 )
 def test_invalid_generation_ranges_are_rejected(

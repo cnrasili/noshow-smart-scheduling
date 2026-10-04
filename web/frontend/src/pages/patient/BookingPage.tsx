@@ -12,6 +12,28 @@ import {
 import type { Appointment, Doctor, Slot } from '../../types'
 import { Notice, PageHeader, type NoticeState } from '../../ui'
 
+type SlotState = 'free' | 'extra' | 'taken' | 'mine'
+
+// An already booked slot below capacity is offered as an extra appointment; the
+// overbooking service decides at booking time whether it is granted
+function slotState(slot: Slot): SlotState {
+  if (slot.booked_by_me) return 'mine'
+  if (!slot.available) return 'taken'
+  return slot.booked_count > 0 ? 'extra' : 'free'
+}
+
+const SLOT_UNAVAILABLE = 'Bu saat dolu, başka bir saat seçin.'
+
+// Backend booking errors are technical English; patients see a short Turkish message
+const BOOKING_ERRORS: Record<string, string> = {
+  'Slot is not available': SLOT_UNAVAILABLE,
+  'Slot is full': SLOT_UNAVAILABLE,
+  'Slot is already booked': SLOT_UNAVAILABLE,
+  'Slot is no longer available': SLOT_UNAVAILABLE,
+  'You already booked this slot': 'Bu saatte zaten randevunuz var.',
+  'Slot has already started': 'Bu saatin randevu zamanı geçti, başka bir saat seçin.',
+}
+
 function groupByDay(slots: Slot[]): Map<string, Slot[]> {
   const days = new Map<string, Slot[]>()
   for (const slot of slots) {
@@ -145,10 +167,11 @@ export function BookingPage({ onShowAppointments }: { onShowAppointments: () => 
     setBusy(true)
     try {
       setBooked(await api.book(selected.id))
-      setSelected(null)
     } catch (error) {
-      showError(error)
+      const text = errorText(error)
+      setNotice({ kind: 'error', text: BOOKING_ERRORS[text] ?? text })
     } finally {
+      setSelected(null)
       setBusy(false)
     }
     setSlots(await api.slots(doctorId).catch(() => slots))
@@ -205,7 +228,8 @@ export function BookingPage({ onShowAppointments }: { onShowAppointments: () => 
               ) : (
                 <div className="day-strip" role="listbox" aria-label="Gün seçimi">
                   {[...days].map(([key, list]) => {
-                    const free = list.filter((s) => s.available).length
+                    const free = list.filter((s) => slotState(s) === 'free').length
+                    const open = list.filter((s) => s.available && !s.booked_by_me).length
                     const parts = dayParts(key)
                     return (
                       <button
@@ -219,8 +243,8 @@ export function BookingPage({ onShowAppointments }: { onShowAppointments: () => 
                         <span className="day-weekday">{parts.weekday}</span>
                         <span className="day-number">{parts.day}</span>
                         <span className="day-month">{parts.month}</span>
-                        <span className={`day-free ${free === 0 ? 'is-full' : ''}`}>
-                          {free === 0 ? 'Dolu' : `${free} boş`}
+                        <span className={`day-free ${open === 0 ? 'is-full' : ''}`}>
+                          {free > 0 ? `${free} boş` : open > 0 ? 'Ek randevu' : 'Dolu'}
                         </span>
                       </button>
                     )
@@ -234,13 +258,14 @@ export function BookingPage({ onShowAppointments }: { onShowAppointments: () => 
                 <h2 className="section-title">Saat · {formatLongDate(activeDay)}</h2>
                 <div className="time-grid">
                   {daySlots.map((slot) => {
-                    const state = slot.booked_by_me ? 'mine' : slot.available ? 'free' : 'taken'
+                    const state = slotState(slot)
                     return (
                       <button
                         key={slot.id}
                         type="button"
                         className={`time time-${state} ${selected?.id === slot.id ? 'is-selected' : ''}`}
-                        disabled={state !== 'free' || busy}
+                        disabled={state === 'taken' || state === 'mine' || busy}
+                        title={state === 'extra' ? 'Ek randevu' : undefined}
                         aria-pressed={selected?.id === slot.id}
                         onClick={() => setSelected(slot)}
                       >
@@ -252,6 +277,9 @@ export function BookingPage({ onShowAppointments }: { onShowAppointments: () => 
                 <ul className="legend">
                   <li>
                     <span className="swatch time-free" /> Uygun
+                  </li>
+                  <li>
+                    <span className="swatch time-extra" /> Ek randevu
                   </li>
                   <li>
                     <span className="swatch time-taken" /> Dolu
@@ -301,9 +329,11 @@ export function BookingPage({ onShowAppointments }: { onShowAppointments: () => 
                   {busy ? 'Kaydediliyor…' : 'Randevuyu onayla'}
                 </button>
                 <p className="note">
-                  {selected
-                    ? 'Bilgileri kontrol edip randevunuzu onaylayın.'
-                    : 'Devam etmek için uygun bir saat seçin.'}
+                  {!selected
+                    ? 'Devam etmek için uygun bir saat seçin.'
+                    : slotState(selected) === 'extra'
+                      ? 'Bu saat için ek randevu talep ediyorsunuz. Uygunluk onay sırasında kontrol edilir.'
+                      : 'Bilgileri kontrol edip randevunuzu onaylayın.'}
                 </p>
               </div>
             </section>

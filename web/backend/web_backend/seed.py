@@ -1,9 +1,11 @@
 """Fill the database with a fictional demo clinic.
 
-Run with ``python -m web_backend.seed``. Running it again only adds missing slots.
+Run with ``python -m web_backend.seed``. Running it again only adds missing doctors,
+patients and slots, so it also upgrades a database seeded by an earlier version.
 All people are made up; DEMO_PASSWORD is a demo value for local use only.
 """
 
+from dataclasses import dataclass
 from datetime import time, timedelta
 
 from sqlalchemy import select
@@ -16,7 +18,38 @@ from web_backend.security import hash_password
 from web_backend.slots import generate_slots
 
 DEMO_PASSWORD = "demo1234"
-DOCTOR_EMAIL = "doktor@demo.local"
+
+
+@dataclass(frozen=True)
+class DemoDoctor:
+    name: str
+    specialty: str
+    email: str
+    # Working days (0 = Monday) and their hours
+    weekdays: tuple[int, ...]
+    start: time
+    end: time
+
+
+# Several doctors and branches so the branch and doctor choice is meaningful in the demo
+DOCTORS = [
+    DemoDoctor(
+        "Dr. Deniz Yıldız", "Dahiliye", "doktor@demo.local", (0, 1, 2, 3, 4), time(9), time(12)
+    ),
+    DemoDoctor("Dr. Can Özkan", "Dahiliye", "can.ozkan@demo.local", (0, 2, 4), time(13), time(16)),
+    DemoDoctor(
+        "Dr. Leyla Aksoy", "Kardiyoloji", "leyla.aksoy@demo.local", (1, 3), time(9), time(12)
+    ),
+    DemoDoctor(
+        "Dr. Ebru Kaplan",
+        "Göz Hastalıkları",
+        "ebru.kaplan@demo.local",
+        (0, 1, 3),
+        time(13),
+        time(15),
+    ),
+]
+DOCTOR_EMAIL = DOCTORS[0].email
 
 # name, email, age, gender, scholarship, hipertension, diabetes, alcoholism, handcap
 PATIENTS = [
@@ -34,23 +67,11 @@ PAST_DAYS = 7
 FUTURE_DAYS = 14
 
 
-def _create_people(db: Session) -> Doctor:
-    password_hash = hash_password(DEMO_PASSWORD)
-    doctor = Doctor(full_name="Dr. Deniz Yıldız", specialty="Dahiliye")
-    db.add(doctor)
-    db.flush()
-    db.add(
-        UserAccount(
-            email=DOCTOR_EMAIL, password_hash=password_hash, role="doctor", doctor_id=doctor.id
-        )
-    )
-    for weekday in range(5):
-        db.add(
-            DoctorSchedule(
-                doctor_id=doctor.id, weekday=weekday, start_time=time(9, 0), end_time=time(12, 0)
-            )
-        )
+def _account(db: Session, email: str) -> UserAccount | None:
+    return db.scalar(select(UserAccount).where(UserAccount.email == email))
 
+
+def _ensure_patients(db: Session, password_hash: str) -> None:
     for (
         name,
         email,
@@ -62,6 +83,8 @@ def _create_people(db: Session) -> Doctor:
         alcoholism,
         handcap,
     ) in PATIENTS:
+        if _account(db, email) is not None:
+            continue
         patient = Patient(
             full_name=name,
             email=email,
@@ -81,12 +104,39 @@ def _create_people(db: Session) -> Doctor:
             )
         )
     db.flush()
-    return doctor
 
 
-def _book_examples(db: Session, doctor: Doctor) -> None:
-    """Past bookings for attendance marking and a few upcoming ones."""
+def _ensure_doctor(db: Session, demo: DemoDoctor, password_hash: str) -> tuple[Doctor, bool]:
+    """The demo doctor with account and working hours; True if it was just created."""
+    account = _account(db, demo.email)
+    if account is not None:
+        return db.get(Doctor, account.doctor_id), False
+
+    doctor = Doctor(full_name=demo.name, specialty=demo.specialty)
+    db.add(doctor)
+    db.flush()
+    db.add(
+        UserAccount(
+            email=demo.email, password_hash=password_hash, role="doctor", doctor_id=doctor.id
+        )
+    )
+    for weekday in demo.weekdays:
+        db.add(
+            DoctorSchedule(
+                doctor_id=doctor.id, weekday=weekday, start_time=demo.start, end_time=demo.end
+            )
+        )
+    db.flush()
+    return doctor, True
+
+
+def _book_examples(db: Session, doctor: Doctor, first_patient: int) -> None:
+    """Past bookings for attendance marking and a few upcoming ones.
+
+    Patients are taken in turn from first_patient, so doctors start with different patients.
+    """
     patients = db.scalars(select(Patient).order_by(Patient.id)).all()
+    patients = patients[first_patient:] + patients[:first_patient]
     slots = db.scalars(select(Slot).where(Slot.doctor_id == doctor.id).order_by(Slot.start_at))
     past_slots, future_slots = [], []
     for slot in slots:
@@ -109,23 +159,28 @@ def _book_examples(db: Session, doctor: Doctor) -> None:
 
 
 def seed(db: Session) -> None:
-    account = db.scalar(select(UserAccount).where(UserAccount.email == DOCTOR_EMAIL))
-    first_run = account is None
-    doctor = _create_people(db) if first_run else db.get(Doctor, account.doctor_id)
-
-    generate_slots(
-        db, doctor.id, today() - timedelta(days=PAST_DAYS), today() + timedelta(days=FUTURE_DAYS)
-    )
-    db.flush()
-    if first_run:
-        _book_examples(db, doctor)
+    password_hash = hash_password(DEMO_PASSWORD)
+    _ensure_patients(db, password_hash)
+    for index, demo in enumerate(DOCTORS):
+        doctor, created = _ensure_doctor(db, demo, password_hash)
+        generate_slots(
+            db,
+            doctor.id,
+            today() - timedelta(days=PAST_DAYS),
+            today() + timedelta(days=FUTURE_DAYS),
+        )
+        db.flush()
+        if created:
+            _book_examples(db, doctor, first_patient=(index * 3) % len(PATIENTS))
     db.commit()
 
 
 def main() -> None:
     with SessionLocal() as db:
         seed(db)
-    print(f"Demo data ready. Doctor: {DOCTOR_EMAIL}; patients: {PATIENTS[0][1]} and others.")
+    print("Demo data ready.")
+    print("Doctors: " + ", ".join(f"{d.email} ({d.specialty})" for d in DOCTORS))
+    print(f"Patients: {PATIENTS[0][1]} and {len(PATIENTS) - 1} others.")
     print(f"Every demo account uses the password '{DEMO_PASSWORD}'.")
 
 

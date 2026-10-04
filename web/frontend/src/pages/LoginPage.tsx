@@ -1,20 +1,36 @@
 import { useState, type FormEvent } from 'react'
+import { Link } from 'react-router'
 import { api, errorText } from '../api'
 import { INSTITUTION_NAME, SYSTEM_NAME } from '../config'
-import type { Me } from '../types'
+import { PATHS, loginFor } from '../routes'
+import type { Me, Role } from '../types'
 
-export function LoginPage({ onSignedIn }: { onSignedIn: (me: Me) => void }) {
+const COPY: Record<Role, { title: string; description: string; other: string }> = {
+  patient: {
+    title: 'Hasta girişi',
+    description: 'Randevu almak ve randevularınızı görmek için giriş yapın.',
+    other: 'Hekim misiniz? Hekim girişi',
+  },
+  doctor: {
+    title: 'Hekim girişi',
+    description: 'Günlük hasta listenize ve çalışma takviminize ulaşmak için giriş yapın.',
+    other: 'Hasta mısınız? Hasta girişi',
+  },
+}
+
+export function LoginPage({ role, onSignedIn }: { role: Role; onSignedIn: (me: Me) => void }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const copy = COPY[role]
 
   async function submit(event: FormEvent) {
     event.preventDefault()
     setBusy(true)
     setError(null)
     try {
-      onSignedIn(await api.login(email, password))
+      onSignedIn(await api.login(email, password, role))
     } catch (err) {
       const message = errorText(err)
       setError(
@@ -26,32 +42,23 @@ export function LoginPage({ onSignedIn }: { onSignedIn: (me: Me) => void }) {
   }
 
   return (
-    <div className="login-page">
-      <header className="login-header">
-        <div className="brand">
-          <span className="brand-name">{INSTITUTION_NAME}</span>
-          <span className="brand-system">{SYSTEM_NAME}</span>
+    <div className="public-page">
+      <header className="topbar">
+        <div className="container topbar-inner">
+          <Link to={PATHS.home} className="brand">
+            <span className="brand-name">{INSTITUTION_NAME}</span>
+            <span className="brand-system">{SYSTEM_NAME}</span>
+          </Link>
         </div>
       </header>
 
       <main className="login-main">
-        <div className="login-box">
-          <section className="login-info">
-            <h1>Poliklinik randevu işlemleri</h1>
-            <dl>
-              <div>
-                <dt>Hastalar</dt>
-                <dd>Branş ve hekim seçerek randevu alma, randevuları görüntüleme ve iptal etme</dd>
-              </div>
-              <div>
-                <dt>Hekimler</dt>
-                <dd>Günlük hasta listesi, geliş kaydı ve çalışma takvimi</dd>
-              </div>
-            </dl>
-          </section>
-
-          <form className="login-form" onSubmit={submit}>
-            <h2>Kullanıcı girişi</h2>
+        <form className="panel login-card" onSubmit={submit}>
+          <div className="panel-head">
+            <h1>{copy.title}</h1>
+            <p className="muted">{copy.description}</p>
+          </div>
+          <div className="panel-body stack-tight">
             <label>
               E-posta adresi
               <input
@@ -80,11 +87,15 @@ export function LoginPage({ onSignedIn }: { onSignedIn: (me: Me) => void }) {
             <button type="submit" className="primary block" disabled={busy}>
               {busy ? 'Giriş yapılıyor…' : 'Giriş yap'}
             </button>
-          </form>
-        </div>
+          </div>
+          <div className="login-links">
+            <Link to={PATHS.home}>‹ Anasayfa</Link>
+            <Link to={loginFor(role === 'patient' ? 'doctor' : 'patient')}>{copy.other}</Link>
+          </div>
+        </form>
       </main>
 
-      <footer className="login-footer">
+      <footer className="public-footer">
         Demo ortamı. Sistemdeki hasta ve hekim kayıtları gerçek kişilere ait değildir.
       </footer>
     </div>
