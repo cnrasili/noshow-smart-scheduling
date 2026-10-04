@@ -15,8 +15,10 @@ def test_seed_creates_a_usable_demo_clinic(db, client) -> None:
     assert _count(db, UserAccount) == len(PATIENTS) + 1
     assert _count(db, Slot) > 0
     assert _count(db, Appointment) > 0
-    for email in (DOCTOR_EMAIL, PATIENTS[0][1]):
-        response = client.post("/auth/login", json={"email": email, "password": DEMO_PASSWORD})
+    for email, role in ((DOCTOR_EMAIL, "doctor"), (PATIENTS[0][1], "patient")):
+        response = client.post(
+            "/auth/login", json={"email": email, "password": DEMO_PASSWORD, "role": role}
+        )
         assert response.status_code == 200
 
 

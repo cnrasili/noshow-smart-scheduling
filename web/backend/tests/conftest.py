@@ -4,7 +4,7 @@ from collections.abc import Callable, Iterator
 import httpx2
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -119,11 +119,14 @@ def make_doctor(db: Session) -> Callable[..., Doctor]:
 
 
 @pytest.fixture
-def login(client: TestClient) -> Callable[[str], dict[str, str]]:
-    """Sign in and return the Authorization header."""
+def login(client: TestClient, db: Session) -> Callable[[str], dict[str, str]]:
+    """Sign in through the account's own login form and return the Authorization header."""
 
     def sign_in(email: str) -> dict[str, str]:
-        response = client.post("/auth/login", json={"email": email, "password": PASSWORD})
+        role = db.scalar(select(UserAccount.role).where(UserAccount.email == email))
+        response = client.post(
+            "/auth/login", json={"email": email, "password": PASSWORD, "role": role}
+        )
         assert response.status_code == 200, response.text
         return {"Authorization": f"Bearer {response.json()['token']}"}
 

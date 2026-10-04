@@ -5,6 +5,7 @@ import type {
   Doctor,
   LoginResponse,
   Me,
+  Role,
   ScheduleDay,
   Slot,
 } from './types'
@@ -89,10 +90,10 @@ const json = (method: string, body: unknown): RequestInit => ({
 })
 
 export const api = {
-  async login(email: string, password: string): Promise<Me> {
+  async login(email: string, password: string, role: Role): Promise<Me> {
     const { token, ...me } = await request<LoginResponse>(
       '/auth/login',
-      json('POST', { email, password }),
+      json('POST', { email, password, role }),
     )
     setToken(token)
     return me

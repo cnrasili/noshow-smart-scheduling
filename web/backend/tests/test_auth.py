@@ -39,7 +39,8 @@ def test_login_ignores_email_case_and_spaces(client, make_doctor) -> None:
     make_doctor(email="doctor@example.com")
 
     response = client.post(
-        "/auth/login", json={"email": "  Doctor@Example.com ", "password": "test-password"}
+        "/auth/login",
+        json={"email": "  Doctor@Example.com ", "password": "test-password", "role": "doctor"},
     )
 
     assert response.status_code == 200
@@ -53,7 +54,9 @@ def test_login_ignores_email_case_and_spaces(client, make_doctor) -> None:
 def test_wrong_credentials_are_rejected(client, make_patient, email, password) -> None:
     make_patient()
 
-    response = client.post("/auth/login", json={"email": email, "password": password})
+    response = client.post(
+        "/auth/login", json={"email": email, "password": password, "role": "patient"}
+    )
 
     assert response.status_code == 401
     assert response.json()["detail"] == "Wrong email or password"
@@ -85,7 +88,8 @@ def test_logout_ends_the_session(client, db, make_patient, login) -> None:
 def test_token_is_stored_only_as_hash(client, db, make_patient) -> None:
     make_patient()
     token = client.post(
-        "/auth/login", json={"email": "patient@example.com", "password": "test-password"}
+        "/auth/login",
+        json={"email": "patient@example.com", "password": "test-password", "role": "patient"},
     ).json()["token"]
 
     stored = db.scalars(select(AuthSession)).one()
@@ -99,3 +103,32 @@ def test_doctor_profile_includes_specialty(client, make_doctor, login) -> None:
     response = client.get("/auth/me", headers=login("doctor@example.com"))
 
     assert response.json()["specialty"] == "General"
+
+
+@pytest.mark.parametrize(
+    ("make", "email", "form"),
+    [
+        ("make_doctor", "doctor@example.com", "patient"),
+        ("make_patient", "patient@example.com", "doctor"),
+    ],
+)
+def test_accounts_sign_in_only_through_their_own_form(request, client, make, email, form):
+    request.getfixturevalue(make)()
+
+    response = client.post(
+        "/auth/login", json={"email": email, "password": "test-password", "role": form}
+    )
+
+    # Same answer as a wrong password, so the e-mail's role is not revealed
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Wrong email or password"
+
+
+def test_login_requires_a_role(client, make_patient) -> None:
+    make_patient()
+
+    response = client.post(
+        "/auth/login", json={"email": "patient@example.com", "password": "test-password"}
+    )
+
+    assert response.status_code == 422
