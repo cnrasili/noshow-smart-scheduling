@@ -1,4 +1,4 @@
-# Core tables of the booking application: patients, doctors, slots, appointments
+# Core tables of the booking application: patients, doctors, slots, appointments, login accounts
 from datetime import date, datetime, time
 
 from sqlalchemy import (
@@ -101,4 +101,40 @@ class Appointment(Base):
     booking_date: Mapped[date]
     # NULL until the doctor marks the appointment as attended or missed
     attended: Mapped[bool | None]
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class UserAccount(Base):
+    """Login of a patient or a doctor; kept apart from the patient and doctor records."""
+
+    __tablename__ = "user_accounts"
+    __table_args__ = (
+        CheckConstraint(
+            "(role = 'patient' AND patient_id IS NOT NULL AND doctor_id IS NULL)"
+            " OR (role = 'doctor' AND doctor_id IS NOT NULL AND patient_id IS NULL)",
+            name="ck_user_accounts_role_matches_owner",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255))
+    # "patient" or "doctor"
+    role: Mapped[str] = mapped_column(String(16))
+    patient_id: Mapped[int | None] = mapped_column(ForeignKey("patients.id"), unique=True)
+    doctor_id: Mapped[int | None] = mapped_column(ForeignKey("doctors.id"), unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class AuthSession(Base):
+    """A signed-in session; only the SHA-256 hash of its bearer token is stored."""
+
+    __tablename__ = "auth_sessions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    account_id: Mapped[int] = mapped_column(
+        ForeignKey("user_accounts.id", ondelete="CASCADE"), index=True
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
