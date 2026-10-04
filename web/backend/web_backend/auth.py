@@ -8,6 +8,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from noshow_db.models.core import AuthSession, Doctor, Patient, UserAccount
+from web_backend.clinic import as_utc
 from web_backend.db import get_db
 from web_backend.security import hash_password, hash_token, new_token, verify_password
 
@@ -37,11 +38,6 @@ class LoginResponse(Me):
     token: str
 
 
-def _as_utc(moment: datetime) -> datetime:
-    # SQLite returns naive datetimes; values are always written in UTC
-    return moment if moment.tzinfo else moment.replace(tzinfo=UTC)
-
-
 def _unauthorized() -> HTTPException:
     return HTTPException(
         status.HTTP_401_UNAUTHORIZED,
@@ -59,7 +55,7 @@ def current_account(
     session = db.scalar(
         select(AuthSession).where(AuthSession.token_hash == hash_token(credentials.credentials))
     )
-    if session is None or _as_utc(session.expires_at) <= datetime.now(UTC):
+    if session is None or as_utc(session.expires_at) <= datetime.now(UTC):
         raise _unauthorized()
     return db.get(UserAccount, session.account_id)
 
