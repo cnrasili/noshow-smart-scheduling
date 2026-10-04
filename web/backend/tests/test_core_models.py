@@ -2,7 +2,7 @@ from collections.abc import Iterator
 from datetime import UTC, date, datetime, time
 
 import pytest
-from sqlalchemy import create_engine, func, inspect, select
+from sqlalchemy import create_engine, func, inspect, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -134,6 +134,83 @@ def test_doctor_schedule_is_one_interval_per_weekday(session: Session) -> None:
                 end_time=time(12, 0),
             )
         )
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_defaults_apply_to_raw_sql_inserts(session: Session) -> None:
+    session.execute(
+        text(
+            "INSERT INTO patients (full_name, email, age, gender) "
+            "VALUES ('Raw Patient', 'raw@example.com', 40, 'M')"
+        )
+    )
+    session.execute(text("INSERT INTO doctors (full_name) VALUES ('Dr. Raw')"))
+    session.execute(
+        text(
+            "INSERT INTO slots (doctor_id, start_at, end_at) "
+            "VALUES (1, '2026-11-10 09:00:00', '2026-11-10 09:30:00')"
+        )
+    )
+    session.commit()
+
+    patient = session.scalars(select(Patient)).one()
+    assert patient.scholarship is False
+    assert patient.hipertension is False
+    assert patient.diabetes is False
+    assert patient.alcoholism is False
+    assert patient.handcap == 0
+    assert session.scalars(select(Slot)).one().max_patients == 2
+
+
+def test_patient_age_cannot_be_negative(session: Session) -> None:
+    session.add(_patient(age=-1))
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_booking_date_cannot_be_after_appointment_date(session: Session) -> None:
+    slot = _slot(session)
+    patient = _patient()
+    session.add(patient)
+    session.flush()
+    session.add(
+        Appointment(
+            patient_id=patient.id,
+            slot_id=slot.id,
+            appointment_date=date(2026, 11, 10),
+            booking_date=date(2026, 11, 11),
+        )
+    )
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+@pytest.mark.parametrize("max_patients", [0, -1])
+def test_slot_capacity_must_be_positive(session: Session, max_patients: int) -> None:
+    session.add(Doctor(full_name="Dr. Test", specialty=None))
+    session.flush()
+    session.add(
+        Slot(
+            doctor_id=1,
+            start_at=datetime(2026, 11, 10, 9, 0, tzinfo=UTC),
+            end_at=datetime(2026, 11, 10, 9, 30, tzinfo=UTC),
+            max_patients=max_patients,
+        )
+    )
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_slot_must_end_after_it_starts(session: Session) -> None:
+    session.add(Doctor(full_name="Dr. Test", specialty=None))
+    session.flush()
+    start = datetime(2026, 11, 10, 9, 0, tzinfo=UTC)
+    session.add(Slot(doctor_id=1, start_at=start, end_at=start))
 
     with pytest.raises(IntegrityError):
         session.commit()

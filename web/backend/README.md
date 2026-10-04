@@ -26,3 +26,9 @@ pytest
 ```
 
 The API runs on http://localhost:8000 and its documentation is at http://localhost:8000/docs.
+
+Slot capacity and appointment dates are enforced by PostgreSQL triggers. Their tests are skipped unless `NOSHOW_TEST_DATABASE_URL` points to a disposable PostgreSQL database; the tests drop and recreate its `public` schema:
+
+```bash
+NOSHOW_TEST_DATABASE_URL=postgresql+psycopg://noshow:noshow@localhost:5432/noshow_test pytest
+```
