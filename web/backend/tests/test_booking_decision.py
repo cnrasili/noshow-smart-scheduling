@@ -48,7 +48,7 @@ def test_service_is_asked_with_patient_slot_and_booking_date(
     response = _book(client, headers, slot.id)
 
     assert response.status_code == 201
-    assert overbooking.requests == [
+    assert overbooking.decisions == [
         {
             "path": "/booking-decision",
             "patient_id": patient.id,
@@ -102,7 +102,7 @@ def test_empty_slot_is_booked_when_service_is_unavailable(
     response = _book(client, first_patient[1], slot.id)
 
     assert response.status_code == 201
-    assert len(overbooking.requests) == 1
+    assert len(overbooking.decisions) == 1
     assert _count(db) == 1
 
 
@@ -136,13 +136,13 @@ def test_full_slot_is_rejected_without_asking_the_service(
     _book(client, first_patient[1], slot.id)
     _book(client, second_patient[1], slot.id)
     third_headers = login(make_patient(email="third@example.com").email)
-    asked = len(overbooking.requests)
+    asked = len(overbooking.decisions)
 
     response = _book(client, third_headers, slot.id)
 
     assert response.status_code == 409
     assert response.json()["detail"] == "Slot is full"
-    assert len(overbooking.requests) == asked
+    assert len(overbooking.decisions) == asked
 
 
 def test_full_slot_is_listed_as_unavailable(

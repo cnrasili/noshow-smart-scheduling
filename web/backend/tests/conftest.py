@@ -36,6 +36,14 @@ class FakeOverbookingService:
         self.requests: list[dict] = []
         self.respond: Callable[[dict], httpx2.Response] | None = None
 
+    @property
+    def decisions(self) -> list[dict]:
+        return [r for r in self.requests if r["path"] == "/booking-decision"]
+
+    @property
+    def events(self) -> list[dict]:
+        return [r for r in self.requests if r["path"].startswith("/events/")]
+
     def allow(self, overbook: bool = False) -> None:
         self.respond = lambda _: httpx2.Response(
             200, json={"allow": True, "overbook": overbook, "p_noshow": 0.4, "reason": "ok"}

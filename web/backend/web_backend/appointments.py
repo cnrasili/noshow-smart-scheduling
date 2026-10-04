@@ -2,13 +2,13 @@
 from datetime import UTC, date, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from noshow_db.models.core import Appointment, Doctor, Slot
+from noshow_db.models.core import Appointment, Doctor, Patient, Slot
 from web_backend.auth import PatientAccount
 from web_backend.clinic import CLINIC_TZ, as_utc, today
 from web_backend.db import get_db
@@ -17,6 +17,7 @@ from web_backend.overbooking import OverbookingClient, get_overbooking_client
 router = APIRouter(tags=["appointments"])
 
 DbSession = Annotated[Session, Depends(get_db)]
+Overbooking = Annotated[OverbookingClient, Depends(get_overbooking_client)]
 
 
 class BookingRequest(BaseModel):
@@ -66,7 +67,8 @@ def book(
     body: BookingRequest,
     account: PatientAccount,
     db: DbSession,
-    overbooking: Annotated[OverbookingClient, Depends(get_overbooking_client)],
+    overbooking: Overbooking,
+    background: BackgroundTasks,
 ) -> AppointmentOut:
     # Lock the slot so two concurrent bookings cannot both see it empty (PostgreSQL)
     slot = db.scalar(select(Slot).where(Slot.id == body.slot_id).with_for_update())
@@ -106,11 +108,25 @@ def book(
         db.rollback()
         raise HTTPException(status.HTTP_409_CONFLICT, "Slot is no longer available") from error
 
+    # Sent after the response so a slow or stopped service does not delay the patient
+    background.add_task(
+        overbooking.appointment_booked,
+        appointment.id,
+        account.patient_id,
+        db.get(Patient, account.patient_id).email,
+        start_at.astimezone(CLINIC_TZ),
+    )
     return _appointment_out(appointment, slot, db.get(Doctor, slot.doctor_id))
 
 
 @router.delete("/appointments/{appointment_id}", status_code=status.HTTP_204_NO_CONTENT)
-def cancel(appointment_id: int, account: PatientAccount, db: DbSession) -> Response:
+def cancel(
+    appointment_id: int,
+    account: PatientAccount,
+    db: DbSession,
+    overbooking: Overbooking,
+    background: BackgroundTasks,
+) -> Response:
     row = db.execute(
         select(Appointment, Slot)
         .join(Slot, Slot.id == Appointment.slot_id)
@@ -124,7 +140,8 @@ def cancel(appointment_id: int, account: PatientAccount, db: DbSession) -> Respo
             status.HTTP_422_UNPROCESSABLE_CONTENT, "Past appointments cannot be cancelled"
         )
 
-    # The schema has no cancellation state yet, so the booking is removed
+    # The schema has no cancellation state, so the booking is removed
     db.delete(appointment)
     db.commit()
+    background.add_task(overbooking.appointment_cancelled, appointment_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -2,7 +2,7 @@
 import logging
 import os
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 
 import httpx2
 
@@ -57,6 +57,38 @@ class OverbookingClient:
         except (httpx2.HTTPError, ValueError, KeyError, TypeError) as error:
             logger.warning("Booking decision for slot %s unavailable: %r", slot_id, error)
             return None
+
+    def appointment_booked(
+        self, appointment_id: int, patient_id: int, email: str, appointment_start: datetime
+    ) -> bool:
+        """Report a new booking so confirmation and reminder messages are scheduled.
+
+        appointment_start must carry a time zone offset; message texts show it as sent.
+        """
+        return self._send_event(
+            "/events/appointment-booked",
+            {
+                "appointment_id": appointment_id,
+                "patient_id": patient_id,
+                "email": email,
+                "appointment_start": appointment_start.isoformat(),
+            },
+        )
+
+    def appointment_cancelled(self, appointment_id: int) -> bool:
+        """Report a cancellation so the appointment's pending messages are cancelled."""
+        return self._send_event("/events/appointment-cancelled", {"appointment_id": appointment_id})
+
+    def _send_event(self, path: str, payload: dict) -> bool:
+        # Events never undo the booking change; the service ignores repeated events
+        try:
+            self._http.post(path, json=payload).raise_for_status()
+            return True
+        except httpx2.HTTPError as error:
+            logger.warning(
+                "Event %s for appointment %s failed: %r", path, payload["appointment_id"], error
+            )
+            return False
 
 
 _client: OverbookingClient | None = None
