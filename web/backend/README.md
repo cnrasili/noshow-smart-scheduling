@@ -49,4 +49,8 @@ Sign in as `doktor@demo.local` or as a patient such as `ayse@demo.local`. All de
 
 `POST /auth/login` returns a bearer token that is valid for 12 hours; send it as `Authorization: Bearer <token>`. Passwords are hashed with scrypt and only a hash of each token is stored (`user_accounts` and `auth_sessions` tables).
 
-Until the `/booking-decision` call is added, a slot takes a single patient; overbooking will be decided by the overbooking service.
+## Overbooking
+
+Before booking, `POST /appointments` asks the overbooking service (`OVERBOOKING_SERVICE_URL`, default `http://localhost:8001`) for a `/booking-decision`. A rejected booking returns `409`. If the service does not answer within 3 seconds or returns an error, empty slots are still booked but booked slots are never overbooked. A slot that has reached its `max_patients` is rejected without asking the service.
+
+`GET /slots` marks a slot `available` while it is below capacity, so partly booked slots can be requested as extra appointments; the service decides when the patient books.
