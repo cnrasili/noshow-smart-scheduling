@@ -190,3 +190,67 @@ def test_empty_summary(client: TestClient):
     assert [g["appointments"] for g in data["groups"]] == [0, 0]
     assert data["difference"] is None
     assert data["z"] is None and data["p_value"] is None
+
+
+def test_patient_unit_counts_each_patient_once(
+    client: TestClient, session_factory: sessionmaker[Session]
+):
+    # Patient: list of (group, attended) in appointment order
+    history = {
+        1: [("control", None), ("control", False), ("control", True)],
+        2: [("reminder", True), ("reminder", False)],
+        3: [("reminder", True)],
+    }
+    with session_factory() as session:
+        session.add(Doctor(id=1, full_name="Doctor"))
+        appointment_id = 0
+        for patient_id, visits in history.items():
+            session.add(
+                Patient(
+                    id=patient_id,
+                    full_name="Patient",
+                    email=f"p{patient_id}@example.com",
+                    age=40,
+                    gender="F",
+                )
+            )
+            for group, attended in visits:
+                appointment_id += 1
+                slot_start = NOW + timedelta(days=appointment_id)
+                session.add_all(
+                    [
+                        Slot(
+                            id=appointment_id,
+                            doctor_id=1,
+                            start_at=slot_start,
+                            end_at=slot_start + timedelta(minutes=20),
+                        ),
+                        Appointment(
+                            id=appointment_id,
+                            patient_id=patient_id,
+                            slot_id=appointment_id,
+                            appointment_date=slot_start.date(),
+                            booking_date=date(2026, 11, 1),
+                            attended=attended,
+                        ),
+                        AbAssignment(
+                            appointment_id=appointment_id, patient_id=patient_id, group=group
+                        ),
+                    ]
+                )
+        session.commit()
+
+    by_appointment = client.get("/ab/summary").json()
+    assert by_appointment["unit"] == "appointment"
+    assert [(g["appointments"], g["no_shows"]) for g in by_appointment["groups"]] == [
+        (3, 1),
+        (2, 1),
+    ]
+
+    by_patient = client.get("/ab/summary", params={"unit": "patient"}).json()
+    assert by_patient["unit"] == "patient"
+    assert [(g["appointments"], g["no_shows"]) for g in by_patient["groups"]] == [(2, 0), (1, 1)]
+
+
+def test_invalid_unit_returns_422(client: TestClient):
+    assert client.get("/ab/summary", params={"unit": "day"}).status_code == 422

@@ -173,6 +173,15 @@ def test_dashboard_without_doctors(client: TestClient):
 def test_dashboard_assets_are_served(client: TestClient):
     assert client.get("/static/dashboard.css").status_code == 200
     assert client.get("/static/dashboard.js").status_code == 200
+    assert client.get("/static/chart.umd.min.js").status_code == 200
+
+
+def test_dashboard_needs_no_external_scripts(client: TestClient, clinic):
+    html = client.get("/dashboard", params={"doctor_id": 1, "date": "2026-11-10"}).text
+    assert re.findall(r'src="(https?://[^"]+)"', html) == [
+        "http://testserver/static/chart.umd.min.js",
+        "http://testserver/static/dashboard.js",
+    ]
 
 
 def test_default_settings_come_from_config():

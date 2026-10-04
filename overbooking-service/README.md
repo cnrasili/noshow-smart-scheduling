@@ -118,7 +118,7 @@ Messages are sent by email when `SMTP_HOST` is set; otherwise they are written t
 
 Each appointment that can get a reminder is assigned to the `reminder` or `control` group, and the assignment is logged in the `ab_assignments` table. The control group gets the confirmation but no reminder. The group is a hash of the patient id and `salt`, so a patient stays in the same group for all appointments and the groups are about equal in size.
 
-`GET /ab/summary` compares the no-show rates of the two groups using `appointments.attended` (see the [API contract](../docs/api-contract.md#get-absummary)).
+`GET /ab/summary` compares the no-show rates of the two groups using `appointments.attended` (see the [API contract](../docs/api-contract.md#get-absummary)). With `unit=patient` each patient counts once, through the earliest appointment with an outcome; this keeps the observations of the z-test independent.
 
 | Setting | Default | Meaning |
 |---|---|---|
@@ -135,7 +135,7 @@ The booking application does not record consultation times, so the KPIs replay t
 - Patients with `attended = true` are seen in slot order, each for `service_minutes`, and arrive on time.
 - Appointments without a recorded attendance are not counted as seen.
 
-The default consultation length is the simulation's mean service time.
+The default consultation length is the simulation's mean service time. Chart.js is served by the service (`static/chart.umd.min.js`), so the dashboard also works without internet access.
 
 | Setting | Default | Meaning |
 |---|---|---|
@@ -150,6 +150,7 @@ The default consultation length is the simulation's mean service time.
 - Sixteen 15-minute slots per doctor from 09:00 on the 10 working days before the demo date and the 5 working days from it.
 - Booking requests processed with the same overbooking rule as `/booking-decision`: the first empty slot, otherwise the first slot the rule allows to overbook.
 - Past appointments get an outcome drawn from the model's `p_noshow` and, when a reminder was possible, an A/B group. Future appointments have no outcome, so free slots remain for live bookings.
+- No messages are created for the generated appointments; only appointments reported to `POST /events/appointment-booked` get a confirmation and a reminder.
 
 | Option | Default | Meaning |
 |---|---|---|
@@ -171,6 +172,6 @@ The command refuses to run when the database already has doctors. To start from 
    The command prints an empty and a booked slot of doctor 1 on the next working day.
 
 2. Open the KPI dashboard at http://localhost:8001/dashboard. The past days show utilization, idle time, overtime, waiting time and overbooked slots.
-3. Open http://localhost:8001/ab/summary to compare the no-show rates of the reminder and control groups.
+3. Open http://localhost:8001/ab/summary to compare the no-show rates of the reminder and control groups, and http://localhost:8001/ab/summary?unit=patient for one observation per patient.
 4. In the API docs at http://localhost:8001/docs, call `POST /booking-decision` for the empty slot (normal booking) and for the booked slot (overbook or reject, with the reason).
 5. Call `POST /events/appointment-booked` for a new appointment id. The response shows the A/B group and the scheduled messages; the confirmation appears in Mailpit at http://localhost:8025 within a minute.

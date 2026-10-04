@@ -151,10 +151,20 @@ Errors:
 
 Compares the no-show rate of the reminder and control groups. Only appointments with a recorded `attended` value count; deleted (cancelled) appointments are excluded.
 
+Request: `GET /ab/summary?unit=appointment`
+
+| `unit` | Observations |
+|---|---|
+| `appointment` (default) | Every appointment |
+| `patient` | Each patient's earliest appointment, so that frequent patients do not weigh more |
+
+The z-test assumes independent observations. Appointments of the same patient are not independent, so `unit=patient` gives the more reliable p-value.
+
 Response:
 
 ```json
 {
+  "unit": "appointment",
   "groups": [
     { "group": "reminder", "appointments": 120, "no_shows": 18, "no_show_rate": 0.15 },
     { "group": "control", "appointments": 115, "no_shows": 29, "no_show_rate": 0.252 }

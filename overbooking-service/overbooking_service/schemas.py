@@ -66,6 +66,7 @@ class AbGroupSummary(BaseModel):
 
 
 class AbSummary(BaseModel):
+    unit: str
     groups: list[AbGroupSummary]
     difference: float | None
     z: float | None

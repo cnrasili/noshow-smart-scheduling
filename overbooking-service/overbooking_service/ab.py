@@ -3,7 +3,7 @@ import math
 from enum import StrEnum
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -18,6 +18,11 @@ router = APIRouter(prefix="/ab")
 class Group(StrEnum):
     REMINDER = "reminder"
     CONTROL = "control"
+
+
+class Unit(StrEnum):
+    APPOINTMENT = "appointment"
+    PATIENT = "patient"
 
 
 def assign_group(patient_id: int, salt: str) -> Group:
@@ -39,9 +44,12 @@ def two_proportion_test(k1: int, n1: int, k2: int, n2: int) -> tuple[float, floa
 
 
 @router.get("/summary")
-def summary(session: Annotated[Session, Depends(get_session)]) -> AbSummary:
+def summary(
+    session: Annotated[Session, Depends(get_session)],
+    unit: Annotated[Unit, Query()] = Unit.APPOINTMENT,
+) -> AbSummary:
     # Only appointments with a recorded outcome
-    rows = session.execute(
+    query = (
         select(
             AbAssignment.group,
             func.count(),
@@ -50,7 +58,17 @@ def summary(session: Annotated[Session, Depends(get_session)]) -> AbSummary:
         .join(Appointment, Appointment.id == AbAssignment.appointment_id)
         .where(Appointment.attended.is_not(None))
         .group_by(AbAssignment.group)
-    ).all()
+    )
+    if unit is Unit.PATIENT:
+        # One observation per patient: the earliest appointment with an outcome
+        first = (
+            select(func.min(Appointment.id))
+            .join(AbAssignment, AbAssignment.appointment_id == Appointment.id)
+            .where(Appointment.attended.is_not(None))
+            .group_by(AbAssignment.patient_id)
+        )
+        query = query.where(Appointment.id.in_(first))
+    rows = session.execute(query).all()
     counts = {group: (n, no_shows) for group, n, no_shows in rows}
 
     groups = []
@@ -66,6 +84,7 @@ def summary(session: Annotated[Session, Depends(get_session)]) -> AbSummary:
         control.no_shows, control.appointments, reminder.no_shows, reminder.appointments
     )
     return AbSummary(
+        unit=unit,
         groups=groups,
         difference=(
             control.no_show_rate - reminder.no_show_rate
