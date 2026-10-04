@@ -5,6 +5,7 @@ import type {
   Doctor,
   LoginResponse,
   Me,
+  ScheduleDay,
   Slot,
 } from './types'
 
@@ -118,6 +119,7 @@ export const api = {
       `/appointments/${appointmentId}/attendance`,
       json('PATCH', { attended }),
     ),
+  schedule: () => request<ScheduleDay[]>('/doctors/me/schedule'),
   generateSlots: (dateFrom: string, dateTo: string) =>
     request<{ created: number }>(
       '/doctors/me/slots/generate',

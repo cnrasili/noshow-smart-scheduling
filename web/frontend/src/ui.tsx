@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, type ReactNode } from 'react'
 
 export interface NoticeState {
   kind: 'success' | 'error'
@@ -29,8 +29,28 @@ export function Notice({ notice, onClose }: { notice: NoticeState | null; onClos
   )
 }
 
-export function AttendanceBadge({ attended }: { attended: boolean | null }) {
-  if (attended === true) return <span className="badge badge-ok">Geldi</span>
-  if (attended === false) return <span className="badge badge-miss">Gelmedi</span>
-  return <span className="badge">İşaretlenmedi</span>
+export type Tone = 'neutral' | 'info' | 'ok' | 'warn' | 'miss'
+
+export function Status({ tone, children }: { tone: Tone; children: ReactNode }) {
+  return <span className={`status status-${tone}`}>{children}</span>
+}
+
+export function PageHeader({
+  title,
+  description,
+  children,
+}: {
+  title: string
+  description?: string
+  children?: ReactNode
+}) {
+  return (
+    <div className="page-header">
+      <div>
+        <h1>{title}</h1>
+        {description && <p className="muted">{description}</p>}
+      </div>
+      {children}
+    </div>
+  )
 }

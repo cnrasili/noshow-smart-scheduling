@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { api, errorText } from '../api'
+import { INSTITUTION_NAME, SYSTEM_NAME } from '../config'
 import type { Me } from '../types'
 
 export function LoginPage({ onSignedIn }: { onSignedIn: (me: Me) => void }) {
@@ -15,8 +16,9 @@ export function LoginPage({ onSignedIn }: { onSignedIn: (me: Me) => void }) {
     try {
       onSignedIn(await api.login(email, password))
     } catch (err) {
+      const message = errorText(err)
       setError(
-        errorText(err) === 'Wrong email or password' ? 'E-posta veya şifre hatalı' : errorText(err),
+        message === 'Wrong email or password' ? 'E-posta adresi veya şifre hatalı.' : message,
       )
     } finally {
       setBusy(false)
@@ -24,39 +26,67 @@ export function LoginPage({ onSignedIn }: { onSignedIn: (me: Me) => void }) {
   }
 
   return (
-    <main className="login">
-      <form className="card login-card" onSubmit={submit}>
-        <h1>Poliklinik Randevu Sistemi</h1>
-        <p className="muted">Hasta veya doktor hesabınızla giriş yapın.</p>
-        <label>
-          E-posta
-          <input
-            type="email"
-            autoComplete="username"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            required
-          />
-        </label>
-        <label>
-          Şifre
-          <input
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-          />
-        </label>
-        {error && (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
-        )}
-        <button type="submit" className="primary" disabled={busy}>
-          {busy ? 'Giriş yapılıyor…' : 'Giriş yap'}
-        </button>
-      </form>
-    </main>
+    <div className="login-page">
+      <header className="login-header">
+        <div className="brand">
+          <span className="brand-name">{INSTITUTION_NAME}</span>
+          <span className="brand-system">{SYSTEM_NAME}</span>
+        </div>
+      </header>
+
+      <main className="login-main">
+        <div className="login-box">
+          <section className="login-info">
+            <h1>Poliklinik randevu işlemleri</h1>
+            <dl>
+              <div>
+                <dt>Hastalar</dt>
+                <dd>Branş ve hekim seçerek randevu alma, randevuları görüntüleme ve iptal etme</dd>
+              </div>
+              <div>
+                <dt>Hekimler</dt>
+                <dd>Günlük hasta listesi, geliş kaydı ve çalışma takvimi</dd>
+              </div>
+            </dl>
+          </section>
+
+          <form className="login-form" onSubmit={submit}>
+            <h2>Kullanıcı girişi</h2>
+            <label>
+              E-posta adresi
+              <input
+                type="email"
+                autoComplete="username"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+              />
+            </label>
+            <label>
+              Şifre
+              <input
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+              />
+            </label>
+            {error && (
+              <p className="form-error" role="alert">
+                {error}
+              </p>
+            )}
+            <button type="submit" className="primary block" disabled={busy}>
+              {busy ? 'Giriş yapılıyor…' : 'Giriş yap'}
+            </button>
+          </form>
+        </div>
+      </main>
+
+      <footer className="login-footer">
+        Demo ortamı. Sistemdeki hasta ve hekim kayıtları gerçek kişilere ait değildir.
+      </footer>
+    </div>
   )
 }
