@@ -1,4 +1,5 @@
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, Field
 from pydantic_settings import (
@@ -31,6 +32,8 @@ class Settings(BaseSettings):
     )
 
     model_dir: Path = SERVICE_ROOT / "models"
+    # Slot dates follow the clinic's local calendar
+    clinic_timezone: ZoneInfo
     overbooking: OverbookingRule
     reminders: ReminderSettings
     smtp_host: str | None = None

@@ -1,16 +1,17 @@
 from collections.abc import Iterator
 from datetime import UTC, datetime
+from typing import Annotated
 
-from fastapi import Request
+from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
 from noshow_db import SessionLocal
 from overbooking_service.config import ReminderSettings, settings
 from overbooking_service.data_source import (
+    DbPatientSource,
+    DbSlotSource,
     PatientDataSource,
     SlotDataSource,
-    UnconfiguredDataSource,
-    UnconfiguredSlotSource,
 )
 from overbooking_service.predictor import Predictor
 from overbooking_service.rules import OverbookingRule
@@ -20,12 +21,17 @@ def get_predictor(request: Request) -> Predictor:
     return request.app.state.predictor
 
 
-def get_data_source() -> PatientDataSource:
-    return UnconfiguredDataSource()
+def get_session() -> Iterator[Session]:
+    with SessionLocal() as session:
+        yield session
 
 
-def get_slot_source() -> SlotDataSource:
-    return UnconfiguredSlotSource()
+def get_data_source(session: Annotated[Session, Depends(get_session)]) -> PatientDataSource:
+    return DbPatientSource(session)
+
+
+def get_slot_source(session: Annotated[Session, Depends(get_session)]) -> SlotDataSource:
+    return DbSlotSource(session, settings.clinic_timezone)
 
 
 def get_rule() -> OverbookingRule:
@@ -38,8 +44,3 @@ def get_reminder_settings() -> ReminderSettings:
 
 def get_now() -> datetime:
     return datetime.now(UTC)
-
-
-def get_session() -> Iterator[Session]:
-    with SessionLocal() as session:
-        yield session

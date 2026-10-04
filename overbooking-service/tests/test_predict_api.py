@@ -41,7 +41,7 @@ def test_invalid_patient_id_returns_422(client: TestClient):
     assert response.status_code == 422
 
 
-def test_unconfigured_data_source_returns_503(client: TestClient):
+def test_unknown_patient_in_database_returns_404(client: TestClient):
     del app.dependency_overrides[get_data_source]
     response = client.post("/predict", json=BODY)
-    assert response.status_code == 503
+    assert response.status_code == 404

@@ -62,13 +62,13 @@ Response:
 
 `p_noshow` is the risk of the requesting patient for the slot date. `overbook` is `true` when the patient is added to an already booked slot.
 
-Rule (parameters in `overbooking-service/config.yaml`):
+Rule (`max_patients` is the slot's capacity in the `slots` table; other parameters in `overbooking-service/config.yaml`):
 
 | Slot state | Decision |
 |---|---|
 | Empty | Allow, normal booking |
 | Patient already booked in the slot | Reject |
-| Patients in slot >= `max_patients_per_slot` | Reject |
+| Patients in slot >= `max_patients` | Reject |
 | Any booked patient's `p_noshow` < `threshold` | Reject |
 | Overbooks of the doctor on the slot date >= `daily_overbook_limit` | Reject |
 | Otherwise | Allow as overbook |

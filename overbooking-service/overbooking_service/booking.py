@@ -69,7 +69,7 @@ def booking_decision(
             daily_overbooks = (
                 slots.count_overbooks(slot.doctor_id, slot.slot_date) if slot.bookings else 0
             )
-            decision = decide(booked_risks, daily_overbooks, rule)
+            decision = decide(booked_risks, slot.max_patients, daily_overbooks, rule)
     except DataSourceUnavailable as exc:
         raise HTTPException(503, str(exc)) from exc
 

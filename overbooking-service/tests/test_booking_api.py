@@ -48,11 +48,12 @@ class FakeSlots:
     def __init__(self) -> None:
         self.overbooks = 0
         self.slots = {
-            10: SlotState(10, 1, SLOT_DATE, ()),
-            11: SlotState(11, 1, SLOT_DATE, (SlotBooking(2, BOOKED),)),
-            12: SlotState(12, 1, SLOT_DATE, (SlotBooking(3, BOOKED),)),
-            13: SlotState(13, 1, SLOT_DATE, (SlotBooking(2, BOOKED), SlotBooking(4, BOOKED))),
-            14: SlotState(14, 1, SLOT_DATE, (SlotBooking(99, BOOKED),)),
+            10: SlotState(10, 1, SLOT_DATE, 2, ()),
+            11: SlotState(11, 1, SLOT_DATE, 2, (SlotBooking(2, BOOKED),)),
+            12: SlotState(12, 1, SLOT_DATE, 2, (SlotBooking(3, BOOKED),)),
+            13: SlotState(13, 1, SLOT_DATE, 2, (SlotBooking(2, BOOKED), SlotBooking(4, BOOKED))),
+            14: SlotState(14, 1, SLOT_DATE, 2, (SlotBooking(99, BOOKED),)),
+            15: SlotState(15, 1, SLOT_DATE, 1, (SlotBooking(2, BOOKED),)),
         }
 
     def get_slot(self, slot_id: int) -> SlotState | None:
@@ -69,7 +70,7 @@ def slots(client: TestClient) -> FakeSlots:
     app.dependency_overrides[get_data_source] = FakePatients
     app.dependency_overrides[get_predictor] = FakePredictor
     app.dependency_overrides[get_rule] = lambda: OverbookingRule(
-        threshold=0.30, max_patients_per_slot=2, daily_overbook_limit=2
+        threshold=0.30, daily_overbook_limit=2
     )
     return fake
 
@@ -111,6 +112,12 @@ def test_full_slot_is_rejected(client: TestClient, slots: FakeSlots):
     assert data["reason"] == "Slot is full (2/2 patients)"
 
 
+def test_slot_capacity_comes_from_slot(client: TestClient, slots: FakeSlots):
+    data = post(client, slot_id=15)
+    assert not data["allow"]
+    assert data["reason"] == "Slot is full (1/1 patients)"
+
+
 def test_patient_already_in_slot_is_rejected(client: TestClient, slots: FakeSlots):
     data = post(client, patient_id=2, slot_id=11)
     assert not data["allow"]
@@ -146,13 +153,12 @@ def test_error_responses(client: TestClient, slots: FakeSlots, overrides: dict, 
     assert response.status_code == status
 
 
-def test_unconfigured_slot_source_returns_503(client: TestClient):
+def test_unknown_slot_in_database_returns_404(client: TestClient):
     response = client.post("/booking-decision", json=BODY)
-    assert response.status_code == 503
+    assert response.status_code == 404
 
 
 def test_default_rule_comes_from_config():
     rule = get_rule()
     assert rule.threshold == 0.30
-    assert rule.max_patients_per_slot == 2
     assert rule.daily_overbook_limit == 2

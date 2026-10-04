@@ -2,7 +2,7 @@ import pytest
 
 from overbooking_service.rules import OverbookingRule, decide
 
-RULE = OverbookingRule(threshold=0.30, max_patients_per_slot=2, daily_overbook_limit=2)
+RULE = OverbookingRule(threshold=0.30, daily_overbook_limit=2)
 
 
 @pytest.mark.parametrize(
@@ -36,27 +36,25 @@ RULE = OverbookingRule(threshold=0.30, max_patients_per_slot=2, daily_overbook_l
     ],
 )
 def test_decide(booked_risks, daily_overbooks, allow, overbook, reason):
-    decision = decide(booked_risks, daily_overbooks, RULE)
+    decision = decide(booked_risks, 2, daily_overbooks, RULE)
     assert (decision.allow, decision.overbook, decision.reason) == (allow, overbook, reason)
 
 
 def test_lowest_booked_risk_is_used():
-    rule = RULE.model_copy(update={"max_patients_per_slot": 3})
-    decision = decide([0.80, 0.10], 0, rule)
+    decision = decide([0.80, 0.10], 3, 0, RULE)
     assert not decision.allow
     assert "0.10 < 0.30" in decision.reason
 
 
 def test_zero_daily_limit_disables_overbooking():
     rule = RULE.model_copy(update={"daily_overbook_limit": 0})
-    assert not decide([0.90], 0, rule).allow
+    assert not decide([0.90], 2, 0, rule).allow
 
 
 @pytest.mark.parametrize(
     "values",
     [
         {"threshold": 1.5},
-        {"max_patients_per_slot": 0},
         {"daily_overbook_limit": -1},
     ],
 )

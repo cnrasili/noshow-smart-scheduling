@@ -59,20 +59,23 @@ The current model is a placeholder (`dummy-v0`) created by `scripts/make_dummy_m
 
 ## Patient Data
 
-Features are computed from the patient record and appointment history. Access goes through the `PatientDataSource` interface in `overbooking_service/data_source.py`. Until the booking application tables exist, `/predict` returns `503`.
+Features are computed from the patient record and appointment history in the `patients` and `appointments` tables. Only appointments with a recorded `attended` value count as history. Access goes through the `PatientDataSource` interface in `overbooking_service/data_source.py`; `/predict` returns `503` when the tables cannot be read.
 
 ## Overbooking Rule
 
 `POST /booking-decision` decides whether a patient may be booked into a slot. The rule is the pure function `decide` in `overbooking_service/rules.py`; the decision table is in the [API contract](../docs/api-contract.md#post-booking-decision).
 
-Slot state is read through the `SlotDataSource` interface in `overbooking_service/data_source.py`. Until the booking application tables exist, `/booking-decision` returns `503`.
+Slot state is read from the `slots` and `appointments` tables through the `SlotDataSource` interface in `overbooking_service/data_source.py`; `/booking-decision` returns `503` when the tables cannot be read.
+
+- Slot capacity is the slot's `max_patients` column.
+- The slot date is the date of `start_at` in `clinic_timezone` (`config.yaml`, default `Europe/Istanbul`), the same time zone as the database triggers.
+- Daily overbooks are the appointments after the first one in each slot of the doctor on that date.
 
 Rule parameters are read from `config.yaml`. The current values are defaults until the simulation study sets the final ones.
 
 | Setting | Default | Meaning |
 |---|---|---|
 | `threshold` | 0.30 | Minimum `p_noshow` of the booked patient for an overbook |
-| `max_patients_per_slot` | 2 | Maximum patients in one slot, including overbooks |
 | `daily_overbook_limit` | 2 | Maximum overbooks per doctor per day |
 
 Environment variables override the file, for example `OVERBOOKING__THRESHOLD=0.25`. With Docker Compose, rebuild the service after editing `config.yaml`.

@@ -1,7 +1,10 @@
+# Time zone of slot dates; matches the booking database triggers
+clinic_timezone: Europe/Istanbul
+
 # Overbooking rule defaults; final values come from the simulation study
+# Slot capacity is each slot's max_patients in the booking database
 overbooking:
   threshold: 0.30
-  max_patients_per_slot: 2
   daily_overbook_limit: 2
 
 # Confirmation and reminder messages
