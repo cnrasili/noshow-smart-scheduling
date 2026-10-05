@@ -1,8 +1,34 @@
 # Outpatient Appointment System: No-Show Prediction and Smart Scheduling
 
+[![CI](https://github.com/cnrasili/noshow-smart-scheduling/actions/workflows/ci.yml/badge.svg)](https://github.com/cnrasili/noshow-smart-scheduling/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Python 3.12](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
+![React 19](https://img.shields.io/badge/react-19-61DAFB?logo=react&logoColor=black)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+![PostgreSQL 16](https://img.shields.io/badge/postgresql-16-4169E1?logo=postgresql&logoColor=white)
+
+> An appointment booking system that predicts which patients will miss their appointment, overbooks only where the risk is high, and measures the effect with discrete-event simulation.
+
 Outpatient clinics lose capacity when patients miss their appointments without notice, while overbooking every slot uniformly leads to congestion, long waiting times and physician overtime. This project builds a working appointment booking application in which a machine learning model estimates each patient's no-show probability at booking time. Slots are overbooked selectively, only where the no-show risk is high, and patients receive automated confirmation and reminder messages. The resulting schedules are evaluated with discrete-event simulation to show that both patient waiting time and physician idle time improve compared with fixed-interval booking, and the system reports utilization, idle time and overtime on an admin dashboard.
 
 The project is developed as an interdisciplinary study combining industrial engineering (appointment template design, overbooking policy, simulation) and computer engineering (web application, model-serving API, reminder engine).
+
+## Contents
+
+- [Scope](#scope)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
+- [Repository Structure](#repository-structure)
+- [Development](#development)
+- [Dataset](#dataset)
+- [Shared Contracts](#shared-contracts)
+- [Workflow](#workflow)
+- [Project Status](#project-status)
+- [Course](#course)
+- [License](#license)
+- [References](#references)
 
 ## Scope
 
@@ -12,27 +38,41 @@ The project is developed as an interdisciplinary study combining industrial engi
 - Selective overbooking is compared with fixed-interval booking.
 - Real patient data and integration with hospital information systems are outside the scope.
 
-## System Overview
+## Features
 
-```
-[Web frontend] --> [Web backend] --HTTP--> [Overbooking service]
-                        |                       |-- Feature builder --> No-show model --> p_noshow
-                        |                       |-- Overbooking rule engine
-                        |                       |-- Reminder scheduler --> Email (SMTP)
-                        |                       |-- A/B assignment and logging
-                        |                       `-- KPI calculator --> Admin dashboard
-                        |                               |
-                        `-------> [PostgreSQL] <--------'
+| Area | What it does |
+|---|---|
+| **Booking application** | Patients choose department → doctor → day → time and manage their appointments. Doctors see their daily patient list, record attendance and open slots from their working hours. Separate patient and doctor login. |
+| **No-show prediction** | Each booking is scored with the patient's no-show probability, computed only from information known at booking time. |
+| **Selective overbooking** | A booked slot accepts an extra patient only when every booked patient is likely to miss the appointment, within the slot capacity and a daily limit. Every decision is logged with its reason. |
+| **Confirmation and reminders** | A confirmation is sent at booking and a reminder before the appointment; cancelled appointments stop their reminders. |
+| **Reminder A/B test** | Patients are split into reminder and control groups; the no-show rates of the groups are compared with a two-proportion z-test. |
+| **KPI dashboard** | Utilization, physician idle time, overtime, mean waiting time and overbooked slots per doctor and day. |
+| **Simulation** | SimPy model of a clinic session that compares fixed-interval booking, overbooking rules and appointment templates on real appointment days. |
+| **Model reports** | Data cleaning, logistic regression and random forest, AUC and calibration reports. |
 
-[ML pipeline] --> model file --> Overbooking service
-[Simulation]  <-- no-show probabilities + overbooking rule
+## Architecture
+
+```mermaid
+flowchart LR
+    U([Patient / Doctor]) --> FE[Web frontend<br/>React]
+    FE --> BE[Web backend<br/>FastAPI]
+    BE -->|booking decision<br/>booking events| OS[Overbooking service<br/>FastAPI]
+    BE --> DB[(PostgreSQL)]
+    OS --> DB
+    OS --> MAIL[Email<br/>SMTP / Mailpit]
+    OS --> DASH[KPI dashboard]
+    ML[ML pipeline] -->|trained model| OS
+    ML -->|no-show risks| SIM[SimPy simulation]
 ```
+
+The web backend asks the overbooking service before every booking. The service computes the features, scores the patient with the model, applies the overbooking rule and schedules the messages. Both backends share one PostgreSQL database with a single Alembic migration history.
 
 ## Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Web frontend | React 19, TypeScript, Vite |
+| Web frontend | React 19, React Router, TypeScript, Vite |
 | Web backend | FastAPI, Pydantic |
 | Overbooking service | FastAPI, Pydantic, APScheduler, scikit-learn, joblib |
 | KPI dashboard | Jinja2, Chart.js (served by the overbooking service) |
@@ -43,18 +83,6 @@ The project is developed as an interdisciplinary study combining industrial engi
 | Infrastructure | Docker Compose, GitHub Actions |
 | Code quality | ruff, pytest, oxlint, Prettier |
 
-## Repository Structure
-
-| Folder | Content |
-|---|---|
-| [`web/frontend/`](web/frontend/) | Patient and doctor interfaces |
-| [`web/backend/`](web/backend/) | Booking API, calendar/slot algorithm |
-| [`overbooking-service/`](overbooking-service/) | Model-serving REST API, overbooking rule engine, reminder jobs, A/B logging, KPI dashboard |
-| [`db/`](db/) | Shared SQLAlchemy models and Alembic migrations |
-| [`ml/`](ml/) | Data preparation, no-show prediction model (logistic regression / random forest), AUC and calibration |
-| [`simulation/`](simulation/) | Appointment template, overbooking policy, SimPy discrete-event simulation |
-| [`docs/`](docs/) | Shared contracts between components: API, model features, KPI definitions |
-
 ## Getting Started
 
 Requirements: Docker Desktop.
@@ -62,12 +90,15 @@ Requirements: Docker Desktop.
 ```bash
 git clone https://github.com/cnrasili/noshow-smart-scheduling.git
 cd noshow-smart-scheduling
-docker compose up --build
+docker compose up --build -d
+docker compose exec web-backend python -m web_backend.seed
 ```
+
+The last command creates a fictional clinic with doctors, patients, login accounts and slots. The demo accounts are listed in the [web backend README](web/backend/README.md#demo-data).
 
 | Service | URL |
 |---|---|
-| Web frontend | http://localhost:5173 |
+| Web application | http://localhost:5173 |
 | Web backend API docs | http://localhost:8000/docs |
 | Overbooking service API docs | http://localhost:8001/docs |
 | KPI dashboard | http://localhost:8001/dashboard |
@@ -76,9 +107,10 @@ docker compose up --build
 
 Default settings work without configuration. To change them, copy `.env.example` to `.env`.
 
-Each component can also be run without Docker; see its README.
+A separate demo with past appointments, A/B groups and KPI history is described in the [overbooking service README](overbooking-service/README.md#demo-scenario); it needs an empty database.
 
-### Troubleshooting
+<details>
+<summary><b>Troubleshooting</b></summary>
 
 | Problem | Solution |
 |---|---|
@@ -87,6 +119,35 @@ Each component can also be run without Docker; see its README.
 | Code changes are not picked up | File watching uses polling in Docker; wait a few seconds or restart the service with `docker compose restart <service>`. |
 | Database schema is out of date | Run `docker compose up --build migrate`. |
 | Start from a clean database | Run `docker compose down -v`. This deletes all local data. |
+
+</details>
+
+## Repository Structure
+
+| Folder | Content |
+|---|---|
+| [`web/frontend/`](web/frontend/) | Patient and doctor interfaces |
+| [`web/backend/`](web/backend/) | Booking API, login, slot generation, demo data |
+| [`overbooking-service/`](overbooking-service/) | Model-serving REST API, overbooking rule engine, reminder jobs, A/B logging, KPI dashboard |
+| [`db/`](db/) | Shared SQLAlchemy models and Alembic migrations |
+| [`ml/`](ml/) | Data preparation, no-show prediction model (logistic regression / random forest), AUC and calibration |
+| [`simulation/`](simulation/) | Appointment templates, overbooking policies, SimPy discrete-event simulation |
+| [`docs/`](docs/) | Shared contracts between components: API, model features, KPI definitions |
+
+Each folder has its own README with setup and usage details.
+
+## Development
+
+Each component can also be run without Docker; see its README. The checks that CI runs:
+
+```bash
+ruff check .
+ruff format --check .
+pytest web/backend overbooking-service
+cd web/frontend && npm run lint && npm run format:check && npm run build
+```
+
+Tests that need PostgreSQL run only when `NOSHOW_TEST_DATABASE_URL` points to a disposable database (see the [web backend README](web/backend/README.md)).
 
 ## Dataset
 
@@ -112,12 +173,22 @@ Components depend on each other through the files below. Changes to them are agr
 
 ## Workflow
 
-- `main` always contains working code.
-- Work on a feature branch, for example `feature/predict-api`, and merge through a pull request.
+- `main` always contains working code and is updated only by the maintainer through reviewed pull requests.
+- Each contributor works on one branch and keeps it up to date with `main` (`git merge origin/main`). Older branches of the same contributor are removed automatically by the `Branch cleanup` workflow; unmerged work is kept as an `archive/...` tag.
+- Pull requests reference the issue they solve (`Closes #<number>`); open work is tracked in [GitHub Issues](https://github.com/cnrasili/noshow-smart-scheduling/issues).
 - Commit messages are one line in the form `type: Imperative short message`, for example `feat: Add prediction endpoint` or `fix: Correct lead time calculation`.
 - Database changes go through Alembic migrations in [`db/`](db/).
-- Never commit secrets. Copy `.env.example` to `.env` and fill in local values.
-- CI runs linters, tests and the frontend build on every push and pull request.
+- Never commit secrets or the dataset. Copy `.env.example` to `.env` and fill in local values.
+
+## Project Status
+
+| Component | Status |
+|---|---|
+| Booking application | Working: login, booking, cancellation, doctor views, attendance |
+| Overbooking service | Working: prediction, overbooking decision, messages, A/B test, KPI dashboard |
+| Prediction model | Trained; the service still uses a placeholder model until the trained model is delivered |
+| Overbooking rule | Default threshold; the final rule and threshold come from the simulation study |
+| Simulation | Single session, appointment templates and real appointment days; extension to several physicians and departments planned |
 
 ## Course
 
