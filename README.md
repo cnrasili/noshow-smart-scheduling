@@ -176,6 +176,7 @@ Components depend on each other through the files below. Changes to them are agr
 - `main` always contains working code and is updated only by the maintainer through reviewed pull requests.
 - Each contributor works on one branch and keeps it up to date with `main` (`git merge origin/main`). Older branches of the same contributor are removed automatically by the `Branch cleanup` workflow; unmerged work is kept as an `archive/...` tag.
 - Pull requests reference the issue they solve (`Closes #<number>`); open work is tracked in [GitHub Issues](https://github.com/cnrasili/noshow-smart-scheduling/issues).
+- Each issue has one assignee and covers one component; its Scope section lists the files it may change. Work needed in another component is requested in a comment, not made in the same pull request.
 - Commit messages are one line in the form `type: Imperative short message`, for example `feat: Add prediction endpoint` or `fix: Correct lead time calculation`.
 - Database changes go through Alembic migrations in [`db/`](db/).
 - Never commit secrets or the dataset. Copy `.env.example` to `.env` and fill in local values.
