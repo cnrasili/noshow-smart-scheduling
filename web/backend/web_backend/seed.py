@@ -63,7 +63,8 @@ PATIENTS = [
     ("Hasan Öztürk", "hasan@demo.local", 73, "M", False, True, False, False, 2),
 ]
 
-PAST_DAYS = 7
+# Three past weeks give the overbooking service demo enough history for KPIs and A/B
+PAST_DAYS = 21
 FUTURE_DAYS = 14
 
 

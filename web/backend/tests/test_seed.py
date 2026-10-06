@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from sqlalchemy import delete, func, select
 
 from noshow_db.models.core import (
@@ -8,7 +10,8 @@ from noshow_db.models.core import (
     Slot,
     UserAccount,
 )
-from web_backend.seed import DEMO_PASSWORD, DOCTORS, PATIENTS, seed
+from web_backend.clinic import CLINIC_TZ, as_utc, today
+from web_backend.seed import DEMO_PASSWORD, DOCTORS, PAST_DAYS, PATIENTS, seed
 
 
 def _count(db, model) -> int:
@@ -49,6 +52,15 @@ def test_every_doctor_gets_working_hours_slots_and_examples(db) -> None:
             .join(Slot, Slot.id == Appointment.slot_id)
             .where(Slot.doctor_id == doctor_id)
         ), doctor_id
+
+
+def test_seed_slots_reach_back_three_weeks(db) -> None:
+    seed(db)
+
+    first = db.scalar(select(func.min(Slot.start_at)))
+    first_day = as_utc(first).astimezone(CLINIC_TZ).date()
+    # The first working day of the range may fall a few days after its start
+    assert first_day <= today() - timedelta(days=PAST_DAYS - 3)
 
 
 def test_seed_can_run_twice(db) -> None:
