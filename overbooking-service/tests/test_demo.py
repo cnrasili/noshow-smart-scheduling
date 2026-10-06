@@ -1,4 +1,5 @@
 from collections import Counter
+from collections.abc import Callable
 from datetime import UTC, date
 from zoneinfo import ZoneInfo
 
@@ -17,10 +18,15 @@ from overbooking_service.predictor import Predictor
 from overbooking_service.rules import OverbookingRule
 
 TODAY = date(2026, 11, 16)
+# Last working day before TODAY; the clinic fixture books doctor 1 on it
+SEEDED_DAY = date(2026, 11, 13)
+SEEDED_PATIENTS = 8
 CLINIC = ZoneInfo("Europe/Istanbul")
 # Low threshold so that the small demo also overbooks
 RULE = OverbookingRule(threshold=0.10, daily_overbook_limit=2)
-SMALL = DemoConfig(today=TODAY, seed=7, patients=40, past_days=3, future_days=2)
+SMALL = DemoConfig(today=TODAY, seed=7, patients=40, past_days=7, future_days=3)
+
+Clinic = Callable[[Session, date], None]
 
 
 @pytest.fixture(scope="module")
@@ -36,9 +42,15 @@ def new_session() -> Session:
     return sessionmaker(bind=engine)()
 
 
-@pytest.fixture(scope="module")
-def seeded(predictor: Predictor) -> Session:
+def seeded_clinic(clinic: Clinic) -> Session:
     session = new_session()
+    clinic(session, TODAY)
+    return session
+
+
+@pytest.fixture(scope="module")
+def seeded(clinic: Clinic, predictor: Predictor) -> Session:
+    session = seeded_clinic(clinic)
     seed(session, SMALL, predictor, RULE)
     return session
 
@@ -51,14 +63,25 @@ def local_date(slot: Slot) -> date:
     return slot.start_at.replace(tzinfo=UTC).astimezone(CLINIC).date()
 
 
-def test_seed_is_reproducible(predictor: Predictor):
-    first, second = new_session(), new_session()
+def is_seeded(slot: Slot) -> bool:
+    return slot.doctor_id == 1 and local_date(slot) == SEEDED_DAY
+
+
+def test_seed_is_reproducible(clinic: Clinic, predictor: Predictor):
+    first, second = seeded_clinic(clinic), seeded_clinic(clinic)
     assert seed(first, SMALL, predictor, RULE) == seed(second, SMALL, predictor, RULE)
     outcomes = [
         list(s.scalars(select(Appointment.attended).order_by(Appointment.id)))
         for s in (first, second)
     ]
     assert outcomes[0] == outcomes[1]
+
+
+def test_seed_uses_the_clinic_slots(seeded: Session):
+    result = rows(seeded)
+    assert {slot.doctor_id for _, slot in result} == {1, 2}
+    days = {local_date(slot) for _, slot in result}
+    assert min(days) >= date(2026, 11, 9) and max(days) <= date(2026, 11, 19)
 
 
 def test_seed_books_with_the_overbooking_rule(seeded: Session):
@@ -83,12 +106,23 @@ def test_seeded_dates_are_consistent(seeded: Session):
         assert slot.start_at.replace(tzinfo=UTC).astimezone(CLINIC).hour >= 9
 
 
-def test_only_past_appointments_have_outcomes(seeded: Session):
-    for appointment, _ in rows(seeded):
-        if appointment.appointment_date < TODAY:
+def test_seeded_day_is_left_for_attendance_marking(seeded: Session):
+    booked = [(a, s) for a, s in rows(seeded) if is_seeded(s)]
+    assert len(booked) == 5
+    assert all(a.attended is None for a, _ in booked)
+
+
+def test_only_generated_past_appointments_have_outcomes(seeded: Session):
+    for appointment, slot in rows(seeded):
+        if appointment.appointment_date < TODAY and not is_seeded(slot):
             assert appointment.attended is not None
-        else:
+        elif appointment.appointment_date >= TODAY:
             assert appointment.attended is None
+
+
+def test_seeded_patients_get_a_history(seeded: Session):
+    patients = {a.patient_id for a, s in rows(seeded) if not is_seeded(s)}
+    assert patients & set(range(1, SEEDED_PATIENTS + 1))
 
 
 def test_past_eligible_appointments_get_groups(seeded: Session):
@@ -100,20 +134,30 @@ def test_past_eligible_appointments_get_groups(seeded: Session):
         assert assignment.group == assign_group(assignment.patient_id, settings.ab_test.salt)
 
 
-def test_reminder_effect_lowers_reminder_group_no_shows(predictor: Predictor):
-    session = new_session()
+def test_seeded_bookings_get_groups(seeded: Session):
+    grouped = set(seeded.scalars(select(AbAssignment.appointment_id)))
+    assert all(a.id in grouped for a, s in rows(seeded) if is_seeded(s))
+
+
+def test_reminder_effect_lowers_reminder_group_no_shows(clinic: Clinic, predictor: Predictor):
+    session = seeded_clinic(clinic)
     cfg = DemoConfig(
-        today=TODAY, seed=7, patients=40, past_days=3, future_days=1, reminder_effect=1.0
+        today=TODAY, seed=7, patients=40, past_days=7, future_days=1, reminder_effect=1.0
     )
     seed(session, cfg, predictor, RULE)
     reminder_outcomes = session.scalars(
         select(Appointment.attended)
         .join(AbAssignment, AbAssignment.appointment_id == Appointment.id)
-        .where(AbAssignment.group == "reminder")
+        .where(AbAssignment.group == "reminder", Appointment.attended.is_not(None))
     ).all()
     assert reminder_outcomes and all(reminder_outcomes)
 
 
-def test_seed_refuses_non_empty_database(seeded: Session, predictor: Predictor):
-    with pytest.raises(RuntimeError, match="not empty"):
+def test_seed_refuses_database_without_doctors(predictor: Predictor):
+    with pytest.raises(RuntimeError, match="web_backend.seed first"):
+        seed(new_session(), SMALL, predictor, RULE)
+
+
+def test_seed_refuses_second_run(seeded: Session, predictor: Predictor):
+    with pytest.raises(RuntimeError, match="already exists"):
         seed(seeded, SMALL, predictor, RULE)
