@@ -144,12 +144,12 @@ The default consultation length is the simulation's mean service time. Chart.js 
 
 ## Demo Data
 
-`python -m overbooking_service.demo` fills an empty booking database with simulated data:
+`python -m overbooking_service.demo` adds booking history to the demo clinic of the web backend seed (`python -m web_backend.seed`), which must run first. It uses the seed's doctors and slots and adds:
 
-- Two doctors and 200 patients with attributes drawn at rates similar to the public dataset.
-- Sixteen 15-minute slots per doctor from 09:00 on the 10 working days before the demo date and the 5 working days from it.
-- Booking requests processed with the same overbooking rule as `/booking-decision`: the first empty slot, otherwise the first slot the rule allows to overbook.
+- 200 patients without login accounts, with attributes drawn at rates similar to the public dataset.
+- Booking requests on the seed's slots from three weeks before the demo date to one week after it, processed with the same overbooking rule as `/booking-decision`: the first empty slot, otherwise the first slot the rule allows to overbook. The seeded patients take part too, so they also get a history.
 - Past appointments get an outcome drawn from the model's `p_noshow` and, when a reminder was possible, an A/B group. Future appointments have no outcome, so free slots remain for live bookings.
+- Days on which the seed already booked a doctor are left as they are. The seed's past bookings stay unmarked for attendance marking in the web application and get an A/B group, so marking them changes the A/B summary.
 - No messages are created for the generated appointments; only appointments reported to `POST /events/appointment-booked` get a confirmation and a reminder.
 
 | Option | Default | Meaning |
@@ -158,20 +158,22 @@ The default consultation length is the simulation's mean service time. Chart.js 
 | `--seed` | 42 | Random seed; the same seed gives the same data |
 | `--reminder-effect` | 0 | Relative no-show reduction in the reminder group; 0 means reminders have no simulated effect |
 
-The command refuses to run when the database already has doctors. To start from an empty database, remove the Docker volume with `docker compose down -v`; this deletes all local data.
+The command refuses to run before the web backend seed and a second time. To start again from an empty database, remove the Docker volume with `docker compose down -v`; this deletes all local data.
 
 ### Demo Scenario
 
-1. Start the stack and load the demo data:
+1. Start the stack on an empty database and load the demo data:
 
    ```bash
    docker compose up --build -d
+   docker compose exec web-backend python -m web_backend.seed
    docker compose exec overbooking-service python -m overbooking_service.demo
    ```
 
-   The command prints an empty and a booked slot of doctor 1 on the next working day.
+   The last command prints an empty and a booked slot of the first doctor working after the demo date.
 
-2. Open the KPI dashboard at http://localhost:8001/dashboard. The past days show utilization, idle time, overtime, waiting time and overbooked slots.
-3. Open http://localhost:8001/ab/summary to compare the no-show rates of the reminder and control groups, and http://localhost:8001/ab/summary?unit=patient for one observation per patient.
-4. In the API docs at http://localhost:8001/docs, call `POST /booking-decision` for the empty slot (normal booking) and for the booked slot (overbook or reject, with the reason).
-5. Call `POST /events/appointment-booked` for a new appointment id. The response shows the A/B group and the scheduled messages; the confirmation appears in Mailpit at http://localhost:8025 within a minute.
+2. Sign in to the web application at http://localhost:5173 with a demo account (see the [web backend README](../web/backend/README.md#demo-data)). Book, overbook and cancel appointments as a patient, and record attendance as a doctor.
+3. Open the KPI dashboard at http://localhost:8001/dashboard. The past days show utilization, idle time, overtime, waiting time and overbooked slots for each doctor.
+4. Open http://localhost:8001/ab/summary to compare the no-show rates of the reminder and control groups, and http://localhost:8001/ab/summary?unit=patient for one observation per patient.
+5. In the API docs at http://localhost:8001/docs, call `POST /booking-decision` for the empty slot (normal booking) and for the booked slot (overbook or reject, with the reason).
+6. Call `POST /events/appointment-booked` for a new appointment id. The response shows the A/B group and the scheduled messages; the confirmation appears in Mailpit at http://localhost:8025 within a minute.

@@ -1,5 +1,6 @@
 """Booking flow across the service: demo data, decision, messages, outcome, A/B and KPIs."""
 
+from collections.abc import Callable
 from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -47,11 +48,16 @@ def empty_slot(session: Session, doctor_id: int, day: date) -> Slot:
     ).first()
 
 
-def test_booking_flow(client: TestClient, session_factory: sessionmaker[Session]):
+def test_booking_flow(
+    client: TestClient,
+    session_factory: sessionmaker[Session],
+    clinic: Callable[[Session, date, date], None],
+):
     del app.dependency_overrides[get_data_source]
     app.dependency_overrides[get_now] = lambda: NOW
     with session_factory() as session:
-        cfg = DemoConfig(today=TODAY, seed=3, patients=60, past_days=5, future_days=3)
+        cfg = DemoConfig(today=TODAY, seed=3, patients=60, past_days=7, future_days=3)
+        clinic(session, TODAY - timedelta(days=cfg.past_days), TODAY + timedelta(days=5))
         seed(session, cfg, Predictor.load(settings.model_dir), settings.overbooking)
         session.add(
             Patient(id=NEW_PATIENT, full_name="New", email="new@example.com", age=35, gender="M")

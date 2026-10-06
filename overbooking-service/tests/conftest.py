@@ -1,5 +1,5 @@
-from collections.abc import Iterator
-from datetime import date
+from collections.abc import Callable, Iterator
+from datetime import UTC, date, datetime, time, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -9,6 +9,7 @@ from sqlalchemy.pool import StaticPool
 
 import noshow_db.models  # noqa: F401
 from noshow_db.base import Base
+from noshow_db.models.core import Doctor, Slot
 from overbooking_service.config import settings
 from overbooking_service.dependencies import get_data_source, get_session
 from overbooking_service.features import PastAppointment, PatientRecord
@@ -34,6 +35,33 @@ class FakeDataSource:
 
     def get_history(self, patient_id: int) -> list[PastAppointment]:
         return self.history.get(patient_id, [])
+
+
+def add_clinic(session: Session, first_day: date, last_day: date) -> None:
+    """A small stand-in for the web backend seed: two doctors with 20-minute weekday slots."""
+    session.add_all(
+        [Doctor(id=1, full_name="Dr. Ada Demir"), Doctor(id=2, full_name="Dr. Bora Kaya")]
+    )
+    day = first_day
+    while day <= last_day:
+        if day.weekday() < 5:
+            for doctor_id, start_hour in ((1, 9), (2, 13)):
+                start = datetime.combine(day, time(start_hour), settings.clinic_timezone)
+                session.add_all(
+                    Slot(
+                        doctor_id=doctor_id,
+                        start_at=(start + timedelta(minutes=20 * k)).astimezone(UTC),
+                        end_at=(start + timedelta(minutes=20 * (k + 1))).astimezone(UTC),
+                    )
+                    for k in range(6)
+                )
+        day += timedelta(days=1)
+    session.flush()
+
+
+@pytest.fixture(scope="session")
+def clinic() -> Callable[[Session, date, date], None]:
+    return add_clinic
 
 
 @pytest.fixture
