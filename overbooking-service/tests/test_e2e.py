@@ -47,11 +47,12 @@ def empty_slot(session: Session, doctor_id: int, day: date) -> Slot:
     ).first()
 
 
-def test_booking_flow(client: TestClient, session_factory: sessionmaker[Session]):
+def test_booking_flow(client: TestClient, session_factory: sessionmaker[Session], clinic):
     del app.dependency_overrides[get_data_source]
     app.dependency_overrides[get_now] = lambda: NOW
     with session_factory() as session:
-        cfg = DemoConfig(today=TODAY, seed=3, patients=60, past_days=5, future_days=3)
+        clinic(session, TODAY)
+        cfg = DemoConfig(today=TODAY, seed=3, patients=60, past_days=7, future_days=3)
         seed(session, cfg, Predictor.load(settings.model_dir), settings.overbooking)
         session.add(
             Patient(id=NEW_PATIENT, full_name="New", email="new@example.com", age=35, gender="M")
@@ -114,7 +115,7 @@ def test_booking_flow(client: TestClient, session_factory: sessionmaker[Session]
     kpi = client.get("/kpi", params={"doctor_id": 1, "date": DAY.isoformat()}).json()
     assert kpi["patients_seen"] == 1
     assert (
-        client.get("/kpi", params={"doctor_id": 1, "date": "2026-11-13"}).json()["patients_seen"]
+        client.get("/kpi", params={"doctor_id": 1, "date": "2026-11-12"}).json()["patients_seen"]
         > 0
     )
 

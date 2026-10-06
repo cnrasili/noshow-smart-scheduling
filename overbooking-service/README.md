@@ -144,13 +144,14 @@ The default consultation length is the simulation's mean service time. Chart.js 
 
 ## Demo Data
 
-`python -m overbooking_service.demo` fills an empty booking database with simulated data:
+`python -m overbooking_service.demo` adds simulated booking history to the clinic created by the web backend seed (`python -m web_backend.seed`):
 
-- Two doctors and 200 patients with attributes drawn at rates similar to the public dataset.
-- Sixteen 15-minute slots per doctor from 09:00 on the 10 working days before the demo date and the 5 working days from it.
-- Booking requests processed with the same overbooking rule as `/booking-decision`: the first empty slot, otherwise the first slot the rule allows to overbook.
+- 200 patients without login accounts, with attributes drawn at rates similar to the public dataset. The seeded patients with accounts also take part.
+- Booking requests for the seeded doctors' slots from three weeks before the demo date to one week after it, processed with the same overbooking rule as `/booking-decision`: the first empty slot, otherwise the first slot the rule allows to overbook.
 - Past appointments get an outcome drawn from the model's `p_noshow` and, when a reminder was possible, an A/B group. Future appointments have no outcome, so free slots remain for live bookings.
+- Doctor-days the seed already booked are left unchanged, so the doctor can mark attendance in the web application. Their past bookings get an A/B group, so marking attendance changes `/ab/summary`.
 - No messages are created for the generated appointments; only appointments reported to `POST /events/appointment-booked` get a confirmation and a reminder.
+- Slot length and working hours come from the web backend seed.
 
 | Option | Default | Meaning |
 |---|---|---|
@@ -158,7 +159,7 @@ The default consultation length is the simulation's mean service time. Chart.js 
 | `--seed` | 42 | Random seed; the same seed gives the same data |
 | `--reminder-effect` | 0 | Relative no-show reduction in the reminder group; 0 means reminders have no simulated effect |
 
-The command refuses to run when the database already has doctors. To start from an empty database, remove the Docker volume with `docker compose down -v`; this deletes all local data.
+The command refuses to run before the web backend seed and when the demo history already exists. To start from an empty database, remove the Docker volume with `docker compose down -v`; this deletes all local data.
 
 ### Demo Scenario
 
@@ -166,10 +167,11 @@ The command refuses to run when the database already has doctors. To start from 
 
    ```bash
    docker compose up --build -d
+   docker compose exec web-backend python -m web_backend.seed
    docker compose exec overbooking-service python -m overbooking_service.demo
    ```
 
-   The command prints an empty and a booked slot of doctor 1 on the next working day.
+   The last command prints an empty and a booked slot of the first doctor with slots after the demo date.
 
 2. Open the KPI dashboard at http://localhost:8001/dashboard. The past days show utilization, idle time, overtime, waiting time and overbooked slots.
 3. Open http://localhost:8001/ab/summary to compare the no-show rates of the reminder and control groups, and http://localhost:8001/ab/summary?unit=patient for one observation per patient.
