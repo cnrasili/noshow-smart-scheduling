@@ -32,4 +32,4 @@ jupyter lab
 
 ## Exporting the Model
 
-Export the selected model with `export_model.py`. It writes `model.joblib` and `feature_schema.json` into `overbooking-service/models/`. The steps and the required features are in [model features](../docs/features.md).
+Export the selected model with `export_model.py`. It writes `model.joblib` and `feature_schema.json` into `ml/models/`; the overbooking service owner installs them in the service. The steps and the required features are in [model features](../docs/features.md).

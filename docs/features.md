@@ -32,7 +32,7 @@ To compute the features, the booking application stores the following data. The 
 ## Model Delivery
 
 1. Train with exactly the features above, computed the same way.
-2. Export with [`ml/export_model.py`](../ml/export_model.py):
+2. Export into `ml/models/` with [`ml/export_model.py`](../ml/export_model.py), run from the `ml/` folder:
 
    ```python
    from export_model import export_model
@@ -42,11 +42,12 @@ To compute the features, the booking application stores the following data. The 
        feature_names,  # list of feature names above
        version="lr-v1",
        positive_class="Yes",  # label that means no-show in the training data
-       output_dir=Path("../overbooking-service/models"),
+       output_dir=Path("models"),
    )
    ```
 
-3. Run the overbooking service tests. `tests/test_model_acceptance.py` checks that the model loads, returns valid probabilities, matches the computed features and scores high-risk patients higher than low-risk ones.
+3. Open a pull request with `ml/models/model.joblib` and `ml/models/feature_schema.json`.
+4. The overbooking service owner copies both files into `overbooking-service/models/` and runs the overbooking service tests. `tests/test_model_acceptance.py` checks that the model loads, returns valid probabilities, matches the computed features and scores high-risk patients higher than low-risk ones.
 
 Train with the same scikit-learn minor version as the service (see `overbooking-service/pyproject.toml`); the service logs a warning otherwise.
 
