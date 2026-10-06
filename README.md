@@ -92,10 +92,9 @@ git clone https://github.com/cnrasili/noshow-smart-scheduling.git
 cd noshow-smart-scheduling
 docker compose up --build -d
 docker compose exec web-backend python -m web_backend.seed
-docker compose exec overbooking-service python -m overbooking_service.demo
 ```
 
-The last two commands create the demo data on an empty database: the seed creates a fictional clinic with doctors, patients, login accounts and slots, and the overbooking service demo adds three weeks of booking history with outcomes and A/B groups for the KPI dashboard and the A/B summary. The demo accounts are listed in the [web backend README](web/backend/README.md#demo-data); the demo scenario is in the [overbooking service README](overbooking-service/README.md#demo-scenario).
+The last command creates a fictional clinic with doctors, patients, login accounts and slots. The demo accounts are listed in the [web backend README](web/backend/README.md#demo-data).
 
 | Service | URL |
 |---|---|
@@ -107,6 +106,8 @@ The last two commands create the demo data on an empty database: the seed create
 | PostgreSQL | `localhost:5432` |
 
 Default settings work without configuration. To change them, copy `.env.example` to `.env`.
+
+A separate demo with past appointments, A/B groups and KPI history is described in the [overbooking service README](overbooking-service/README.md#demo-scenario); it needs an empty database.
 
 <details>
 <summary><b>Troubleshooting</b></summary>

@@ -43,8 +43,6 @@ python -m web_backend.seed
 docker compose exec web-backend python -m web_backend.seed
 ```
 
-For the full demo, run `python -m overbooking_service.demo` afterwards; it adds booking history with outcomes and A/B groups for the KPI dashboard (see the [overbooking service README](../../overbooking-service/README.md#demo-data)).
-
 Doctors sign in at `/giris/hekim` (for example `doktor@demo.local`; the others are printed by the seed command) and patients at `/giris/hasta` (for example `ayse@demo.local`). All demo accounts use the password `demo1234`; these are local demo values only.
 
 ## Authentication
