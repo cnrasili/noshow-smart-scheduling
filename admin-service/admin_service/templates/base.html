@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>{% block title %}Hospital administration{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='admin.css') }}" />
+  </head>
+  <body>
+    {% if admin %}
+    <nav aria-label="Administration">
+      <strong>Hospital administration</strong>
+      <a href="{{ url_for('kpi_page') }}">Schedule KPIs</a>
+      <a href="{{ url_for('audit_page') }}">Audit log</a>
+      <form method="post" action="{{ url_for('logout') }}">
+        <span class="muted">{{ admin.email }}</span>
+        <button type="submit" class="secondary">Log out</button>
+      </form>
+    </nav>
+    {% endif %}
+    <main>{% block content %}{% endblock %}</main>
+    {% block scripts %}{% endblock %}
+  </body>
+</html>

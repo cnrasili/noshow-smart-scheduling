@@ -2,7 +2,7 @@
 
 **Status:** Draft.
 
-The simulation and the admin dashboard use the same definitions so that their results can be compared.
+The simulation and the KPI screen of the admin service use the same definitions so that their results can be compared.
 
 | KPI | Definition | Unit |
 |---|---|---|
