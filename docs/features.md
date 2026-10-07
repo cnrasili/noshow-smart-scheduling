@@ -47,7 +47,7 @@ To compute the features, the booking application stores the following data. The 
    ```
 
 3. Open a pull request with `ml/models/model.joblib` and `ml/models/feature_schema.json`.
-4. The overbooking service owner copies both files into `overbooking-service/models/` and runs the overbooking service tests. `tests/test_model_acceptance.py` checks that the model loads, returns valid probabilities, matches the computed features and scores high-risk patients higher than low-risk ones.
+4. The overbooking service owner installs the model with `python -m overbooking_service.install_model` (see the [overbooking service README](../overbooking-service/README.md#installing-a-delivered-model)). The command checks that the model loads, matches the computed features, returns valid probabilities and scores high-risk patients higher than low-risk ones, and replaces the installed model only when every check passes. `tests/test_model_acceptance.py` runs the same checks on the installed model.
 
 Train with the same scikit-learn minor version as the service (see `overbooking-service/pyproject.toml`); the service logs a warning otherwise.
 
