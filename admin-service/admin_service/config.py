@@ -18,6 +18,9 @@ class Settings(BaseSettings):
         default_factory=lambda: [ip_network("127.0.0.0/8"), ip_network("::1/128")]
     )
     overbooking_service_url: str = "http://localhost:8001"
+    # Internal account API of the web backend; account management is off without a token
+    web_backend_url: str = "http://localhost:8000"
+    internal_api_token: str = ""
     session_minutes: int = Field(60, ge=5, le=24 * 60)
     # Only sent over HTTPS; browsers also accept it on http://localhost
     cookie_secure: bool = True

@@ -12,8 +12,11 @@
     <nav aria-label="Administration">
       <strong>Hospital administration</strong>
       <a href="{{ url_for('kpi_page') }}">Schedule KPIs</a>
+      <a href="{{ url_for('patients_page') }}">Patients</a>
+      <a href="{{ url_for('doctors_page') }}">Doctors</a>
       <a href="{{ url_for('audit_page') }}">Audit log</a>
       <form method="post" action="{{ url_for('logout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf(request) }}" />
         <span class="muted">{{ admin.email }}</span>
         <button type="submit" class="secondary">Log out</button>
       </form>

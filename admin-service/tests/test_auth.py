@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from admin_service.security import hash_password
+from admin_service.security import csrf_token, hash_password
 from noshow_db.models.admin import AdminAuditLog, AdminSession
 from noshow_db.models.core import Patient, UserAccount
 
@@ -118,8 +118,16 @@ def test_session_expires(client: TestClient, log_in, clock):
 def test_logout_ends_the_session(client: TestClient, log_in, session_factory):
     log_in()
     token = client.cookies["admin_session"]
-    response = client.post("/logout")
+    response = client.post("/logout", data={"csrf_token": csrf_token(token)})
     assert response.url.path == "/login"
     client.cookies.set("admin_session", token, domain="admin.test")
     assert client.get("/kpi").url.path == "/login"
     assert actions(session_factory) == ["login", "logout"]
+
+
+def test_logout_needs_the_form_token(client: TestClient, log_in, session_factory):
+    log_in()
+    assert client.post("/logout").status_code == 403
+    assert client.post("/logout", data={"csrf_token": "forged"}).status_code == 403
+    assert client.get("/kpi").url.path == "/kpi"
+    assert actions(session_factory) == ["login"]

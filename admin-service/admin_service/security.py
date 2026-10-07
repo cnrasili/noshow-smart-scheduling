@@ -2,12 +2,15 @@
 import hashlib
 import hmac
 import secrets
+import string
 
 _SCRYPT_N = 2**14
 _SCRYPT_R = 8
 _SCRYPT_P = 1
 _KEY_LENGTH = 64
 MIN_PASSWORD_LENGTH = 12
+# Letters and digits without look-alikes, for passwords read out to patients and doctors
+_PASSWORD_ALPHABET = "".join(c for c in string.ascii_letters + string.digits if c not in "0O1lI")
 
 
 def _scrypt(password: str, salt: bytes, n: int, r: int, p: int) -> bytes:
@@ -44,3 +47,13 @@ def new_token() -> str:
 
 def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
+
+
+def csrf_token(session_token: str) -> str:
+    """Form token bound to the session; another site can neither read nor compute it."""
+    return hmac.new(session_token.encode(), b"csrf", hashlib.sha256).hexdigest()
+
+
+def generate_password(length: int = 14) -> str:
+    """Random initial password for a patient or doctor account."""
+    return "".join(secrets.choice(_PASSWORD_ALPHABET) for _ in range(length))

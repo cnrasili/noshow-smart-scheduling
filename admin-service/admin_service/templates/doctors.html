@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Doctors{% endblock %}
+{% block content %}
+<header>
+  <h1>Doctors</h1>
+</header>
+{% if enabled %}
+<p><a href="{{ url_for('new_doctor_page') }}">Create a doctor account</a></p>
+{% else %}
+<p class="error" role="alert">Account management is disabled: INTERNAL_API_TOKEN is not set.</p>
+{% endif %}
+<section aria-label="Doctors">
+  {% if rows %}
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Name</th>
+        <th scope="col">Department</th>
+        <th scope="col">Email</th>
+        <th scope="col">Working hours</th>
+        <th scope="col">Login account</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for doctor, account_id, email in rows %}
+      <tr>
+        <td>{{ doctor.full_name }}</td>
+        <td>{{ doctor.specialty or '' }}</td>
+        <td>{{ email or '' }}</td>
+        <td>{{ hours.get(doctor.id, []) | join(', ') }}</td>
+        <td>
+          {% if account_id and enabled %}
+          <form method="post" action="{{ url_for('reset_password', account_id=account_id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf(request) }}" />
+            <button type="submit" class="secondary">Reset password</button>
+          </form>
+          {% elif account_id %}
+          Yes
+          {% else %}
+          <span class="muted">No login account</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No doctors yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

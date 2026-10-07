@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Create a patient account{% endblock %}
+{% block content %}
+<section class="form-page">
+  <h1>Create a patient account</h1>
+  <p class="muted">The patient logs in with the national ID number. An initial password is generated and shown once.</p>
+  {% if error %}
+  <p class="error" role="alert">{{ error }}</p>
+  {% endif %}
+  <form method="post" action="{{ url_for('create_patient') }}" class="stack">
+    <input type="hidden" name="csrf_token" value="{{ csrf(request) }}" />
+    <label>
+      National ID number
+      <input name="national_id" value="{{ values.national_id or '' }}" required inputmode="numeric" pattern="[1-9][0-9]{10}" maxlength="11" />
+    </label>
+    <label>
+      Full name
+      <input name="full_name" value="{{ values.full_name or '' }}" required maxlength="255" />
+    </label>
+    <label>
+      Email (for appointment messages)
+      <input type="email" name="email" value="{{ values.email or '' }}" required maxlength="255" />
+    </label>
+    <label>
+      Age
+      <input type="number" name="age" value="{{ values.age or '' }}" required min="0" max="130" />
+    </label>
+    <label>
+      Gender
+      <select name="gender" required>
+        <option value="F" {% if values.gender == 'F' %}selected{% endif %}>Female</option>
+        <option value="M" {% if values.gender == 'M' %}selected{% endif %}>Male</option>
+      </select>
+    </label>
+    <label>
+      Handicap level (0–4)
+      <input type="number" name="handcap" value="{{ values.handcap or '0' }}" min="0" max="4" />
+    </label>
+    <fieldset>
+      <legend>Recorded conditions</legend>
+      {% for flag, label in flags.items() %}
+      <label class="check">
+        <input type="checkbox" name="{{ flag }}" {% if values[flag] %}checked{% endif %} />
+        {{ label }}
+      </label>
+      {% endfor %}
+    </fieldset>
+    <button type="submit">Create account</button>
+  </form>
+</section>
+{% endblock %}

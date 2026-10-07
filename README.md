@@ -47,7 +47,7 @@ The project is developed as an interdisciplinary study combining industrial engi
 | **Selective overbooking** | A booked slot accepts an extra patient only when every booked patient is likely to miss the appointment, within the slot capacity and a daily limit. Every decision is logged with its reason. |
 | **Confirmation and reminders** | A confirmation is sent at booking and a reminder before the appointment; cancelled appointments stop their reminders. |
 | **Reminder A/B test** | Patients are split into reminder and control groups; the no-show rates of the groups are compared with a two-proportion z-test. |
-| **Admin service** | Separate administration screen reachable only from the internal network, with its own administrator accounts, login protection and audit log. Shows utilization, physician idle time, overtime, mean waiting time and overbooked slots per doctor and day, and the reminder A/B test. |
+| **Admin service** | Separate administration screen reachable only from the internal network, with its own administrator accounts, login protection and audit log. Creates patient and doctor accounts. Shows utilization, physician idle time, overtime, mean waiting time and overbooked slots per doctor and day, and the reminder A/B test. |
 | **Simulation** | SimPy model of a clinic session that compares fixed-interval booking, overbooking rules and appointment templates on real appointment days. |
 | **Model reports** | Data cleaning, logistic regression and random forest, AUC and calibration reports. |
 
@@ -192,7 +192,7 @@ Components depend on each other through the files below. Changes to them are agr
 |---|---|
 | Booking application | Working: login, booking, cancellation, doctor views, attendance |
 | Overbooking service | Working: prediction, overbooking decision, messages, A/B test, KPIs |
-| Admin service | Working: administrator login, internal network restriction, KPI screen, audit log; account management planned |
+| Admin service | Working: administrator login, internal network restriction, KPI screen, account management, audit log |
 | Prediction model | Trained; the service still uses a placeholder model until the trained model is delivered |
 | Overbooking rule | Default threshold; the final rule and threshold come from the simulation study |
 | Simulation | Single session, appointment templates and real appointment days; extension to several physicians and departments planned |
