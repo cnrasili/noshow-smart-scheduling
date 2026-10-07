@@ -42,7 +42,7 @@ The project is developed as an interdisciplinary study combining industrial engi
 
 | Area | What it does |
 |---|---|
-| **Booking application** | Patients choose department → doctor → day → time and manage their appointments. Doctors see their daily patient list, record attendance and open slots from their working hours. Separate patient and doctor login. |
+| **Booking application** | Patients choose department → doctor → day → time and manage their appointments. Doctors see their daily patient list, record attendance and open slots from their working hours. Patients log in with their national ID number, doctors with their email address; accounts are created by the hospital, there is no registration. |
 | **No-show prediction** | Each booking is scored with the patient's no-show probability, computed only from information known at booking time. |
 | **Selective overbooking** | A booked slot accepts an extra patient only when every booked patient is likely to miss the appointment, within the slot capacity and a daily limit. Every decision is logged with its reason. |
 | **Confirmation and reminders** | A confirmation is sent at booking and a reminder before the appointment; cancelled appointments stop their reminders. |
@@ -98,7 +98,7 @@ docker compose exec overbooking-service python -m overbooking_service.demo
 docker compose exec admin-service python -m admin_service.create_admin --email admin@hospital.local
 ```
 
-The seed creates a fictional clinic with doctors, patients, login accounts and slots; the demo accounts are listed in the [web backend README](web/backend/README.md#demo-data). The overbooking service demo adds three weeks of booking history with outcomes and A/B groups for the KPI screen; see the [demo scenario](overbooking-service/README.md#demo-scenario). The last command creates an administrator of the admin service and asks for a password.
+The seed creates a fictional clinic with doctors, patients, login accounts and slots; demo patients have fictional national ID numbers, and the demo accounts are listed in the [web backend README](web/backend/README.md#demo-data). The overbooking service demo adds three weeks of booking history with outcomes and A/B groups for the KPI screen; see the [demo scenario](overbooking-service/README.md#demo-scenario). The last command creates an administrator of the admin service and asks for a password.
 
 | Service | URL |
 |---|---|
@@ -147,7 +147,7 @@ Each component can also be run without Docker; see its README. The checks that C
 ruff check .
 ruff format --check .
 pytest web/backend overbooking-service admin-service
-cd web/frontend && npm run lint && npm run format:check && npm run build
+cd web/frontend && npm run lint && npm run format:check && npm test && npm run build
 ```
 
 Tests that need PostgreSQL run only when `NOSHOW_TEST_DATABASE_URL` points to a disposable database (see the [web backend README](web/backend/README.md)).
