@@ -43,11 +43,31 @@ python -m web_backend.seed
 docker compose exec web-backend python -m web_backend.seed
 ```
 
-Doctors sign in at `/giris/hekim` (for example `doktor@demo.local`; the others are printed by the seed command) and patients at `/giris/hasta` (for example `ayse@demo.local`). All demo accounts use the password `demo1234`; these are local demo values only.
+Doctors sign in at `/giris/hekim` with their e-mail address (for example `doktor@demo.local`; the others are printed by the seed command) and patients at `/giris/hasta` with their national ID number. All demo accounts use the password `demo1234`; these are local demo values only.
+
+The demo patients' national ID numbers are **fictional**. They are valid by the check digit rules but start with the fixed prefix `99999`, followed by a four-digit sequence number and the check digits (`web_backend/national_id.py`). Never use real people's numbers in demo or test data.
+
+| Patient      | National ID number (fictional) | Contact e-mail      |
+| ------------ | ------------------------------ | ------------------- |
+| Ayşe Kaya    | `99999000184`                  | `ayse@demo.local`   |
+| Mehmet Demir | `99999000252`                  | `mehmet@demo.local` |
+| Zeynep Çelik | `99999000320`                  | `zeynep@demo.local` |
+| Ali Şahin    | `99999000498`                  | `ali@demo.local`    |
+| Elif Arslan  | `99999000566`                  | `elif@demo.local`   |
+| Burak Koç    | `99999000634`                  | `burak@demo.local`  |
+| Selin Aydın  | `99999000702`                  | `selin@demo.local`  |
+| Hasan Öztürk | `99999000870`                  | `hasan@demo.local`  |
+
+The migration that adds the national ID column gives existing patients a fictional number built from their id with the same pattern, so a database seeded before it gets the numbers above. Alternatively, recreate the database, run `alembic upgrade head` and the seed again.
 
 ## Authentication
 
-`POST /auth/login` takes the e-mail, the password and the role of the login form (`patient` or `doctor`); an account can only sign in through its own form, and a mismatch gets the same `401` as a wrong password. It returns a bearer token that is valid for 12 hours; send it as `Authorization: Bearer <token>`. Passwords are hashed with scrypt and only a hash of each token is stored (`user_accounts` and `auth_sessions` tables).
+`POST /auth/login` takes the role of the login form and the credentials of that role:
+
+- Patients: `{"role": "patient", "national_id": "…", "password": "…"}`. Every patient has exactly one record, identified by the Turkish national ID number (11 digits, first digit not 0, official check digits); the database rejects a second patient with the same number. The patient's e-mail address is only a contact address for messages and is not a login name.
+- Doctors: `{"role": "doctor", "email": "…", "password": "…"}`.
+
+Wrong credentials, an invalid national ID number and a login through the other role's form all get the same `401` ("Wrong national ID number or password" or "Wrong email or password"). There is no self-registration; accounts are created by the hospital. A successful login returns a bearer token that is valid for 12 hours; send it as `Authorization: Bearer <token>`. Passwords are hashed with scrypt and only a hash of each token is stored (`user_accounts` and `auth_sessions` tables).
 
 ## Overbooking
 

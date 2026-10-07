@@ -11,6 +11,8 @@ import pytest
 from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.exc import IntegrityError
 
+from web_backend.national_id import fictional_national_id
+
 TEST_DATABASE_URL = os.getenv("NOSHOW_TEST_DATABASE_URL")
 DB_DIR = Path(__file__).resolve().parents[3] / "db"
 
@@ -47,10 +49,14 @@ def slot_id(engine: Engine) -> int:
         for number in (1, 2, 3):
             conn.execute(
                 text(
-                    "INSERT INTO patients (full_name, email, age, gender) "
-                    "VALUES (:name, :email, 30, 'F')"
+                    "INSERT INTO patients (national_id, full_name, email, age, gender) "
+                    "VALUES (:national_id, :name, :email, 30, 'F')"
                 ),
-                {"name": f"Patient {number}", "email": f"p{number}@example.com"},
+                {
+                    "national_id": fictional_national_id(number),
+                    "name": f"Patient {number}",
+                    "email": f"p{number}@example.com",
+                },
             )
         conn.execute(text("INSERT INTO doctors (full_name) VALUES ('Dr. Test')"))
         return conn.execute(
@@ -131,8 +137,8 @@ def test_slot_date_uses_clinic_timezone(engine: Engine) -> None:
         )
         conn.execute(
             text(
-                "INSERT INTO patients (full_name, email, age, gender) "
-                "VALUES ('Patient', 'p@example.com', 30, 'F')"
+                "INSERT INTO patients (national_id, full_name, email, age, gender) "
+                "VALUES ('99999000184', 'Patient', 'p@example.com', 30, 'F')"
             )
         )
         conn.execute(text("INSERT INTO doctors (full_name) VALUES ('Dr. Test')"))

@@ -2,7 +2,8 @@
 
 Run with ``python -m web_backend.seed``. Running it again only adds missing doctors,
 patients and slots, so it also upgrades a database seeded by an earlier version.
-All people are made up; DEMO_PASSWORD is a demo value for local use only.
+All people are made up, including their national ID numbers (see web_backend.national_id);
+DEMO_PASSWORD is a demo value for local use only.
 """
 
 from dataclasses import dataclass
@@ -14,6 +15,7 @@ from sqlalchemy.orm import Session
 from noshow_db.models.core import Appointment, Doctor, DoctorSchedule, Patient, Slot, UserAccount
 from noshow_db.session import SessionLocal
 from web_backend.clinic import CLINIC_TZ, as_utc, today
+from web_backend.national_id import fictional_national_id
 from web_backend.security import hash_password
 from web_backend.slots import generate_slots
 
@@ -51,7 +53,8 @@ DOCTORS = [
 ]
 DOCTOR_EMAIL = DOCTORS[0].email
 
-# name, email, age, gender, scholarship, hipertension, diabetes, alcoholism, handcap
+# name, email, age, gender, scholarship, hipertension, diabetes, alcoholism, handcap.
+# The n-th patient (from 1) gets the fictional national ID number patient_national_id(n).
 PATIENTS = [
     ("Ayşe Kaya", "ayse@demo.local", 34, "F", False, False, False, False, 0),
     ("Mehmet Demir", "mehmet@demo.local", 58, "M", False, True, True, False, 0),
@@ -68,12 +71,17 @@ PAST_DAYS = 21
 FUTURE_DAYS = 14
 
 
+def patient_national_id(number: int) -> str:
+    """Fictional national ID number of the n-th demo patient, counting from 1."""
+    return fictional_national_id(number)
+
+
 def _account(db: Session, email: str) -> UserAccount | None:
     return db.scalar(select(UserAccount).where(UserAccount.email == email))
 
 
 def _ensure_patients(db: Session, password_hash: str) -> None:
-    for (
+    for number, (
         name,
         email,
         age,
@@ -83,10 +91,11 @@ def _ensure_patients(db: Session, password_hash: str) -> None:
         diabetes,
         alcoholism,
         handcap,
-    ) in PATIENTS:
+    ) in enumerate(PATIENTS, start=1):
         if _account(db, email) is not None:
             continue
         patient = Patient(
+            national_id=patient_national_id(number),
             full_name=name,
             email=email,
             age=age,
@@ -181,7 +190,10 @@ def main() -> None:
         seed(db)
     print("Demo data ready.")
     print("Doctors: " + ", ".join(f"{d.email} ({d.specialty})" for d in DOCTORS))
-    print(f"Patients: {PATIENTS[0][1]} and {len(PATIENTS) - 1} others.")
+    print(
+        "Patients (fictional national ID numbers): "
+        + ", ".join(patient_national_id(n) for n in range(1, len(PATIENTS) + 1))
+    )
     print(f"Every demo account uses the password '{DEMO_PASSWORD}'.")
 
 

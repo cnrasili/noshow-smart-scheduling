@@ -22,10 +22,15 @@ class Patient(Base):
     __table_args__ = (
         CheckConstraint("age >= 0", name="ck_patients_age_non_negative"),
         CheckConstraint("handcap >= 0", name="ck_patients_handcap_non_negative"),
+        CheckConstraint("length(national_id) = 11", name="ck_patients_national_id_eleven_digits"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    # Turkish national ID number; one patient record per citizen and the patient's login name.
+    # The check digits are validated by the web backend.
+    national_id: Mapped[str] = mapped_column(String(11), unique=True, index=True)
     full_name: Mapped[str] = mapped_column(String(255))
+    # Contact address for messages
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     # Age is stored as recorded at registration; it is a model feature known at booking time
     age: Mapped[int]

@@ -13,6 +13,7 @@ from noshow_db.base import Base
 from noshow_db.models.core import Doctor, Patient, UserAccount
 from web_backend.db import get_db
 from web_backend.main import app
+from web_backend.national_id import fictional_national_id
 from web_backend.overbooking import OverbookingClient, get_overbooking_client
 from web_backend.security import hash_password
 
@@ -80,8 +81,20 @@ def client(db: Session, overbooking: FakeOverbookingService) -> Iterator[TestCli
 
 @pytest.fixture
 def make_patient(db: Session) -> Callable[..., Patient]:
-    def make(email: str = "patient@example.com", name: str = "Test Patient") -> Patient:
-        patient = Patient(full_name=name, email=email, age=30, gender="F")
+    numbers = iter(range(1, 10000))
+
+    def make(
+        email: str = "patient@example.com",
+        name: str = "Test Patient",
+        national_id: str | None = None,
+    ) -> Patient:
+        patient = Patient(
+            national_id=national_id or fictional_national_id(next(numbers)),
+            full_name=name,
+            email=email,
+            age=30,
+            gender="F",
+        )
         db.add(patient)
         db.flush()
         db.add(
@@ -120,13 +133,19 @@ def make_doctor(db: Session) -> Callable[..., Doctor]:
 
 @pytest.fixture
 def login(client: TestClient, db: Session) -> Callable[[str], dict[str, str]]:
-    """Sign in through the account's own login form and return the Authorization header."""
+    """Sign in through the account's own login form and return the Authorization header.
+
+    Accounts are looked up by e-mail; patients then sign in with their national ID number.
+    """
 
     def sign_in(email: str) -> dict[str, str]:
-        role = db.scalar(select(UserAccount.role).where(UserAccount.email == email))
-        response = client.post(
-            "/auth/login", json={"email": email, "password": PASSWORD, "role": role}
-        )
+        account = db.scalar(select(UserAccount).where(UserAccount.email == email))
+        if account.role == "patient":
+            national_id = db.get(Patient, account.patient_id).national_id
+            body = {"role": "patient", "national_id": national_id, "password": PASSWORD}
+        else:
+            body = {"role": "doctor", "email": email, "password": PASSWORD}
+        response = client.post("/auth/login", json=body)
         assert response.status_code == 200, response.text
         return {"Authorization": f"Bearer {response.json()['token']}"}
 

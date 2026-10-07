@@ -11,16 +11,31 @@ from noshow_db.models.core import (
     UserAccount,
 )
 from web_backend.clinic import CLINIC_TZ, as_utc, today
-from web_backend.seed import DEMO_PASSWORD, DOCTORS, PAST_DAYS, PATIENTS, seed
+from web_backend.national_id import FICTIONAL_PREFIX, is_valid_national_id
+from web_backend.seed import (
+    DEMO_PASSWORD,
+    DOCTORS,
+    PAST_DAYS,
+    PATIENTS,
+    patient_national_id,
+    seed,
+)
 
 
 def _count(db, model) -> int:
     return db.scalar(select(func.count()).select_from(model))
 
 
-def _login(client, email: str, role: str) -> int:
+def _doctor_login(client, email: str) -> int:
     return client.post(
-        "/auth/login", json={"email": email, "password": DEMO_PASSWORD, "role": role}
+        "/auth/login", json={"email": email, "password": DEMO_PASSWORD, "role": "doctor"}
+    ).status_code
+
+
+def _patient_login(client, national_id: str) -> int:
+    return client.post(
+        "/auth/login",
+        json={"national_id": national_id, "password": DEMO_PASSWORD, "role": "patient"},
     ).status_code
 
 
@@ -32,8 +47,17 @@ def test_seed_creates_a_usable_demo_clinic(db, client) -> None:
     assert _count(db, UserAccount) == len(PATIENTS) + len(DOCTORS)
     assert _count(db, Appointment) > 0
     for demo in DOCTORS:
-        assert _login(client, demo.email, "doctor") == 200
-    assert _login(client, PATIENTS[0][1], "patient") == 200
+        assert _doctor_login(client, demo.email) == 200
+    for number in range(1, len(PATIENTS) + 1):
+        assert _patient_login(client, patient_national_id(number)) == 200
+
+
+def test_seeded_national_ids_are_fictional_valid_and_unique(db) -> None:
+    seed(db)
+
+    numbers = list(db.scalars(select(Patient.national_id)))
+    assert len(set(numbers)) == len(PATIENTS)
+    assert all(is_valid_national_id(n) and n.startswith(FICTIONAL_PREFIX) for n in numbers)
 
 
 def test_every_doctor_gets_working_hours_slots_and_examples(db) -> None:
