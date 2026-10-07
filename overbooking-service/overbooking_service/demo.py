@@ -9,6 +9,7 @@ import random
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
+from itertools import islice
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, select
@@ -21,6 +22,7 @@ from overbooking_service.ab import assign_group
 from overbooking_service.booking import evaluate
 from overbooking_service.config import Settings, settings
 from overbooking_service.data_source import DbPatientSource, DbSlotSource
+from overbooking_service.national_id import fictional_national_id
 from overbooking_service.predictor import Predictor
 from overbooking_service.rules import OverbookingRule
 
@@ -28,6 +30,8 @@ from overbooking_service.rules import OverbookingRule
 BOOKING_TIME = time(8, 0)
 # Email domain of the generated patients; marks a database that already has demo history
 PATIENT_DOMAIN = "history.example.com"
+# Generated patients get fictional national ID numbers from this number up; the seed uses 1-8
+FIRST_NATIONAL_ID_NUMBER = 1000
 
 
 @dataclass(frozen=True)
@@ -63,8 +67,19 @@ def lead_days(rng: random.Random) -> int:
     return rng.randint(8, 30)
 
 
-def make_patient(rng: random.Random, number: int) -> Patient:
+def free_national_ids(session: Session, count: int) -> list[str]:
+    """Fictional national ID numbers not used by any patient yet."""
+    used = set(session.scalars(select(Patient.national_id)))
+    candidates = (fictional_national_id(n) for n in range(FIRST_NATIONAL_ID_NUMBER, 10000))
+    free = list(islice((nid for nid in candidates if nid not in used), count))
+    if len(free) < count:
+        raise RuntimeError("Not enough fictional national ID numbers left")
+    return free
+
+
+def make_patient(rng: random.Random, number: int, national_id: str) -> Patient:
     return Patient(
+        national_id=national_id,
         full_name=f"Demo Patient {number}",
         email=f"patient{number}@{PATIENT_DOMAIN}",
         age=rng.randint(1, 90),
@@ -121,7 +136,8 @@ def seed(
     patients = DbPatientSource(session)
     slot_source = DbSlotSource(session, tz)
 
-    session.add_all(make_patient(rng, n) for n in range(1, cfg.patients + 1))
+    national_ids = free_national_ids(session, cfg.patients)
+    session.add_all(make_patient(rng, n, nid) for n, nid in enumerate(national_ids, start=1))
     session.flush()
     # Seeded patients with accounts also get a history, so their predictions differ
     patient_ids = list(session.scalars(select(Patient.id).order_by(Patient.id)))

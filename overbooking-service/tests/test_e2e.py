@@ -15,6 +15,7 @@ from overbooking_service.demo import DemoConfig, seed
 from overbooking_service.dependencies import get_data_source, get_now
 from overbooking_service.dispatcher import dispatch_due
 from overbooking_service.main import app
+from overbooking_service.national_id import fictional_national_id
 from overbooking_service.predictor import Predictor
 
 CLINIC = ZoneInfo("Europe/Istanbul")
@@ -55,7 +56,14 @@ def test_booking_flow(client: TestClient, session_factory: sessionmaker[Session]
         cfg = DemoConfig(today=TODAY, seed=3, patients=60, past_days=7, future_days=3)
         seed(session, cfg, Predictor.load(settings.model_dir), settings.overbooking)
         session.add(
-            Patient(id=NEW_PATIENT, full_name="New", email="new@example.com", age=35, gender="M")
+            Patient(
+                id=NEW_PATIENT,
+                national_id=fictional_national_id(NEW_PATIENT),
+                full_name="New",
+                email="new@example.com",
+                age=35,
+                gender="M",
+            )
         )
         session.commit()
         slot = empty_slot(session, 1, DAY)

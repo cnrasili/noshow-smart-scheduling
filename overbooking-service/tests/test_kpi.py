@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from noshow_db.models.core import Appointment, Doctor, Patient, Slot
 from overbooking_service.dependencies import get_kpi_settings
 from overbooking_service.kpi import SlotLoad, compute_kpis, load_day
+from overbooking_service.national_id import fictional_national_id
 
 CLINIC = ZoneInfo("Europe/Istanbul")
 START = datetime(2026, 11, 10, 6, 0, tzinfo=UTC)
@@ -70,7 +71,14 @@ def clinic(session_factory: sessionmaker[Session]) -> None:
         session.add_all(
             [Doctor(id=1, full_name="Dr. Ada"), Doctor(id=2, full_name="Dr. Bora")]
             + [
-                Patient(id=i, full_name=f"P{i}", email=f"p{i}@example.com", age=40, gender="F")
+                Patient(
+                    id=i,
+                    national_id=fictional_national_id(i),
+                    full_name=f"P{i}",
+                    email=f"p{i}@example.com",
+                    age=40,
+                    gender="F",
+                )
                 for i in range(1, 6)
             ]
             # Four 15-minute slots from 09:00 clinic time on 10 November

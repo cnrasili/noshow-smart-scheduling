@@ -9,11 +9,12 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from noshow_db.base import Base
-from noshow_db.models.core import Appointment, Slot
+from noshow_db.models.core import Appointment, Patient, Slot
 from noshow_db.models.service import AbAssignment
 from overbooking_service.ab import assign_group
 from overbooking_service.config import settings
-from overbooking_service.demo import DemoConfig, seed
+from overbooking_service.demo import DemoConfig, free_national_ids, seed
+from overbooking_service.national_id import fictional_national_id
 from overbooking_service.predictor import Predictor
 from overbooking_service.rules import OverbookingRule
 
@@ -161,3 +162,50 @@ def test_seed_refuses_database_without_doctors(predictor: Predictor):
 def test_seed_refuses_second_run(seeded: Session, predictor: Predictor):
     with pytest.raises(RuntimeError, match="already exists"):
         seed(seeded, SMALL, predictor, RULE)
+
+
+def is_valid_national_id(value: str) -> bool:
+    # Official rules, written independently of the code under test
+    d = [int(c) for c in value]
+    return (
+        len(d) == 11
+        and d[0] != 0
+        and d[9] == ((d[0] + d[2] + d[4] + d[6] + d[8]) * 7 - (d[1] + d[3] + d[5] + d[7])) % 10
+        and d[10] == sum(d[:10]) % 10
+    )
+
+
+def test_fictional_national_ids_follow_the_web_backend_pattern():
+    # The web backend seed's first demo patient has this number
+    assert fictional_national_id(1) == "99999000184"
+    assert all(is_valid_national_id(fictional_national_id(n)) for n in range(0, 10000, 7))
+    with pytest.raises(ValueError):
+        fictional_national_id(10000)
+
+
+def test_generated_patients_get_unique_fictional_national_ids(seeded: Session):
+    national_ids = list(seeded.scalars(select(Patient.national_id)))
+    assert len(national_ids) == len(set(national_ids)) == SEEDED_PATIENTS + SMALL.patients
+    assert all(is_valid_national_id(nid) and nid.startswith("99999") for nid in national_ids)
+    generated = seeded.scalars(
+        select(Patient.national_id).where(Patient.email.like("%@history.example.com"))
+    ).all()
+    assert all(int(nid[5:9]) >= 1000 for nid in generated)
+
+
+def test_free_national_ids_skip_numbers_in_use(clinic: Clinic):
+    session = seeded_clinic(clinic)
+    session.add(
+        Patient(
+            national_id=fictional_national_id(1000),
+            full_name="Existing",
+            email="existing@demo.local",
+            age=50,
+            gender="M",
+        )
+    )
+    session.flush()
+    assert free_national_ids(session, 2) == [
+        fictional_national_id(1001),
+        fictional_national_id(1002),
+    ]
