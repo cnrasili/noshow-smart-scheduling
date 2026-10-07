@@ -35,7 +35,7 @@ NOSHOW_TEST_DATABASE_URL=postgresql+psycopg://noshow:noshow@localhost:5432/nosho
 
 ## Demo Data
 
-`web_backend.seed` creates a fictional clinic: four doctors in three branches (Dahiliye, Kardiyoloji, Göz Hastalıkları) with their own working hours, eight patients, the login accounts, slots from three weeks ago to two weeks ahead and a few example appointments per doctor. Running it again only adds missing doctors, patients and slots, so it also upgrades a database seeded by an earlier version.
+`web_backend.seed` creates a fictional clinic through the account module: four doctors in three branches (Dahiliye, Kardiyoloji, Göz Hastalıkları) with their own working hours, eight patients, the login accounts, slots from three weeks ago to two weeks ahead and a few example appointments per doctor. Running it again only adds missing doctors, patients and slots, so it also upgrades a database seeded by an earlier version.
 
 ```bash
 python -m web_backend.seed
@@ -68,6 +68,16 @@ The migration that adds the national ID column gives existing patients a fiction
 - Doctors: `{"role": "doctor", "email": "…", "password": "…"}`.
 
 Wrong credentials, an invalid national ID number and a login through the other role's form all get the same `401` ("Wrong national ID number or password" or "Wrong email or password"). There is no self-registration; accounts are created by the hospital. A successful login returns a bearer token that is valid for 12 hours; send it as `Authorization: Bearer <token>`. Passwords are hashed with scrypt and only a hash of each token is stored (`user_accounts` and `auth_sessions` tables).
+
+## Accounts
+
+Patients and doctors cannot register themselves; the hospital creates their accounts. The account rules (national ID number, unique e-mail, password hashing, the doctor's department and working hours) are in `web_backend/accounts.py`, which both the demo seed and the internal account API use.
+
+The internal account API (`/internal/accounts/...`) lets the hospital's admin service create patients and doctors and reset passwords. Every request needs the service token from the `INTERNAL_API_TOKEN` environment variable in the `X-Internal-Token` header; without the variable the API is disabled and answers `503`. The public frontend never calls it, and it is left out of the public API documentation at `/docs`. Requests, responses and errors are described in the [API contract](../../docs/api-contract.md#internal-account-api-web-backend).
+
+```bash
+INTERNAL_API_TOKEN=change-me uvicorn web_backend.main:app --reload
+```
 
 ## Overbooking
 

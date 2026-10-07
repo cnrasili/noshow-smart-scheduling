@@ -12,11 +12,11 @@ from datetime import time, timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from noshow_db.models.core import Appointment, Doctor, DoctorSchedule, Patient, Slot, UserAccount
+from noshow_db.models.core import Appointment, Doctor, Patient, Slot, UserAccount
 from noshow_db.session import SessionLocal
+from web_backend.accounts import NewDoctor, NewPatient, WorkingHours, create_doctor, create_patient
 from web_backend.clinic import CLINIC_TZ, as_utc, today
 from web_backend.national_id import fictional_national_id
-from web_backend.security import hash_password
 from web_backend.slots import generate_slots
 
 DEMO_PASSWORD = "demo1234"
@@ -80,7 +80,7 @@ def _account(db: Session, email: str) -> UserAccount | None:
     return db.scalar(select(UserAccount).where(UserAccount.email == email))
 
 
-def _ensure_patients(db: Session, password_hash: str) -> None:
+def _ensure_patients(db: Session) -> None:
     for number, (
         name,
         email,
@@ -94,50 +94,43 @@ def _ensure_patients(db: Session, password_hash: str) -> None:
     ) in enumerate(PATIENTS, start=1):
         if _account(db, email) is not None:
             continue
-        patient = Patient(
-            national_id=patient_national_id(number),
-            full_name=name,
-            email=email,
-            age=age,
-            gender=gender,
-            scholarship=scholarship,
-            hipertension=hipertension,
-            diabetes=diabetes,
-            alcoholism=alcoholism,
-            handcap=handcap,
+        create_patient(
+            db,
+            NewPatient(
+                national_id=patient_national_id(number),
+                full_name=name,
+                email=email,
+                age=age,
+                gender=gender,
+                scholarship=scholarship,
+                hipertension=hipertension,
+                diabetes=diabetes,
+                alcoholism=alcoholism,
+                handcap=handcap,
+                password=DEMO_PASSWORD,
+            ),
         )
-        db.add(patient)
-        db.flush()
-        db.add(
-            UserAccount(
-                email=email, password_hash=password_hash, role="patient", patient_id=patient.id
-            )
-        )
-    db.flush()
 
 
-def _ensure_doctor(db: Session, demo: DemoDoctor, password_hash: str) -> tuple[Doctor, bool]:
+def _ensure_doctor(db: Session, demo: DemoDoctor) -> tuple[Doctor, bool]:
     """The demo doctor with account and working hours; True if it was just created."""
     account = _account(db, demo.email)
-    if account is not None:
-        return db.get(Doctor, account.doctor_id), False
-
-    doctor = Doctor(full_name=demo.name, specialty=demo.specialty)
-    db.add(doctor)
-    db.flush()
-    db.add(
-        UserAccount(
-            email=demo.email, password_hash=password_hash, role="doctor", doctor_id=doctor.id
+    if account is None:
+        account = create_doctor(
+            db,
+            NewDoctor(
+                full_name=demo.name,
+                specialty=demo.specialty,
+                email=demo.email,
+                password=DEMO_PASSWORD,
+                working_hours=[
+                    WorkingHours(weekday=weekday, start_time=demo.start, end_time=demo.end)
+                    for weekday in demo.weekdays
+                ],
+            ),
         )
-    )
-    for weekday in demo.weekdays:
-        db.add(
-            DoctorSchedule(
-                doctor_id=doctor.id, weekday=weekday, start_time=demo.start, end_time=demo.end
-            )
-        )
-    db.flush()
-    return doctor, True
+        return db.get(Doctor, account.doctor_id), True
+    return db.get(Doctor, account.doctor_id), False
 
 
 def _book_examples(db: Session, doctor: Doctor, first_patient: int) -> None:
@@ -169,10 +162,10 @@ def _book_examples(db: Session, doctor: Doctor, first_patient: int) -> None:
 
 
 def seed(db: Session) -> None:
-    password_hash = hash_password(DEMO_PASSWORD)
-    _ensure_patients(db, password_hash)
+    """Create the missing demo accounts through the account module, then slots and bookings."""
+    _ensure_patients(db)
     for index, demo in enumerate(DOCTORS):
-        doctor, created = _ensure_doctor(db, demo, password_hash)
+        doctor, created = _ensure_doctor(db, demo)
         generate_slots(
             db,
             doctor.id,

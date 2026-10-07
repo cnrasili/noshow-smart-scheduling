@@ -3,7 +3,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from web_backend import appointments, auth, doctors, slots
+from web_backend import appointments, auth, doctors, internal_accounts, slots
 
 app = FastAPI(title="Appointment Booking API")
 
@@ -18,6 +18,7 @@ app.include_router(auth.router)
 app.include_router(slots.router)
 app.include_router(doctors.router)
 app.include_router(appointments.router)
+app.include_router(internal_accounts.router)
 
 
 @app.get("/health")
