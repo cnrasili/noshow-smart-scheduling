@@ -1,8 +1,41 @@
 # API Contract
 
-**Status:** Draft.
+**Status:** Agreed. Changes are agreed by the components involved before they are implemented.
 
-Interface between the web backend and the overbooking service, and the KPI endpoints read by the admin service. The web frontend does not call the overbooking service directly.
+Interfaces between the components:
+
+- the web backend and the overbooking service (prediction, booking decision, booking events),
+- the admin service and the overbooking service (A/B summary, KPIs),
+- the admin service and the web backend (internal account API).
+
+The web frontend calls only the web backend; it never calls the overbooking service or the internal account API.
+
+## Shared Database
+
+All services use one PostgreSQL database with a single Alembic history in [`db/`](../db/). Each table is written by its owner; the other services only read it. The only exception is the overbooking service's demo data generator (`overbooking_service.demo`), which adds demo patients and appointments to the web backend's tables.
+
+| Tables | Written by | Read by |
+|---|---|---|
+| `patients`, `doctors`, `doctor_schedules`, `slots`, `appointments`, `user_accounts`, `auth_sessions` | Web backend | Overbooking service (`patients`, `doctors`, `doctor_schedules`, `slots`, `appointments`); admin service (`patients`, `doctors`, `doctor_schedules`, `user_accounts`) |
+| `predictions`, `booking_decisions`, `messages`, `ab_assignments` | Overbooking service | — |
+| `admin_users`, `admin_sessions`, `admin_audit_log` | Admin service | — |
+
+### Attendance
+
+Attendance is not reported by an event. The doctor marks an appointment as attended or missed in the web application, and the web backend stores it in `appointments.attended` (`NULL` until marked). The overbooking service reads this column directly:
+
+- patient history for the model features (`prior_appt_count`, `prior_noshow_count`), counting only appointments with a recorded outcome before the booking date,
+- the no-show rates of `GET /ab/summary`,
+- the patients seen in `GET /kpi`.
+
+The web backend deletes a cancelled appointment and then reports it with `POST /events/appointment-cancelled`; deleted appointments no longer count anywhere.
+
+## Service Availability
+
+Booking never depends on the overbooking service being available:
+
+- The web backend waits at most 3 seconds for `POST /booking-decision`. Without an answer (timeout, connection error, error status or unexpected body), an empty slot is still booked, but a booked slot is never overbooked.
+- Booking events are sent after the response to the patient. A failed event does not undo the booking change; the service ignores repeated events.
 
 ## `POST /predict`
 
@@ -196,7 +229,7 @@ Response:
 }
 ```
 
-The session runs from the doctor's first slot start to the last slot end on that date. Patients with `attended = true` are seen in slot order, each for a fixed consultation length, and are assumed to arrive on time; consultation start and end times are not recorded.
+The session runs from the doctor's first slot start to the last slot end on that date, or over the doctor's working hours of the weekday when the overbooking service's `kpi.session` setting is `schedule` (days without working hours fall back to the slots). Patients with `attended = true` are seen in slot order, each for a fixed consultation length, and are assumed to arrive on time; consultation start and end times are not recorded.
 
 Errors:
 

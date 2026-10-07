@@ -171,7 +171,7 @@ Components depend on each other through the files below. Changes to them are agr
 
 | Document | Between |
 |---|---|
-| [API contract](docs/api-contract.md) | Web backend and overbooking service |
+| [API contract](docs/api-contract.md) | Web backend, overbooking service and admin service, including the shared database tables |
 | [Model features](docs/features.md) | Prediction model, overbooking service and web backend |
 | [Model export](ml/export_model.py) | Prediction model and overbooking service |
 | [KPI definitions](docs/kpi-definitions.md) | Simulation and KPI screen |
