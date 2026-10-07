@@ -2,7 +2,7 @@
 
 **Status:** Draft.
 
-Interface between the web backend and the overbooking service. The web frontend does not call the overbooking service directly.
+Interface between the web backend and the overbooking service, and the KPI endpoints read by the admin service. The web frontend does not call the overbooking service directly.
 
 ## `POST /predict`
 
@@ -149,7 +149,7 @@ Errors:
 
 ## `GET /ab/summary`
 
-Compares the no-show rate of the reminder and control groups. Only appointments with a recorded `attended` value count; deleted (cancelled) appointments are excluded.
+Compares the no-show rate of the reminder and control groups. Read by the admin service's KPI screen. Only appointments with a recorded `attended` value count; deleted (cancelled) appointments are excluded.
 
 Request: `GET /ab/summary?unit=appointment`
 
@@ -179,7 +179,7 @@ Response:
 
 ## `GET /kpi`
 
-Returns schedule KPIs for a doctor and a date. Definitions are in [KPI definitions](kpi-definitions.md). The date is a clinic calendar day.
+Returns schedule KPIs for a doctor and a date. Read by the admin service's KPI screen. Definitions are in [KPI definitions](kpi-definitions.md). The date is a clinic calendar day.
 
 Request: `GET /kpi?doctor_id=1&date=2026-11-10`
 

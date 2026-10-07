@@ -34,7 +34,6 @@ class KpiSettings(BaseModel):
     """KPI calculation settings."""
 
     service_minutes: float = Field(gt=0)
-    dashboard_days: int = Field(ge=1, le=31)
 
 
 class Settings(BaseSettings):

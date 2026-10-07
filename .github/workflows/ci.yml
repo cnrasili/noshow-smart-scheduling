@@ -14,13 +14,15 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install packages
-        run: pip install ruff -e db -e "web/backend[dev]" -e "overbooking-service[dev]"
+        run: pip install ruff -e db -e "web/backend[dev]" -e "overbooking-service[dev]" -e "admin-service[dev]"
       - name: Lint
         run: ruff check . && ruff format --check .
       - name: Test web backend
         run: pytest web/backend
       - name: Test overbooking service
         run: pytest overbooking-service
+      - name: Test admin service
+        run: pytest admin-service
 
   frontend:
     runs-on: ubuntu-latest

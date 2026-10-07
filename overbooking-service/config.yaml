@@ -23,4 +23,3 @@ ab_test:
 # Schedule KPIs; consultation length matches the simulation's mean service time
 kpi:
   service_minutes: 12
-  dashboard_days: 7

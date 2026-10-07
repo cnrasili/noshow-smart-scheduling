@@ -9,7 +9,6 @@ Decision service behind the booking application. It serves the no-show model, de
 - scikit-learn and joblib for model serving
 - APScheduler for reminder jobs
 - Mailpit (SMTP) for confirmation and reminder emails in development
-- Jinja2 + Chart.js for the KPI dashboard
 - pytest
 
 ## Scope
@@ -18,7 +17,7 @@ Decision service behind the booking application. It serves the no-show model, de
 - Rule engine for slot-level overbooking
 - Scheduled confirmation and reminder jobs
 - Logging for the reminder A/B comparison
-- KPI dashboard: utilization, idle time, overtime
+- Schedule KPIs: utilization, idle time, overtime; shown on the KPI screen of the [admin service](../admin-service/)
 
 ## Endpoints
 
@@ -125,9 +124,9 @@ Each appointment that can get a reminder is assigned to the `reminder` or `contr
 | `ab_test.enabled` | true | Assign groups; when false, every appointment gets a reminder |
 | `ab_test.salt` | `reminder-ab-v1` | Hash salt; changing it reassigns patients |
 
-## KPI Dashboard
+## KPIs
 
-`GET /kpi` returns utilization, physician idle time, overtime, mean waiting time and overbooked slots for a doctor and a date (see the [API contract](../docs/api-contract.md#get-kpi) and [KPI definitions](../docs/kpi-definitions.md)). The dashboard at `/dashboard` shows the same KPIs for the selected date and the days before it, with a chart and a table.
+`GET /kpi` returns utilization, physician idle time, overtime, mean waiting time and overbooked slots for a doctor and a date (see the [API contract](../docs/api-contract.md#get-kpi) and [KPI definitions](../docs/kpi-definitions.md)). The KPI screen of the [admin service](../admin-service/) shows them for the selected date and the days before it, with a chart and a table.
 
 The booking application does not record consultation times, so the KPIs replay the day from the schedule:
 
@@ -135,12 +134,11 @@ The booking application does not record consultation times, so the KPIs replay t
 - Patients with `attended = true` are seen in slot order, each for `service_minutes`, and arrive on time.
 - Appointments without a recorded attendance are not counted as seen.
 
-The default consultation length is the simulation's mean service time. Chart.js is served by the service (`static/chart.umd.min.js`), so the dashboard also works without internet access.
+The default consultation length is the simulation's mean service time.
 
 | Setting | Default | Meaning |
 |---|---|---|
 | `kpi.service_minutes` | 12 | Consultation length in minutes |
-| `kpi.dashboard_days` | 7 | Days shown in the dashboard chart and table |
 
 ## Demo Data
 
@@ -173,7 +171,7 @@ The command refuses to run before the web backend seed and when the demo history
 
    The last command prints an empty and a booked slot of the first doctor with slots after the demo date.
 
-2. Open the KPI dashboard at http://localhost:8001/dashboard. The past days show utilization, idle time, overtime, waiting time and overbooked slots.
+2. Create an administrator (see the [admin service](../admin-service/README.md#setup)) and open the KPI screen at http://localhost:8002. The past days show utilization, idle time, overtime, waiting time and overbooked slots, and the reminder A/B test.
 3. Open http://localhost:8001/ab/summary to compare the no-show rates of the reminder and control groups, and http://localhost:8001/ab/summary?unit=patient for one observation per patient.
 4. In the API docs at http://localhost:8001/docs, call `POST /booking-decision` for the empty slot (normal booking) and for the booked slot (overbook or reject, with the reason).
 5. Call `POST /events/appointment-booked` for a new appointment id. The response shows the A/B group and the scheduled messages; the confirmation appears in Mailpit at http://localhost:8025 within a minute.

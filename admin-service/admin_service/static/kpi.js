@@ -1,4 +1,4 @@
-// Daily KPI chart
+// Daily KPI chart of the schedule KPI page
 const rows = JSON.parse(document.getElementById("kpi-data").textContent);
 const style = getComputedStyle(document.documentElement);
 const color = (name) => style.getPropertyValue(name).trim();
