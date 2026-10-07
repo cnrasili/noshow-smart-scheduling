@@ -9,6 +9,7 @@ from noshow_db.models.service import Message
 from overbooking_service.config import AbTestSettings
 from overbooking_service.dependencies import get_ab_settings, get_now
 from overbooking_service.main import app
+from overbooking_service.messages import turkish_date_time
 
 NOW = datetime(2026, 11, 2, 9, 0, tzinfo=UTC)
 BODY = {
@@ -58,9 +59,10 @@ def test_message_text_uses_local_appointment_time(
     book(client)
     confirmation, reminder = stored(session_factory)
     assert confirmation.email == "patient@example.com"
-    assert confirmation.subject == "Appointment confirmed"
-    assert "10 November 2026, 09:30" in confirmation.body
-    assert reminder.subject == "Appointment reminder"
+    assert confirmation.subject == "Randevunuz onaylandı"
+    assert "10 Kasım 2026 Salı, 09:30" in confirmation.body
+    assert reminder.subject == "Randevu hatırlatması"
+    assert "10 Kasım 2026 Salı, 09:30" in reminder.body
 
 
 def test_no_reminder_when_appointment_is_too_close(client: TestClient):
@@ -110,3 +112,15 @@ def test_cancel_unknown_appointment_cancels_nothing(client: TestClient):
 def test_invalid_booking_event_returns_422(client: TestClient, overrides: dict):
     response = client.post("/events/appointment-booked", json={**BODY, **overrides})
     assert response.status_code == 422
+
+
+@pytest.mark.parametrize(
+    ("moment", "text"),
+    [
+        (datetime(2026, 10, 19, 13, 20), "19 Ekim 2026 Pazartesi, 13:20"),
+        (datetime(2026, 2, 1, 9, 5), "1 Şubat 2026 Pazar, 09:05"),
+        (datetime(2026, 8, 12, 16, 0), "12 Ağustos 2026 Çarşamba, 16:00"),
+    ],
+)
+def test_turkish_date_time(moment: datetime, text: str):
+    assert turkish_date_time(moment) == text

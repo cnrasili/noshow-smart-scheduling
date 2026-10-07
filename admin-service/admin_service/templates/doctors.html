@@ -1,24 +1,24 @@
 {% extends "base.html" %}
-{% block title %}Doctors{% endblock %}
+{% block title %}Hekimler{% endblock %}
 {% block content %}
 <header>
-  <h1>Doctors</h1>
+  <h1>Hekimler</h1>
 </header>
 {% if enabled %}
-<p><a href="{{ url_for('new_doctor_page') }}">Create a doctor account</a></p>
+<p><a href="{{ url_for('new_doctor_page') }}">Hekim hesabı aç</a></p>
 {% else %}
-<p class="error" role="alert">Account management is disabled: INTERNAL_API_TOKEN is not set.</p>
+<p class="error" role="alert">Hesap yönetimi kapalı: INTERNAL_API_TOKEN ayarlanmamış.</p>
 {% endif %}
-<section aria-label="Doctors">
+<section aria-label="Hekimler">
   {% if rows %}
   <table>
     <thead>
       <tr>
-        <th scope="col">Name</th>
-        <th scope="col">Department</th>
-        <th scope="col">Email</th>
-        <th scope="col">Working hours</th>
-        <th scope="col">Login account</th>
+        <th scope="col">Ad soyad</th>
+        <th scope="col">Bölüm</th>
+        <th scope="col">E-posta</th>
+        <th scope="col">Çalışma saatleri</th>
+        <th scope="col">Giriş hesabı</th>
       </tr>
     </thead>
     <tbody>
@@ -32,12 +32,12 @@
           {% if account_id and enabled %}
           <form method="post" action="{{ url_for('reset_password', account_id=account_id) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf(request) }}" />
-            <button type="submit" class="secondary">Reset password</button>
+            <button type="submit" class="secondary">Şifreyi sıfırla</button>
           </form>
           {% elif account_id %}
-          Yes
+          Var
           {% else %}
-          <span class="muted">No login account</span>
+          <span class="muted">Giriş hesabı yok</span>
           {% endif %}
         </td>
       </tr>
@@ -45,7 +45,7 @@
     </tbody>
   </table>
   {% else %}
-  <p class="empty">No doctors yet.</p>
+  <p class="empty">Henüz hekim yok.</p>
   {% endif %}
 </section>
 {% endblock %}

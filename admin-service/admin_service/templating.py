@@ -3,6 +3,8 @@ from pathlib import Path
 from fastapi import Request
 from fastapi.templating import Jinja2Templates
 
+from admin_service import turkish
+from admin_service.config import settings
 from admin_service.security import csrf_token
 
 SESSION_COOKIE = "admin_session"
@@ -17,3 +19,11 @@ def csrf(request: Request) -> str:
 
 
 templates.env.globals["csrf"] = csrf
+templates.env.globals["audit_events"] = turkish.AUDIT_EVENTS
+templates.env.globals["ab_groups"] = turkish.AB_GROUPS
+templates.env.filters["long_date"] = turkish.long_date
+templates.env.filters["decimal"] = turkish.decimal
+templates.env.filters["percent"] = turkish.percent
+templates.env.filters["clinic_time"] = lambda moment: turkish.date_time(
+    moment, settings.clinic_timezone
+)

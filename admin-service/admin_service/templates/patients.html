@@ -1,31 +1,31 @@
 {% extends "base.html" %}
-{% block title %}Patients{% endblock %}
+{% block title %}Hastalar{% endblock %}
 {% block content %}
 <header>
-  <h1>Patients</h1>
+  <h1>Hastalar</h1>
   <form method="get" action="{{ url_for('patients_page') }}">
     <label>
-      Name or national ID number
+      Ad veya T.C. kimlik numarası
       <input type="search" name="q" value="{{ q }}" maxlength="100" />
     </label>
-    <button type="submit">Search</button>
+    <button type="submit">Ara</button>
   </form>
 </header>
 {% if enabled %}
-<p><a href="{{ url_for('new_patient_page') }}">Create a patient account</a></p>
+<p><a href="{{ url_for('new_patient_page') }}">Hasta hesabı aç</a></p>
 {% else %}
-<p class="error" role="alert">Account management is disabled: INTERNAL_API_TOKEN is not set.</p>
+<p class="error" role="alert">Hesap yönetimi kapalı: INTERNAL_API_TOKEN ayarlanmamış.</p>
 {% endif %}
-<section aria-label="Patients">
+<section aria-label="Hastalar">
   {% if rows %}
   <table>
     <thead>
       <tr>
-        <th scope="col">Name</th>
-        <th scope="col">National ID number</th>
-        <th scope="col">Email</th>
-        <th scope="col">Age</th>
-        <th scope="col">Login account</th>
+        <th scope="col">Ad soyad</th>
+        <th scope="col">T.C. kimlik no</th>
+        <th scope="col">E-posta</th>
+        <th scope="col">Yaş</th>
+        <th scope="col">Giriş hesabı</th>
       </tr>
     </thead>
     <tbody>
@@ -39,21 +39,21 @@
           {% if account_id and enabled %}
           <form method="post" action="{{ url_for('reset_password', account_id=account_id) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf(request) }}" />
-            <button type="submit" class="secondary">Reset password</button>
+            <button type="submit" class="secondary">Şifreyi sıfırla</button>
           </form>
           {% elif account_id %}
-          Yes
+          Var
           {% else %}
-          <span class="muted">No login account</span>
+          <span class="muted">Giriş hesabı yok</span>
           {% endif %}
         </td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
-  <p class="muted">At most {{ limit }} patients are listed; search to narrow the list.</p>
+  <p class="muted">En fazla {{ limit }} hasta listelenir; listeyi daraltmak için arama yapın.</p>
   {% else %}
-  <p class="empty">No patients found.</p>
+  <p class="empty">Hasta bulunamadı.</p>
   {% endif %}
 </section>
 {% endblock %}

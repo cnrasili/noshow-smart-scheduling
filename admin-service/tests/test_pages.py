@@ -19,11 +19,12 @@ def test_kpi_page_shows_selected_doctor_and_day(client: TestClient, log_in, over
     overbooking.kpis[(1, date(2026, 11, 9))] = {**KPIS, "utilization": 0.5}
     log_in()
     html = client.get("/kpi", params={"doctor_id": 1, "date": "2026-11-10"}).text
-    assert "Dr. Ada · 10 November 2026" in html
-    assert "60.0%" in html
+    assert "Dr. Ada · 10 Kasım 2026 Salı" in html
+    assert "%60,0" in html
+    assert "24 dk" in html and "3,5 dk" in html
     data = json.loads(re.search(r'id="kpi-data">(.*?)</script>', html).group(1))
-    assert [row["date"] for row in data] == ["2026-11-09", "2026-11-10"]
-    assert data[-1] == {"date": "2026-11-10", "utilization": 60.0, "idle": 24.0, "overtime": 0.0}
+    assert [row["date"] for row in data] == ["09.11", "10.11"]
+    assert data[-1] == {"date": "10.11", "utilization": 60.0, "idle": 24.0, "overtime": 0.0}
 
 
 def test_kpi_page_defaults_to_first_doctor_and_today(client: TestClient, log_in, clock):
@@ -31,16 +32,17 @@ def test_kpi_page_defaults_to_first_doctor_and_today(client: TestClient, log_in,
     clock.now = datetime(2026, 11, 10, 22, 0, tzinfo=UTC)
     log_in()
     html = client.get("/kpi").text
-    assert "Dr. Ada · 11 November 2026" in html
-    assert "No slots on this date." in html
+    assert "Dr. Ada · 11 Kasım 2026 Çarşamba" in html
+    assert "Bu tarihte slot yok." in html
 
 
 def test_kpi_page_shows_ab_summary(client: TestClient, log_in):
     log_in()
     html = client.get("/kpi").text
-    assert "Reminder A/B test" in html
-    assert "15.0%" in html and "25.0%" in html
-    assert "p = 0.258" in html
+    assert "Hatırlatma A/B testi" in html
+    assert "Hatırlatma" in html and "Kontrol" in html
+    assert "%15,0" in html and "%25,0" in html
+    assert "p = 0,258" in html
 
 
 def test_kpi_page_when_overbooking_service_is_down(client: TestClient, log_in, overbooking):
@@ -48,7 +50,7 @@ def test_kpi_page_when_overbooking_service_is_down(client: TestClient, log_in, o
     log_in()
     response = client.get("/kpi")
     assert response.status_code == 200
-    assert "The overbooking service is not reachable" in response.text
+    assert "Randevu karar servisine ulaşılamıyor" in response.text
 
 
 def test_kpi_page_needs_no_external_scripts(client: TestClient, log_in, overbooking):
@@ -70,7 +72,7 @@ def test_audit_page_lists_events(client: TestClient, log_in):
     log_in(password="wrong password")
     log_in()
     html = client.get("/audit").text
-    assert "login_failed" in html
+    assert "Başarısız giriş" in html
     assert "admin@hospital.local" in html
     assert "127.0.0.1" in html
 

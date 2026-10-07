@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Schedule KPIs{% endblock %}
+{% block title %}Randevu göstergeleri{% endblock %}
 {% block content %}
 <header>
-  <h1>Schedule KPIs</h1>
+  <h1>Randevu göstergeleri</h1>
   <form method="get" action="{{ url_for('kpi_page') }}">
     <label>
-      Doctor
+      Hekim
       <select name="doctor_id">
         {% for doctor in doctors %}
         <option value="{{ doctor.id }}" {% if selected and doctor.id == selected.id %}selected{% endif %}>
@@ -15,64 +15,64 @@
       </select>
     </label>
     <label>
-      Date
+      Tarih
       <input type="date" name="date" value="{{ day.isoformat() }}" />
     </label>
-    <button type="submit">Show</button>
+    <button type="submit">Göster</button>
   </form>
 </header>
 
 {% if error %}
 <p class="error" role="alert">{{ error }}</p>
 {% elif not selected %}
-<p class="empty">No doctors in the booking database yet.</p>
+<p class="empty">Henüz hekim kaydı yok.</p>
 {% else %}
-<section aria-label="KPIs on {{ day.isoformat() }}">
-  <h2>{{ selected.full_name }} · {{ day.strftime('%d %B %Y') }}</h2>
+<section aria-label="{{ day | long_date }} göstergeleri">
+  <h2>{{ selected.full_name }} · {{ day | long_date }}</h2>
   {% if today %}
   <div class="tiles">
-    <div class="tile"><span>Utilization</span><strong>{{ '%.1f' % (today.utilization * 100) }}%</strong></div>
-    <div class="tile"><span>Physician idle time</span><strong>{{ '%.0f' % today.idle_minutes }} min</strong></div>
-    <div class="tile"><span>Overtime</span><strong>{{ '%.0f' % today.overtime_minutes }} min</strong></div>
-    <div class="tile"><span>Mean waiting time</span><strong>{{ '%.1f' % today.mean_wait_minutes }} min</strong></div>
-    <div class="tile"><span>Overbooked slots</span><strong>{{ today.overbooked_slots }}</strong></div>
-    <div class="tile"><span>Patients seen</span><strong>{{ today.patients_seen }}</strong></div>
+    <div class="tile"><span>Doluluk</span><strong>{{ today.utilization | percent }}</strong></div>
+    <div class="tile"><span>Hekim boş süresi</span><strong>{{ today.idle_minutes | decimal(0) }} dk</strong></div>
+    <div class="tile"><span>Fazla mesai</span><strong>{{ today.overtime_minutes | decimal(0) }} dk</strong></div>
+    <div class="tile"><span>Ortalama bekleme</span><strong>{{ today.mean_wait_minutes | decimal }} dk</strong></div>
+    <div class="tile"><span>Ek randevulu slot</span><strong>{{ today.overbooked_slots }}</strong></div>
+    <div class="tile"><span>Muayene edilen hasta</span><strong>{{ today.patients_seen }}</strong></div>
   </div>
   {% else %}
-  <p class="empty">No slots on this date.</p>
+  <p class="empty">Bu tarihte slot yok.</p>
   {% endif %}
 </section>
 
-<section aria-label="Last {{ days | length }} days">
-  <h2>Last {{ days | length }} days</h2>
+<section aria-label="Son {{ days | length }} gün">
+  <h2>Son {{ days | length }} gün</h2>
   {% if chart %}
-  <div class="chart"><canvas id="kpi-chart" aria-label="Daily idle time, overtime and utilization" role="img"></canvas></div>
+  <div class="chart"><canvas id="kpi-chart" aria-label="Günlük boş süre, fazla mesai ve doluluk" role="img"></canvas></div>
   {% endif %}
   <table>
     <thead>
       <tr>
-        <th scope="col">Date</th>
-        <th scope="col">Utilization</th>
-        <th scope="col">Idle (min)</th>
-        <th scope="col">Overtime (min)</th>
-        <th scope="col">Mean wait (min)</th>
-        <th scope="col">Overbooked slots</th>
-        <th scope="col">Seen</th>
+        <th scope="col">Tarih</th>
+        <th scope="col">Doluluk</th>
+        <th scope="col">Boş süre (dk)</th>
+        <th scope="col">Fazla mesai (dk)</th>
+        <th scope="col">Ort. bekleme (dk)</th>
+        <th scope="col">Ek randevulu slot</th>
+        <th scope="col">Muayene</th>
       </tr>
     </thead>
     <tbody>
       {% for row in days | reverse %}
       <tr>
-        <td>{{ row.date.isoformat() }}</td>
+        <td>{{ row.date.strftime('%d.%m.%Y') }}</td>
         {% if row.kpis %}
-        <td>{{ '%.1f' % (row.kpis.utilization * 100) }}%</td>
-        <td>{{ '%.0f' % row.kpis.idle_minutes }}</td>
-        <td>{{ '%.0f' % row.kpis.overtime_minutes }}</td>
-        <td>{{ '%.1f' % row.kpis.mean_wait_minutes }}</td>
+        <td>{{ row.kpis.utilization | percent }}</td>
+        <td>{{ row.kpis.idle_minutes | decimal(0) }}</td>
+        <td>{{ row.kpis.overtime_minutes | decimal(0) }}</td>
+        <td>{{ row.kpis.mean_wait_minutes | decimal }}</td>
         <td>{{ row.kpis.overbooked_slots }}</td>
         <td>{{ row.kpis.patients_seen }}</td>
         {% else %}
-        <td colspan="6" class="muted">No slots</td>
+        <td colspan="6" class="muted">Slot yok</td>
         {% endif %}
       </tr>
       {% endfor %}
@@ -82,41 +82,41 @@
 {% endif %}
 
 {% if ab %}
-<section aria-label="Reminder A/B test">
-  <h2>Reminder A/B test</h2>
+<section aria-label="Hatırlatma A/B testi">
+  <h2>Hatırlatma A/B testi</h2>
   <table>
     <thead>
       <tr>
-        <th scope="col">Group</th>
-        <th scope="col">Appointments</th>
-        <th scope="col">No-shows</th>
-        <th scope="col">No-show rate</th>
+        <th scope="col">Grup</th>
+        <th scope="col">Randevu</th>
+        <th scope="col">Gelmeyen</th>
+        <th scope="col">Gelmeme oranı</th>
       </tr>
     </thead>
     <tbody>
       {% for group in ab.groups %}
       <tr>
-        <td>{{ group.group }}</td>
+        <td>{{ ab_groups.get(group.group, group.group) }}</td>
         <td>{{ group.appointments }}</td>
         <td>{{ group.no_shows }}</td>
-        <td>{% if group.no_show_rate is not none %}{{ '%.1f' % (group.no_show_rate * 100) }}%{% else %}–{% endif %}</td>
+        <td>{% if group.no_show_rate is not none %}{{ group.no_show_rate | percent }}{% else %}–{% endif %}</td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
   <p class="muted">
     {% if ab.p_value is not none %}
-    Difference {{ '%.1f' % (ab.difference * 100) }} percentage points, z = {{ '%.2f' % ab.z }}, p = {{ '%.3f' % ab.p_value }} (two-proportion z-test).
+    Fark {{ (ab.difference * 100) | decimal }} yüzde puan, z = {{ ab.z | decimal(2) }}, p = {{ ab.p_value | decimal(3) }} (iki oran z-testi).
     {% else %}
-    Not enough appointments with a recorded attendance for the test yet.
+    Test için henüz yeterli geliş kaydı yok.
     {% endif %}
   </p>
 </section>
 {% endif %}
 
 <footer>
-  KPIs are computed by the overbooking service; definitions follow docs/kpi-definitions.md. Appointments without a
-  recorded attendance are not counted as seen.
+  Göstergeleri randevu karar servisi hesaplar; tanımlar docs/kpi-definitions.md belgesindedir. Geliş kaydı girilmemiş
+  randevular muayene edilmiş sayılmaz.
 </footer>
 {% endblock %}
 

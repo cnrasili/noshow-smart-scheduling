@@ -97,8 +97,8 @@ def test_patient_list_and_search(client: TestClient, log_in):
     html = client.get("/patients").text
     assert "Ayşe Kaya" in html and "Mehmet Demir" in html
     # Ayşe has a login account, Mehmet does not
-    assert html.count("Reset password") == 1
-    assert "No login account" in html
+    assert html.count("Şifreyi sıfırla") == 1
+    assert "Giriş hesabı yok" in html
     by_name = client.get("/patients", params={"q": "ayşe"}).text
     assert "Ayşe Kaya" in by_name and "Mehmet Demir" not in by_name
     by_id = client.get("/patients", params={"q": "999990002"}).text
@@ -110,8 +110,8 @@ def test_doctor_list_shows_department_hours_and_account(client: TestClient, log_
     html = client.get("/doctors").text
     assert "Dr. Ada" in html and "Dr. Bora" in html
     assert "ada@demo.local" in html
-    assert "Mon 09:00–12:00" in html
-    assert html.count("Reset password") == 1
+    assert "Pzt 09:00–12:00" in html
+    assert html.count("Şifreyi sıfırla") == 1
 
 
 def test_create_patient(client: TestClient, log_in, accounts, session_factory):
@@ -136,7 +136,7 @@ def test_create_patient(client: TestClient, log_in, accounts, session_factory):
     # The generated password is shown once and never written to the audit log
     assert initial_password(response.text) == sent["password"]
     assert "99999000320" in response.text
-    assert audit(session_factory)[-1] == ("patient_created", "account 101, patient 1101")
+    assert audit(session_factory)[-1] == ("patient_created", "hesap 101, hasta 1101")
     assert sent["password"] not in str(audit(session_factory))
 
 
@@ -147,15 +147,15 @@ def test_create_patient_needs_the_form_token(client: TestClient, log_in, account
 
 
 def test_rejected_patient_keeps_the_form(client: TestClient, log_in, accounts, session_factory):
-    accounts.reject = "National ID number already registered"
+    accounts.reject = "Bu T.C. kimlik numarası zaten kayıtlı."
     log_in()
     response = post(client, "/patients/new", PATIENT_FORM)
     assert response.status_code == 400
-    assert "National ID number already registered" in response.text
+    assert "Bu T.C. kimlik numarası zaten kayıtlı." in response.text
     assert 'value="Zeynep Çelik"' in response.text
     assert audit(session_factory)[-1] == (
         "account_rejected",
-        "National ID number already registered",
+        "Bu T.C. kimlik numarası zaten kayıtlı.",
     )
 
 
@@ -163,7 +163,7 @@ def test_invalid_age_is_not_sent(client: TestClient, log_in, accounts):
     log_in()
     response = post(client, "/patients/new", {**PATIENT_FORM, "age": "old"})
     assert response.status_code == 400
-    assert "whole numbers" in response.text
+    assert "tam sayı olmalıdır" in response.text
     assert accounts.requests == []
 
 
@@ -178,15 +178,15 @@ def test_create_doctor(client: TestClient, log_in, accounts, session_factory):
         {"weekday": 2, "start_time": "13:00", "end_time": "16:00"},
     ]
     assert initial_password(response.text) == sent["password"]
-    assert "18 slots were opened" in response.text
-    assert audit(session_factory)[-1] == ("doctor_created", "account 101, doctor 1101")
+    assert "18 slot açıldı" in response.text
+    assert audit(session_factory)[-1] == ("doctor_created", "hesap 101, hekim 1101")
 
 
 @pytest.mark.parametrize(
     ("changes", "message"),
     [
-        ({"end_2": ""}, "Enter both start and end time for Wednesday"),
-        ({"start_0": "", "end_0": "", "start_2": "", "end_2": ""}, "at least one working day"),
+        ({"end_2": ""}, "Çarşamba için başlangıç ve bitiş saatini birlikte girin"),
+        ({"start_0": "", "end_0": "", "start_2": "", "end_2": ""}, "En az bir çalışma günü girin"),
     ],
 )
 def test_doctor_hours_are_checked(client: TestClient, log_in, accounts, changes, message):
@@ -205,7 +205,7 @@ def test_reset_password(client: TestClient, log_in, accounts, session_factory):
     assert len(sent["password"]) == 14
     assert initial_password(response.text) == sent["password"]
     assert AYSE in response.text
-    assert audit(session_factory)[-1] == ("password_reset", "account 7")
+    assert audit(session_factory)[-1] == ("password_reset", "hesap 7")
 
 
 def test_reset_password_of_unknown_account(client: TestClient, log_in, accounts):
@@ -218,11 +218,11 @@ def test_disabled_account_management(client: TestClient, log_in, accounts):
     accounts.enabled = False
     log_in()
     listing = client.get("/patients").text
-    assert "Account management is disabled" in listing
-    assert "Create a patient account" not in listing
+    assert "Hesap yönetimi kapalı" in listing
+    assert "Hasta hesabı aç" not in listing
     response = post(client, "/patients/new", PATIENT_FORM)
     assert response.status_code == 400
-    assert "Account management is disabled" in response.text
+    assert "Hesap yönetimi kapalı" in response.text
 
 
 def test_generated_passwords():

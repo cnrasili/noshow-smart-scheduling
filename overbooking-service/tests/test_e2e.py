@@ -106,8 +106,8 @@ def test_booking_flow(client: TestClient, session_factory: sessionmaker[Session]
         reminder_time = slot_start - timedelta(hours=settings.reminders.hours_before)
         assert dispatch_due(session, sender, reminder_time, 3) == len(kinds) - 1
     assert [subject for _, subject in sender.sent] == [
-        "Appointment confirmed",
-        "Appointment reminder",
+        "Randevunuz onaylandı",
+        "Randevu hatırlatması",
     ][: len(kinds)]
 
     # 4. The doctor marks the patient as attended

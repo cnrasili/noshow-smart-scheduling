@@ -64,11 +64,35 @@ def test_without_token_nothing_is_sent(monkeypatch):
 @pytest.mark.parametrize(
     ("error", "expected", "message"),
     [
-        (http_error(409, {"detail": "Email already in use"}), AccountRejected, "Email already"),
         (
-            http_error(422, {"detail": [{"loc": ["body", "national_id"], "msg": "Invalid"}]}),
+            http_error(409, {"detail": "Email already in use"}),
             AccountRejected,
-            "national_id: Invalid",
+            "Bu e-posta adresi zaten kullanılıyor.",
+        ),
+        (
+            http_error(
+                422,
+                {
+                    "detail": [
+                        {
+                            "loc": ["body", "national_id"],
+                            "msg": "Value error, Invalid national ID number",
+                        }
+                    ]
+                },
+            ),
+            AccountRejected,
+            "T.C. kimlik numarası geçerli değil.",
+        ),
+        (
+            http_error(422, {"detail": [{"loc": ["body", "age"], "msg": "Input should be valid"}]}),
+            AccountRejected,
+            "Yaş alanındaki değer geçersiz.",
+        ),
+        (
+            http_error(409, {"detail": "Something new"}),
+            AccountRejected,
+            r"İstek reddedildi \(409\)",
         ),
         (http_error(401, {"detail": "Invalid service token"}), AccountsUnavailable, "401"),
         (http_error(503, {"detail": "Internal API is disabled"}), AccountsUnavailable, "503"),

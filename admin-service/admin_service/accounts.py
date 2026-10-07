@@ -23,20 +23,22 @@ from admin_service.dependencies import (
 )
 from admin_service.security import generate_password
 from admin_service.templating import templates
+from admin_service.turkish import SHORT_WEEKDAYS, WEEKDAYS
 from noshow_db.models.admin import AdminUser
 from noshow_db.models.core import Doctor, DoctorSchedule, Patient, UserAccount
 
 router = APIRouter()
 
 LIST_LIMIT = 50
-WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 PATIENT_FLAGS = {
-    "scholarship": "Social welfare (scholarship)",
-    "hipertension": "Hypertension",
-    "diabetes": "Diabetes",
-    "alcoholism": "Alcoholism",
+    "scholarship": "Sosyal yardım alıyor",
+    "hipertension": "Hipertansiyon",
+    "diabetes": "Diyabet",
+    "alcoholism": "Alkol bağımlılığı",
 }
-DISABLED = "Account management is disabled: INTERNAL_API_TOKEN is not set or not accepted."
+DISABLED = "Hesap yönetimi kapalı: INTERNAL_API_TOKEN ayarlanmamış ya da kabul edilmiyor."
+NATIONAL_ID = "T.C. kimlik numarası"
+EMAIL = "E-posta"
 
 PATIENT_CREATED = "patient_created"
 DOCTOR_CREATED = "doctor_created"
@@ -100,7 +102,7 @@ def doctors_page(
     for schedule in session.scalars(
         select(DoctorSchedule).order_by(DoctorSchedule.doctor_id, DoctorSchedule.weekday)
     ):
-        day = WEEKDAYS[schedule.weekday][:3]
+        day = SHORT_WEEKDAYS[schedule.weekday]
         hours.setdefault(schedule.doctor_id, []).append(
             f"{day} {schedule.start_time:%H:%M}–{schedule.end_time:%H:%M}"
         )
@@ -140,7 +142,7 @@ def create_patient(
     try:
         age, handcap = int(values["age"]), int(values["handcap"])
     except ValueError:
-        return patient_form(request, admin, values, "Age and handicap must be whole numbers.")
+        return patient_form(request, admin, values, "Yaş ve engellilik düzeyi tam sayı olmalıdır.")
 
     password = generate_password()
     patient = {**values, "age": age, "handcap": handcap, "password": password}
@@ -161,7 +163,7 @@ def create_patient(
         session.commit()
         return patient_form(request, admin, values, str(exc))
 
-    detail = f"account {created['account_id']}, patient {created['patient_id']}"
+    detail = f"hesap {created['account_id']}, hasta {created['patient_id']}"
     audit.record(session, PATIENT_CREATED, admin.email, client_ip(request), now, admin.id, detail)
     session.commit()
     return render(
@@ -169,10 +171,10 @@ def create_patient(
         "credentials.html",
         {
             "admin": admin,
-            "title": "Patient account created",
+            "title": "Hasta hesabı açıldı",
             "name": created["full_name"],
             "login": created["national_id"],
-            "login_label": "National ID number",
+            "login_label": NATIONAL_ID,
             "password": password,
         },
     )
@@ -224,10 +226,10 @@ def create_doctor(
         elif start or end:
             missing.append(day)
     if missing:
-        error = f"Enter both start and end time for {', '.join(missing)}."
+        error = f"{', '.join(missing)} için başlangıç ve bitiş saatini birlikte girin."
         return doctor_form(request, admin, session, values, error)
     if not working_hours:
-        return doctor_form(request, admin, session, values, "Enter at least one working day.")
+        return doctor_form(request, admin, session, values, "En az bir çalışma günü girin.")
 
     password = generate_password()
     doctor = {
@@ -254,7 +256,7 @@ def create_doctor(
         session.commit()
         return doctor_form(request, admin, session, values, str(exc))
 
-    detail = f"account {created['account_id']}, doctor {created['doctor_id']}"
+    detail = f"hesap {created['account_id']}, hekim {created['doctor_id']}"
     audit.record(session, DOCTOR_CREATED, admin.email, client_ip(request), now, admin.id, detail)
     session.commit()
     return render(
@@ -262,12 +264,12 @@ def create_doctor(
         "credentials.html",
         {
             "admin": admin,
-            "title": "Doctor account created",
+            "title": "Hekim hesabı açıldı",
             "name": created["full_name"],
             "login": created["email"],
-            "login_label": "Email",
+            "login_label": EMAIL,
             "password": password,
-            "note": f"{created['slots_created']} slots were opened for the next two weeks.",
+            "note": f"Önümüzdeki iki hafta için {created['slots_created']} slot açıldı.",
         },
     )
 
@@ -288,7 +290,7 @@ def reset_password(
         .where(UserAccount.id == account_id)
     ).first()
     if row is None:
-        return render(request, "message.html", {"admin": admin, "error": "Account not found."}, 404)
+        return render(request, "message.html", {"admin": admin, "error": "Hesap bulunamadı."}, 404)
     account, patient, doctor = row
 
     password = generate_password()
@@ -305,7 +307,7 @@ def reset_password(
         client_ip(request),
         now,
         admin.id,
-        f"account {account_id}",
+        f"hesap {account_id}",
     )
     session.commit()
     return render(
@@ -313,11 +315,12 @@ def reset_password(
         "credentials.html",
         {
             "admin": admin,
-            "title": "Password reset",
+            "title": "Şifre sıfırlandı",
+            "password_label": "Yeni şifre",
             "name": patient.full_name if patient else doctor.full_name,
             "login": patient.national_id if patient else account.email,
-            "login_label": "National ID number" if patient else "Email",
+            "login_label": NATIONAL_ID if patient else EMAIL,
             "password": password,
-            "note": "The account's open sessions have ended.",
+            "note": "Hesabın açık oturumları kapatıldı.",
         },
     )
