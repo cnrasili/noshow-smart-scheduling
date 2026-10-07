@@ -1,5 +1,6 @@
 from collections.abc import Iterator
 from datetime import UTC, date, datetime, time
+from itertools import count
 
 import pytest
 from sqlalchemy import create_engine, func, inspect, select, text
@@ -17,6 +18,7 @@ from noshow_db.models.core import (
     Slot,
     UserAccount,
 )
+from web_backend.national_id import fictional_national_id
 
 
 @pytest.fixture
@@ -29,8 +31,12 @@ def session() -> Iterator[Session]:
         yield db_session
 
 
+_numbers = count(1)
+
+
 def _patient(email: str = "patient@example.com", age: int = 30) -> Patient:
     return Patient(
+        national_id=fictional_national_id(next(_numbers)),
         full_name="Test Patient",
         email=email,
         age=age,
@@ -157,8 +163,8 @@ def test_doctor_schedule_is_one_interval_per_weekday(session: Session) -> None:
 def test_defaults_apply_to_raw_sql_inserts(session: Session) -> None:
     session.execute(
         text(
-            "INSERT INTO patients (full_name, email, age, gender) "
-            "VALUES ('Raw Patient', 'raw@example.com', 40, 'M')"
+            "INSERT INTO patients (national_id, full_name, email, age, gender) "
+            "VALUES ('99999000184', 'Raw Patient', 'raw@example.com', 40, 'M')"
         )
     )
     session.execute(text("INSERT INTO doctors (full_name) VALUES ('Dr. Raw')"))

@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Response, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 from sqlalchemy import delete, select
@@ -10,11 +10,12 @@ from sqlalchemy.orm import Session
 from noshow_db.models.core import AuthSession, Doctor, Patient, UserAccount
 from web_backend.clinic import as_utc
 from web_backend.db import get_db
+from web_backend.national_id import is_valid_national_id
 from web_backend.security import hash_password, hash_token, new_token, verify_password
 
 SESSION_LIFETIME = timedelta(hours=12)
 
-# Compared against when the email is unknown so both failure paths take similar time
+# Compared against when the login name is unknown so both failure paths take similar time
 _DUMMY_HASH = hash_password("unused-password")
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -23,11 +24,23 @@ bearer = HTTPBearer(auto_error=False)
 DbSession = Annotated[Session, Depends(get_db)]
 
 
-class LoginRequest(BaseModel):
+class PatientLogin(BaseModel):
+    # The login form the user chose; an account can only sign in through its own form
+    role: Literal["patient"]
+    national_id: str
+    password: str
+
+
+class DoctorLogin(BaseModel):
+    role: Literal["doctor"]
     email: str
     password: str
-    # The login form the user chose; an account can only sign in through its own form
-    role: Literal["patient", "doctor"]
+
+
+LoginRequest = Annotated[PatientLogin | DoctorLogin, Body(discriminator="role")]
+
+WRONG_PATIENT_LOGIN = "Wrong national ID number or password"
+WRONG_DOCTOR_LOGIN = "Wrong email or password"
 
 
 class Me(BaseModel):
@@ -91,15 +104,30 @@ def _me(db: Session, account: UserAccount) -> Me:
     return Me(role="doctor", name=doctor.full_name, email=account.email, specialty=doctor.specialty)
 
 
+def _find_account(db: Session, body: PatientLogin | DoctorLogin) -> UserAccount | None:
+    if isinstance(body, PatientLogin):
+        national_id = body.national_id.strip()
+        if not is_valid_national_id(national_id):
+            return None
+        return db.scalar(
+            select(UserAccount)
+            .join(Patient, Patient.id == UserAccount.patient_id)
+            .where(Patient.national_id == national_id)
+        )
+    account = db.scalar(select(UserAccount).where(UserAccount.email == body.email.strip().lower()))
+    # A patient's e-mail is a contact address, not a login name; it gets the same answer
+    return account if account is not None and account.role == "doctor" else None
+
+
 @router.post("/login")
 def login(body: LoginRequest, db: DbSession) -> LoginResponse:
-    account = db.scalar(select(UserAccount).where(UserAccount.email == body.email.strip().lower()))
+    wrong = WRONG_PATIENT_LOGIN if body.role == "patient" else WRONG_DOCTOR_LOGIN
+    account = _find_account(db, body)
     if account is None:
         verify_password(body.password, _DUMMY_HASH)
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Wrong email or password")
-    # A role mismatch gets the same answer, so the form does not reveal other roles' e-mails
-    if not verify_password(body.password, account.password_hash) or account.role != body.role:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Wrong email or password")
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, wrong)
+    if not verify_password(body.password, account.password_hash):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, wrong)
 
     token = new_token()
     db.add(

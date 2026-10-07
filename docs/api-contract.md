@@ -204,3 +204,124 @@ Errors:
 |---|---|
 | 404 | Doctor not found, or the doctor has no slots on the date |
 | 422 | Invalid request |
+
+## Internal account API (web backend)
+
+Served by the web backend for the hospital's admin service. Patients and doctors cannot register themselves; the administration creates their accounts through this API. The public web frontend never calls it, and it is not listed in the web backend's public API documentation.
+
+Every request carries the service token in the `X-Internal-Token` header. The token is set in the web backend's `INTERNAL_API_TOKEN` environment variable; if the variable is not set, the API is disabled.
+
+Errors of every endpoint:
+
+| Status | Reason |
+|---|---|
+| 401 | `X-Internal-Token` missing or wrong |
+| 503 | Internal API is disabled (`INTERNAL_API_TOKEN` not set) |
+
+### `POST /internal/accounts/patients`
+
+Creates a patient record with its login account. The patient logs in with the national ID number and the password.
+
+Request:
+
+```json
+{
+  "national_id": "99999000184",
+  "full_name": "Ayşe Kaya",
+  "email": "ayse@example.com",
+  "age": 34,
+  "gender": "F",
+  "scholarship": false,
+  "hipertension": false,
+  "diabetes": false,
+  "alcoholism": false,
+  "handcap": 0,
+  "password": "initial-password"
+}
+```
+
+- `national_id`: Turkish national ID number, 11 digits, first digit not 0, official check digits.
+- `email`: contact address for messages; stored in lower case.
+- `gender`: `F` or `M`. `age`: 0–130. `handcap`: 0–4. The four flags default to `false` and `handcap` to 0.
+- `password`: initial password, 8–128 characters. Only its hash is stored.
+
+Response (`201`):
+
+```json
+{
+  "account_id": 12,
+  "patient_id": 9,
+  "national_id": "99999000184",
+  "full_name": "Ayşe Kaya",
+  "email": "ayse@example.com"
+}
+```
+
+Errors:
+
+| Status | Reason |
+|---|---|
+| 409 | `National ID number already registered`, or `Email already in use` (by a patient or a doctor) |
+| 422 | Invalid request, for example an invalid national ID number or e-mail address |
+
+### `POST /internal/accounts/doctors`
+
+Creates a doctor with login account and weekly working hours, and generates the doctor's slots for the next two weeks from the working hours. The doctor logs in with the e-mail address and the password.
+
+Request:
+
+```json
+{
+  "full_name": "Dr. Deniz Yıldız",
+  "specialty": "Dahiliye",
+  "email": "deniz.yildiz@example.com",
+  "password": "initial-password",
+  "working_hours": [
+    { "weekday": 0, "start_time": "09:00", "end_time": "12:00" },
+    { "weekday": 2, "start_time": "13:00", "end_time": "16:00" }
+  ]
+}
+```
+
+- `specialty`: the department patients choose when booking.
+- `working_hours`: 1–7 intervals, at most one per weekday (`0` = Monday … `6` = Sunday), clinic local time, `end_time` after `start_time`.
+- `password`: initial password, 8–128 characters.
+
+Response (`201`):
+
+```json
+{
+  "account_id": 13,
+  "doctor_id": 5,
+  "full_name": "Dr. Deniz Yıldız",
+  "specialty": "Dahiliye",
+  "email": "deniz.yildiz@example.com",
+  "slots_created": 54
+}
+```
+
+Errors:
+
+| Status | Reason |
+|---|---|
+| 409 | `Email already in use` |
+| 422 | Invalid request, for example overlapping weekdays or an invalid time interval |
+
+### `PUT /internal/accounts/{account_id}/password`
+
+Resets the password of a patient's or a doctor's account. The account's open sessions end, so it has to log in again.
+
+Request:
+
+```json
+{ "password": "new-password" }
+```
+
+Response: `204`, no body.
+
+Errors:
+
+| Status | Reason |
+|---|---|
+| 404 | Account not found |
+| 422 | Invalid request, for example a password shorter than 8 characters |

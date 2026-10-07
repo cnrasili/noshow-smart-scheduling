@@ -3,9 +3,9 @@ import type {
   CalendarAppointment,
   CalendarSlot,
   Doctor,
+  LoginCredentials,
   LoginResponse,
   Me,
-  Role,
   ScheduleDay,
   Slot,
 } from './types'
@@ -27,19 +27,19 @@ let memoryToken: string | null = null
 
 export function getToken(): string | null {
   try {
-    return localStorage.getItem(TOKEN_KEY) ?? memoryToken
+    return localStorage.getItem(TOKEN_KEY)
   } catch {
     return memoryToken
   }
 }
 
 function setToken(token: string | null) {
-  memoryToken = token
   try {
     if (token) localStorage.setItem(TOKEN_KEY, token)
     else localStorage.removeItem(TOKEN_KEY)
   } catch {
-    // Keep the in-memory token only
+    // Keep the token in memory only
+    memoryToken = token
   }
 }
 
@@ -90,11 +90,8 @@ const json = (method: string, body: unknown): RequestInit => ({
 })
 
 export const api = {
-  async login(email: string, password: string, role: Role): Promise<Me> {
-    const { token, ...me } = await request<LoginResponse>(
-      '/auth/login',
-      json('POST', { email, password, role }),
-    )
+  async login(credentials: LoginCredentials): Promise<Me> {
+    const { token, ...me } = await request<LoginResponse>('/auth/login', json('POST', credentials))
     setToken(token)
     return me
   },

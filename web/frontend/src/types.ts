@@ -7,6 +7,11 @@ export interface Me {
   specialty: string | null
 }
 
+// Patients sign in with their national ID number, doctors with their e-mail address
+export type LoginCredentials =
+  | { role: 'patient'; national_id: string; password: string }
+  | { role: 'doctor'; email: string; password: string }
+
 export interface LoginResponse extends Me {
   token: string
 }

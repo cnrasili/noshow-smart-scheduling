@@ -33,9 +33,19 @@ Slot capacity and appointment dates are enforced by PostgreSQL triggers. Their t
 NOSHOW_TEST_DATABASE_URL=postgresql+psycopg://noshow:noshow@localhost:5432/noshow_test pytest
 ```
 
+## Slot Length
+
+`SLOT_MINUTES` sets the length of newly generated slots in minutes, both for doctors opening slots and for the demo seed. It defaults to `20` and must be a whole number from 5 to 120; any other value stops the web backend at startup with a clear message. The value itself is one of the session parameters decided by IEN-1.
+
+```bash
+SLOT_MINUTES=15 uvicorn web_backend.main:app --reload
+```
+
+Existing slots are not changed. Generating slots again after a change only fills working hours that no existing slot covers, so slots of different lengths never overlap.
+
 ## Demo Data
 
-`web_backend.seed` creates a fictional clinic: four doctors in three branches (Dahiliye, Kardiyoloji, Göz Hastalıkları) with their own working hours, eight patients, the login accounts, slots from three weeks ago to two weeks ahead and a few example appointments per doctor. Running it again only adds missing doctors, patients and slots, so it also upgrades a database seeded by an earlier version.
+`web_backend.seed` creates a fictional clinic through the account module: four doctors in three branches (Dahiliye, Kardiyoloji, Göz Hastalıkları) with their own working hours, eight patients, the login accounts, slots from three weeks ago to two weeks ahead and a few example appointments per doctor. Running it again only adds missing doctors, patients and slots, so it also upgrades a database seeded by an earlier version.
 
 ```bash
 python -m web_backend.seed
@@ -43,11 +53,41 @@ python -m web_backend.seed
 docker compose exec web-backend python -m web_backend.seed
 ```
 
-Doctors sign in at `/giris/hekim` (for example `doktor@demo.local`; the others are printed by the seed command) and patients at `/giris/hasta` (for example `ayse@demo.local`). All demo accounts use the password `demo1234`; these are local demo values only.
+Doctors sign in at `/giris/hekim` with their e-mail address (for example `doktor@demo.local`; the others are printed by the seed command) and patients at `/giris/hasta` with their national ID number. All demo accounts use the password `demo1234`; these are local demo values only.
+
+The demo patients' national ID numbers are **fictional**. They are valid by the check digit rules but start with the fixed prefix `99999`, followed by a four-digit sequence number and the check digits (`web_backend/national_id.py`). Never use real people's numbers in demo or test data.
+
+| Patient      | National ID number (fictional) | Contact e-mail      |
+| ------------ | ------------------------------ | ------------------- |
+| Ayşe Kaya    | `99999000184`                  | `ayse@demo.local`   |
+| Mehmet Demir | `99999000252`                  | `mehmet@demo.local` |
+| Zeynep Çelik | `99999000320`                  | `zeynep@demo.local` |
+| Ali Şahin    | `99999000498`                  | `ali@demo.local`    |
+| Elif Arslan  | `99999000566`                  | `elif@demo.local`   |
+| Burak Koç    | `99999000634`                  | `burak@demo.local`  |
+| Selin Aydın  | `99999000702`                  | `selin@demo.local`  |
+| Hasan Öztürk | `99999000870`                  | `hasan@demo.local`  |
+
+The migration that adds the national ID column gives existing patients a fictional number built from their id with the same pattern, so a database seeded before it gets the numbers above. Alternatively, recreate the database, run `alembic upgrade head` and the seed again.
 
 ## Authentication
 
-`POST /auth/login` takes the e-mail, the password and the role of the login form (`patient` or `doctor`); an account can only sign in through its own form, and a mismatch gets the same `401` as a wrong password. It returns a bearer token that is valid for 12 hours; send it as `Authorization: Bearer <token>`. Passwords are hashed with scrypt and only a hash of each token is stored (`user_accounts` and `auth_sessions` tables).
+`POST /auth/login` takes the role of the login form and the credentials of that role:
+
+- Patients: `{"role": "patient", "national_id": "…", "password": "…"}`. Every patient has exactly one record, identified by the Turkish national ID number (11 digits, first digit not 0, official check digits); the database rejects a second patient with the same number. The patient's e-mail address is only a contact address for messages and is not a login name.
+- Doctors: `{"role": "doctor", "email": "…", "password": "…"}`.
+
+Wrong credentials, an invalid national ID number and a login through the other role's form all get the same `401` ("Wrong national ID number or password" or "Wrong email or password"). There is no self-registration; accounts are created by the hospital. A successful login returns a bearer token that is valid for 12 hours; send it as `Authorization: Bearer <token>`. Passwords are hashed with scrypt and only a hash of each token is stored (`user_accounts` and `auth_sessions` tables).
+
+## Accounts
+
+Patients and doctors cannot register themselves; the hospital creates their accounts. The account rules (national ID number, unique e-mail, password hashing, the doctor's department and working hours) are in `web_backend/accounts.py`, which both the demo seed and the internal account API use.
+
+The internal account API (`/internal/accounts/...`) lets the hospital's admin service create patients and doctors and reset passwords. Every request needs the service token from the `INTERNAL_API_TOKEN` environment variable in the `X-Internal-Token` header; without the variable the API is disabled and answers `503`. The public frontend never calls it, and it is left out of the public API documentation at `/docs`. Requests, responses and errors are described in the [API contract](../../docs/api-contract.md#internal-account-api-web-backend).
+
+```bash
+INTERNAL_API_TOKEN=change-me uvicorn web_backend.main:app --reload
+```
 
 ## Overbooking
 

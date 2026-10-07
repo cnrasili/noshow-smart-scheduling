@@ -2,24 +2,34 @@ import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { api, errorText } from '../api'
 import { INSTITUTION_NAME, SYSTEM_NAME } from '../config'
+import { isValidNationalId } from '../nationalId'
 import { PATHS, loginFor } from '../routes'
-import type { Me, Role } from '../types'
+import type { LoginCredentials, Me, Role } from '../types'
 
-const COPY: Record<Role, { title: string; description: string; other: string }> = {
+// Backend answers for wrong credentials; both are shown with the form's own message
+const WRONG_CREDENTIALS = ['Wrong national ID number or password', 'Wrong email or password']
+
+const COPY: Record<
+  Role,
+  { title: string; description: string; other: string; wrongCredentials: string }
+> = {
   patient: {
     title: 'Hasta girişi',
     description: 'Randevu almak ve randevularınızı görmek için giriş yapın.',
     other: 'Hekim misiniz? Hekim girişi',
+    wrongCredentials: 'T.C. kimlik numarası veya şifre hatalı.',
   },
   doctor: {
     title: 'Hekim girişi',
     description: 'Günlük hasta listenize ve çalışma takviminize ulaşmak için giriş yapın.',
     other: 'Hasta mısınız? Hasta girişi',
+    wrongCredentials: 'E-posta adresi veya şifre hatalı.',
   },
 }
 
 export function LoginPage({ role, onSignedIn }: { role: Role; onSignedIn: (me: Me) => void }) {
-  const [email, setEmail] = useState('')
+  // National ID number on the patient form, e-mail address on the doctor form
+  const [login, setLogin] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -27,15 +37,20 @@ export function LoginPage({ role, onSignedIn }: { role: Role; onSignedIn: (me: M
 
   async function submit(event: FormEvent) {
     event.preventDefault()
+    const name = login.trim()
+    if (role === 'patient' && !isValidNationalId(name)) {
+      setError('Geçerli bir T.C. kimlik numarası girin (11 hane).')
+      return
+    }
+    const credentials: LoginCredentials =
+      role === 'patient' ? { role, national_id: name, password } : { role, email: name, password }
     setBusy(true)
     setError(null)
     try {
-      onSignedIn(await api.login(email, password, role))
+      onSignedIn(await api.login(credentials))
     } catch (err) {
       const message = errorText(err)
-      setError(
-        message === 'Wrong email or password' ? 'E-posta adresi veya şifre hatalı.' : message,
-      )
+      setError(WRONG_CREDENTIALS.includes(message) ? copy.wrongCredentials : message)
     } finally {
       setBusy(false)
     }
@@ -59,16 +74,31 @@ export function LoginPage({ role, onSignedIn }: { role: Role; onSignedIn: (me: M
             <p className="muted">{copy.description}</p>
           </div>
           <div className="panel-body stack-tight">
-            <label>
-              E-posta adresi
-              <input
-                type="email"
-                autoComplete="username"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                required
-              />
-            </label>
+            {role === 'patient' ? (
+              <label>
+                T.C. kimlik numarası
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="username"
+                  maxLength={11}
+                  value={login}
+                  onChange={(event) => setLogin(event.target.value.replace(/\D/g, ''))}
+                  required
+                />
+              </label>
+            ) : (
+              <label>
+                E-posta adresi
+                <input
+                  type="email"
+                  autoComplete="username"
+                  value={login}
+                  onChange={(event) => setLogin(event.target.value)}
+                  required
+                />
+              </label>
+            )}
             <label>
               Şifre
               <input

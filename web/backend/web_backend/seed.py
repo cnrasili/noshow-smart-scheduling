@@ -2,7 +2,8 @@
 
 Run with ``python -m web_backend.seed``. Running it again only adds missing doctors,
 patients and slots, so it also upgrades a database seeded by an earlier version.
-All people are made up; DEMO_PASSWORD is a demo value for local use only.
+All people are made up, including their national ID numbers (see web_backend.national_id);
+DEMO_PASSWORD is a demo value for local use only.
 """
 
 from dataclasses import dataclass
@@ -11,10 +12,11 @@ from datetime import time, timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from noshow_db.models.core import Appointment, Doctor, DoctorSchedule, Patient, Slot, UserAccount
+from noshow_db.models.core import Appointment, Doctor, Patient, Slot, UserAccount
 from noshow_db.session import SessionLocal
+from web_backend.accounts import NewDoctor, NewPatient, WorkingHours, create_doctor, create_patient
 from web_backend.clinic import CLINIC_TZ, as_utc, today
-from web_backend.security import hash_password
+from web_backend.national_id import fictional_national_id
 from web_backend.slots import generate_slots
 
 DEMO_PASSWORD = "demo1234"
@@ -51,7 +53,8 @@ DOCTORS = [
 ]
 DOCTOR_EMAIL = DOCTORS[0].email
 
-# name, email, age, gender, scholarship, hipertension, diabetes, alcoholism, handcap
+# name, email, age, gender, scholarship, hipertension, diabetes, alcoholism, handcap.
+# The n-th patient (from 1) gets the fictional national ID number patient_national_id(n).
 PATIENTS = [
     ("Ayşe Kaya", "ayse@demo.local", 34, "F", False, False, False, False, 0),
     ("Mehmet Demir", "mehmet@demo.local", 58, "M", False, True, True, False, 0),
@@ -68,12 +71,17 @@ PAST_DAYS = 21
 FUTURE_DAYS = 14
 
 
+def patient_national_id(number: int) -> str:
+    """Fictional national ID number of the n-th demo patient, counting from 1."""
+    return fictional_national_id(number)
+
+
 def _account(db: Session, email: str) -> UserAccount | None:
     return db.scalar(select(UserAccount).where(UserAccount.email == email))
 
 
-def _ensure_patients(db: Session, password_hash: str) -> None:
-    for (
+def _ensure_patients(db: Session) -> None:
+    for number, (
         name,
         email,
         age,
@@ -83,52 +91,46 @@ def _ensure_patients(db: Session, password_hash: str) -> None:
         diabetes,
         alcoholism,
         handcap,
-    ) in PATIENTS:
+    ) in enumerate(PATIENTS, start=1):
         if _account(db, email) is not None:
             continue
-        patient = Patient(
-            full_name=name,
-            email=email,
-            age=age,
-            gender=gender,
-            scholarship=scholarship,
-            hipertension=hipertension,
-            diabetes=diabetes,
-            alcoholism=alcoholism,
-            handcap=handcap,
+        create_patient(
+            db,
+            NewPatient(
+                national_id=patient_national_id(number),
+                full_name=name,
+                email=email,
+                age=age,
+                gender=gender,
+                scholarship=scholarship,
+                hipertension=hipertension,
+                diabetes=diabetes,
+                alcoholism=alcoholism,
+                handcap=handcap,
+                password=DEMO_PASSWORD,
+            ),
         )
-        db.add(patient)
-        db.flush()
-        db.add(
-            UserAccount(
-                email=email, password_hash=password_hash, role="patient", patient_id=patient.id
-            )
-        )
-    db.flush()
 
 
-def _ensure_doctor(db: Session, demo: DemoDoctor, password_hash: str) -> tuple[Doctor, bool]:
+def _ensure_doctor(db: Session, demo: DemoDoctor) -> tuple[Doctor, bool]:
     """The demo doctor with account and working hours; True if it was just created."""
     account = _account(db, demo.email)
-    if account is not None:
-        return db.get(Doctor, account.doctor_id), False
-
-    doctor = Doctor(full_name=demo.name, specialty=demo.specialty)
-    db.add(doctor)
-    db.flush()
-    db.add(
-        UserAccount(
-            email=demo.email, password_hash=password_hash, role="doctor", doctor_id=doctor.id
+    if account is None:
+        account = create_doctor(
+            db,
+            NewDoctor(
+                full_name=demo.name,
+                specialty=demo.specialty,
+                email=demo.email,
+                password=DEMO_PASSWORD,
+                working_hours=[
+                    WorkingHours(weekday=weekday, start_time=demo.start, end_time=demo.end)
+                    for weekday in demo.weekdays
+                ],
+            ),
         )
-    )
-    for weekday in demo.weekdays:
-        db.add(
-            DoctorSchedule(
-                doctor_id=doctor.id, weekday=weekday, start_time=demo.start, end_time=demo.end
-            )
-        )
-    db.flush()
-    return doctor, True
+        return db.get(Doctor, account.doctor_id), True
+    return db.get(Doctor, account.doctor_id), False
 
 
 def _book_examples(db: Session, doctor: Doctor, first_patient: int) -> None:
@@ -160,10 +162,10 @@ def _book_examples(db: Session, doctor: Doctor, first_patient: int) -> None:
 
 
 def seed(db: Session) -> None:
-    password_hash = hash_password(DEMO_PASSWORD)
-    _ensure_patients(db, password_hash)
+    """Create the missing demo accounts through the account module, then slots and bookings."""
+    _ensure_patients(db)
     for index, demo in enumerate(DOCTORS):
-        doctor, created = _ensure_doctor(db, demo, password_hash)
+        doctor, created = _ensure_doctor(db, demo)
         generate_slots(
             db,
             doctor.id,
@@ -181,7 +183,10 @@ def main() -> None:
         seed(db)
     print("Demo data ready.")
     print("Doctors: " + ", ".join(f"{d.email} ({d.specialty})" for d in DOCTORS))
-    print(f"Patients: {PATIENTS[0][1]} and {len(PATIENTS) - 1} others.")
+    print(
+        "Patients (fictional national ID numbers): "
+        + ", ".join(patient_national_id(n) for n in range(1, len(PATIENTS) + 1))
+    )
     print(f"Every demo account uses the password '{DEMO_PASSWORD}'.")
 
 

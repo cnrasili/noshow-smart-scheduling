@@ -1,4 +1,5 @@
 # Slot generation from the doctors' weekly working hours
+import os
 from datetime import UTC, date, datetime, timedelta
 from typing import Annotated
 
@@ -12,10 +13,32 @@ from web_backend.auth import CurrentAccount, DoctorAccount
 from web_backend.clinic import CLINIC_TZ, as_utc, today
 from web_backend.db import get_db
 
-# Placeholder until IEN-1 fixes the session parameters
+# Used when SLOT_MINUTES is not set; the session parameters are decided by IEN-1 (#9)
 DEFAULT_SLOT_MINUTES = 20
+MIN_SLOT_MINUTES = 5
+MAX_SLOT_MINUTES = 120
 MAX_GENERATION_DAYS = 62
 DEFAULT_LISTING_DAYS = 14
+
+
+def read_slot_minutes(value: str | None) -> int:
+    """Slot length from the SLOT_MINUTES environment value; the default when it is unset."""
+    if value is None or not value.strip():
+        return DEFAULT_SLOT_MINUTES
+    try:
+        minutes = int(value)
+    except ValueError:
+        minutes = None
+    if minutes is None or not MIN_SLOT_MINUTES <= minutes <= MAX_SLOT_MINUTES:
+        raise ValueError(
+            f"SLOT_MINUTES must be a whole number of minutes from {MIN_SLOT_MINUTES} to "
+            f"{MAX_SLOT_MINUTES}, got {value!r}"
+        )
+    return minutes
+
+
+# Length of newly generated slots; read once, so an invalid value stops the startup
+SLOT_MINUTES = read_slot_minutes(os.getenv("SLOT_MINUTES"))
 
 router = APIRouter(tags=["slots"])
 
@@ -32,12 +55,14 @@ def generate_slots(
     doctor_id: int,
     date_from: date,
     date_to: date,
-    slot_minutes: int = DEFAULT_SLOT_MINUTES,
+    slot_minutes: int | None = None,
 ) -> list[Slot]:
     """Create the missing slots of a doctor between two dates, both inclusive.
 
-    Each working interval is split into back-to-back slots; a remainder shorter than
-    one slot is left unused. Existing slots are kept, so the call can be repeated.
+    Slots are slot_minutes long, by default SLOT_MINUTES. Each working interval is split
+    into back-to-back slots; a remainder shorter than one slot is left unused. Existing slots
+    are kept and a new slot that would overlap one is skipped, so the call can be repeated,
+    also after the slot length has changed.
     """
     schedules = {
         schedule.weekday: schedule
@@ -46,18 +71,18 @@ def generate_slots(
         )
     }
     range_start, range_end = clinic_days_in_utc(date_from, date_to)
-    existing = {
-        as_utc(start_at)
-        for start_at in db.scalars(
-            select(Slot.start_at).where(
+    existing = [
+        (as_utc(start_at), as_utc(end_at))
+        for start_at, end_at in db.execute(
+            select(Slot.start_at, Slot.end_at).where(
                 Slot.doctor_id == doctor_id,
-                Slot.start_at >= range_start,
                 Slot.start_at < range_end,
+                Slot.end_at > range_start,
             )
         )
-    }
+    ]
 
-    length = timedelta(minutes=slot_minutes)
+    length = timedelta(minutes=slot_minutes or SLOT_MINUTES)
     created = []
     day = date_from
     while day <= date_to:
@@ -68,10 +93,9 @@ def generate_slots(
             while start + length <= day_end:
                 # Stored in UTC so SQLite and PostgreSQL keep the same instant
                 start_utc = start.astimezone(UTC)
-                if start_utc not in existing:
-                    created.append(
-                        Slot(doctor_id=doctor_id, start_at=start_utc, end_at=start_utc + length)
-                    )
+                end_utc = start_utc + length
+                if not any(s < end_utc and start_utc < e for s, e in existing):
+                    created.append(Slot(doctor_id=doctor_id, start_at=start_utc, end_at=end_utc))
                 start += length
         day += timedelta(days=1)
 
@@ -82,7 +106,9 @@ def generate_slots(
 class GenerateSlotsRequest(BaseModel):
     date_from: date
     date_to: date
-    slot_minutes: int = Field(DEFAULT_SLOT_MINUTES, ge=5, le=120)
+    slot_minutes: int = Field(
+        default_factory=lambda: SLOT_MINUTES, ge=MIN_SLOT_MINUTES, le=MAX_SLOT_MINUTES
+    )
 
 
 class GenerateSlotsResponse(BaseModel):
