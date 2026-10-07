@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Patients{% endblock %}
+{% block content %}
+<header>
+  <h1>Patients</h1>
+  <form method="get" action="{{ url_for('patients_page') }}">
+    <label>
+      Name or national ID number
+      <input type="search" name="q" value="{{ q }}" maxlength="100" />
+    </label>
+    <button type="submit">Search</button>
+  </form>
+</header>
+{% if enabled %}
+<p><a href="{{ url_for('new_patient_page') }}">Create a patient account</a></p>
+{% else %}
+<p class="error" role="alert">Account management is disabled: INTERNAL_API_TOKEN is not set.</p>
+{% endif %}
+<section aria-label="Patients">
+  {% if rows %}
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Name</th>
+        <th scope="col">National ID number</th>
+        <th scope="col">Email</th>
+        <th scope="col">Age</th>
+        <th scope="col">Login account</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for patient, account_id in rows %}
+      <tr>
+        <td>{{ patient.full_name }}</td>
+        <td>{{ patient.national_id }}</td>
+        <td>{{ patient.email }}</td>
+        <td>{{ patient.age }}</td>
+        <td>
+          {% if account_id and enabled %}
+          <form method="post" action="{{ url_for('reset_password', account_id=account_id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf(request) }}" />
+            <button type="submit" class="secondary">Reset password</button>
+          </form>
+          {% elif account_id %}
+          Yes
+          {% else %}
+          <span class="muted">No login account</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted">At most {{ limit }} patients are listed; search to narrow the list.</p>
+  {% else %}
+  <p class="empty">No patients found.</p>
+  {% endif %}
+</section>
+{% endblock %}

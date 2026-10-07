@@ -1,6 +1,6 @@
 # Admin Service
 
-Hospital administration screen, separate from the hospital website and the booking system. Administrators log in here to see the schedule KPIs and the reminder A/B test. Account management screens follow in a later step.
+Hospital administration screen, separate from the hospital website and the booking system. Administrators log in here to see the schedule KPIs and the reminder A/B test, and to create patient and doctor accounts; patients and doctors cannot register themselves.
 
 ## Tech Stack
 
@@ -17,7 +17,9 @@ Hospital administration screen, separate from the hospital website and the booki
 | Passwords | scrypt hashes; at least 12 characters. A wrong password and an unknown email get the same answer. |
 | Sessions | Random token in an HttpOnly, Secure, SameSite=Strict cookie; only its SHA-256 hash is stored. Sessions expire after `ADMIN_SESSION_MINUTES`. |
 | Failed logins | After `ADMIN_MAX_FAILED_LOGINS` failures of one email or one client address within `ADMIN_LOCKOUT_MINUTES`, the login is locked for that window. |
-| Audit log | Logins, failed logins, locked logins and logouts are recorded with time, email and client address, and shown at `/audit`. |
+| Audit log | Logins, failed logins, locked logins, logouts, created accounts, password resets and rejected account requests are recorded with time, administrator and client address, and shown at `/audit`. |
+| Forms | Every form that changes data carries a token bound to the session (CSRF protection), on top of the SameSite=Strict cookie. |
+| Initial passwords | Generated randomly for new accounts and password resets, shown once to the administrator and never stored in plain text or written to the audit log. |
 | Browser headers | Content Security Policy without inline scripts, no framing, no caching, no referrer. API docs are disabled. |
 
 ### Limitations
@@ -30,9 +32,15 @@ A real hospital would also place the admin service behind a VPN or on a separate
 |---|---|
 | `/login` | Administrator login |
 | `/kpi` | Schedule KPIs per doctor and day, the last days as chart and table, and the reminder A/B test |
+| `/patients` | Patients with search by name or national ID number; password reset for patients with a login account |
+| `/patients/new` | Create a patient account |
+| `/doctors` | Doctors with department, working hours and password reset |
+| `/doctors/new` | Create a doctor account with weekly working hours; slots are opened for the next two weeks |
 | `/audit` | The latest audit log events |
 
 KPIs and the A/B summary come from the overbooking service (`GET /kpi`, `GET /ab/summary`, see the [API contract](../docs/api-contract.md)); the admin service does not compute them itself.
+
+Patient and doctor lists are read from the database. Accounts are created and passwords reset through the web backend's internal account API, which owns the account rules (national ID check, unique email, password hashing); see the [API contract](../docs/api-contract.md#internal-account-api-web-backend).
 
 ## Setup
 
@@ -40,6 +48,13 @@ With Docker Compose the service starts with the others at http://localhost:8002.
 
 ```bash
 docker compose exec admin-service python -m admin_service.create_admin --email admin@hospital.local
+```
+
+Account management needs the same secret in the web backend and the admin service. Copy `.env.example` to `.env`, set `INTERNAL_API_TOKEN` to a random value and restart:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+docker compose up -d
 ```
 
 Without Docker:
@@ -59,6 +74,8 @@ Environment variables:
 |---|---|---|
 | `ADMIN_ALLOWED_NETWORKS` | `127.0.0.0/8,::1/128` | Comma-separated client networks (CIDR) allowed to reach the service |
 | `ADMIN_OVERBOOKING_SERVICE_URL` | `http://localhost:8001` | Overbooking service address on the internal network |
+| `ADMIN_WEB_BACKEND_URL` | `http://localhost:8000` | Web backend address for the internal account API |
+| `ADMIN_INTERNAL_API_TOKEN` | empty | Service token of the internal account API; account management is disabled while it is empty. Docker Compose passes `INTERNAL_API_TOKEN` from `.env`. |
 | `ADMIN_SESSION_MINUTES` | 60 | Session lifetime |
 | `ADMIN_COOKIE_SECURE` | true | Send the session cookie only over HTTPS; browsers also accept it on `http://localhost` |
 | `ADMIN_MAX_FAILED_LOGINS` | 5 | Failed logins that lock the login |

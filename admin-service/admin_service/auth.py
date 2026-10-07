@@ -1,10 +1,8 @@
 from datetime import timedelta
-from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Form, Request
+from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import delete, select
 
 from admin_service import audit
@@ -15,12 +13,13 @@ from admin_service.dependencies import (
     DbSession,
     Now,
     client_ip,
+    verify_csrf,
 )
 from admin_service.security import DUMMY_HASH, hash_token, new_token, verify_password
+from admin_service.templating import templates
 from noshow_db.models.admin import AdminSession, AdminUser
 
 router = APIRouter()
-templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 
 WRONG_CREDENTIALS = "Wrong email or password."
 LOCKED = "Too many failed logins. Try again later."
@@ -89,7 +88,7 @@ def login(
     return response
 
 
-@router.post("/logout")
+@router.post("/logout", dependencies=[Depends(verify_csrf)])
 def logout(request: Request, admin: CurrentAdmin, session: DbSession, now: Now) -> Response:
     token = request.cookies.get(SESSION_COOKIE, "")
     session.execute(delete(AdminSession).where(AdminSession.token_hash == hash_token(token)))

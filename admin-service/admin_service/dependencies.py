@@ -1,18 +1,19 @@
+import hmac
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import Depends, Request
+from fastapi import Depends, Form, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from admin_service.accounts_client import AccountsClient
 from admin_service.config import Settings, settings
 from admin_service.overbooking import OverbookingClient
-from admin_service.security import hash_token
+from admin_service.security import csrf_token, hash_token
+from admin_service.templating import SESSION_COOKIE
 from noshow_db import SessionLocal
 from noshow_db.models.admin import AdminSession, AdminUser
-
-SESSION_COOKIE = "admin_session"
 
 
 def get_session() -> Iterator[Session]:
@@ -30,6 +31,19 @@ def get_now() -> datetime:
 
 def get_overbooking(app_settings: Annotated[Settings, Depends(get_settings)]) -> OverbookingClient:
     return OverbookingClient(app_settings.overbooking_service_url)
+
+
+def get_accounts(app_settings: Annotated[Settings, Depends(get_settings)]) -> AccountsClient:
+    return AccountsClient(app_settings.web_backend_url, app_settings.internal_api_token)
+
+
+def verify_csrf(
+    request: Request, token: Annotated[str, Form(alias="csrf_token", max_length=128)] = ""
+) -> None:
+    """Reject a form that was not rendered for the current session."""
+    session_token = request.cookies.get(SESSION_COOKIE, "")
+    if not session_token or not hmac.compare_digest(token, csrf_token(session_token)):
+        raise HTTPException(403, "Invalid form token; reload the page and try again")
 
 
 def as_utc(value: datetime) -> datetime:
@@ -67,3 +81,4 @@ CurrentAdmin = Annotated[AdminUser, Depends(current_admin)]
 DbSession = Annotated[Session, Depends(get_session)]
 Now = Annotated[datetime, Depends(get_now)]
 AppSettings = Annotated[Settings, Depends(get_settings)]
+Accounts = Annotated[AccountsClient, Depends(get_accounts)]

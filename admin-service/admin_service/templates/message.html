@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Hospital administration{% endblock %}
+{% block content %}
+<section class="form-page">
+  <p class="error" role="alert">{{ error }}</p>
+  <p><a href="{{ url_for('patients_page') }}">Patients</a> · <a href="{{ url_for('doctors_page') }}">Doctors</a></p>
+</section>
+{% endblock %}

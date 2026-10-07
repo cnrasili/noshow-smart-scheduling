@@ -1,19 +1,17 @@
 from datetime import date, timedelta
-from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 
 from admin_service.dependencies import AppSettings, CurrentAdmin, DbSession, Now, get_overbooking
 from admin_service.overbooking import OverbookingClient, OverbookingUnavailable
+from admin_service.templating import templates
 from noshow_db.models.admin import AdminAuditLog
 from noshow_db.models.core import Doctor
 
 router = APIRouter()
-templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 
 AUDIT_ROWS = 100
 
