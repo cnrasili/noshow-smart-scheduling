@@ -1,3 +1,4 @@
+import itertools
 from datetime import UTC, date, datetime, time, timedelta
 
 import pytest
@@ -139,3 +140,22 @@ def test_patients_cannot_generate_slots(client, make_patient, login) -> None:
     )
 
     assert response.status_code == 403
+
+
+def test_a_new_slot_length_does_not_overlap_existing_slots(db, doctor) -> None:
+    generate_slots(db, doctor.id, MONDAY, MONDAY, slot_minutes=30)
+    db.commit()
+    # Remove the last slot (11:30-12:00) so only that gap can be filled
+    db.delete(db.scalars(select(Slot).order_by(Slot.start_at.desc())).first())
+    db.commit()
+
+    created = generate_slots(db, doctor.id, MONDAY, MONDAY, slot_minutes=15)
+    db.commit()
+
+    assert [as_utc(slot.start_at).astimezone(CLINIC_TZ).time() for slot in created] == [
+        time(11, 30),
+        time(11, 45),
+    ]
+    slots = db.scalars(select(Slot).order_by(Slot.start_at)).all()
+    for earlier, later in itertools.pairwise(slots):
+        assert as_utc(earlier.end_at) <= as_utc(later.start_at)

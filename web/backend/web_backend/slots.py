@@ -37,7 +37,8 @@ def generate_slots(
     """Create the missing slots of a doctor between two dates, both inclusive.
 
     Each working interval is split into back-to-back slots; a remainder shorter than
-    one slot is left unused. Existing slots are kept, so the call can be repeated.
+    one slot is left unused. Existing slots are kept and a new slot that would overlap one
+    is skipped, so the call can be repeated, also with another slot length.
     """
     schedules = {
         schedule.weekday: schedule
@@ -46,16 +47,16 @@ def generate_slots(
         )
     }
     range_start, range_end = clinic_days_in_utc(date_from, date_to)
-    existing = {
-        as_utc(start_at)
-        for start_at in db.scalars(
-            select(Slot.start_at).where(
+    existing = [
+        (as_utc(start_at), as_utc(end_at))
+        for start_at, end_at in db.execute(
+            select(Slot.start_at, Slot.end_at).where(
                 Slot.doctor_id == doctor_id,
-                Slot.start_at >= range_start,
                 Slot.start_at < range_end,
+                Slot.end_at > range_start,
             )
         )
-    }
+    ]
 
     length = timedelta(minutes=slot_minutes)
     created = []
@@ -68,10 +69,9 @@ def generate_slots(
             while start + length <= day_end:
                 # Stored in UTC so SQLite and PostgreSQL keep the same instant
                 start_utc = start.astimezone(UTC)
-                if start_utc not in existing:
-                    created.append(
-                        Slot(doctor_id=doctor_id, start_at=start_utc, end_at=start_utc + length)
-                    )
+                end_utc = start_utc + length
+                if not any(s < end_utc and start_utc < e for s, e in existing):
+                    created.append(Slot(doctor_id=doctor_id, start_at=start_utc, end_at=end_utc))
                 start += length
         day += timedelta(days=1)
 
