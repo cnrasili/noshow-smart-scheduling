@@ -1,5 +1,3 @@
-import json
-import re
 from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -8,9 +6,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session, sessionmaker
 
 from noshow_db.models.core import Appointment, Doctor, Patient, Slot
-from overbooking_service.dependencies import get_kpi_settings, get_now
+from overbooking_service.dependencies import get_kpi_settings
 from overbooking_service.kpi import SlotLoad, compute_kpis, load_day
-from overbooking_service.main import app
 
 CLINIC = ZoneInfo("Europe/Istanbul")
 START = datetime(2026, 11, 10, 6, 0, tzinfo=UTC)
@@ -145,46 +142,10 @@ def test_kpi_invalid_request(client: TestClient):
     assert client.get("/kpi", params={"doctor_id": 0, "date": "2026-11-10"}).status_code == 422
 
 
-def test_dashboard_shows_selected_day(client: TestClient, clinic):
-    response = client.get("/dashboard", params={"doctor_id": 1, "date": "2026-11-10"})
-    assert response.status_code == 200
-    html = response.text
-    assert "Dr. Ada · 10 November 2026" in html
-    assert "60.0%" in html
-    data = json.loads(re.search(r'id="kpi-data">(.*?)</script>', html).group(1))
-    assert [row["date"] for row in data] == ["2026-11-09", "2026-11-10"]
-    assert data[-1] == {"date": "2026-11-10", "utilization": 60.0, "idle": 24.0, "overtime": 0.0}
-
-
-def test_dashboard_defaults_to_first_doctor_and_today(client: TestClient, clinic):
-    app.dependency_overrides[get_now] = lambda: datetime(2026, 11, 10, 22, 0, tzinfo=UTC)
-    html = client.get("/dashboard").text
-    # 22:00 UTC is already 11 November in the clinic
-    assert "Dr. Ada · 11 November 2026" in html
-    assert "No slots on this date." in html
-
-
-def test_dashboard_without_doctors(client: TestClient):
-    response = client.get("/dashboard")
-    assert response.status_code == 200
-    assert "No doctors in the booking database yet." in response.text
-
-
-def test_dashboard_assets_are_served(client: TestClient):
-    assert client.get("/static/dashboard.css").status_code == 200
-    assert client.get("/static/dashboard.js").status_code == 200
-    assert client.get("/static/chart.umd.min.js").status_code == 200
-
-
-def test_dashboard_needs_no_external_scripts(client: TestClient, clinic):
-    html = client.get("/dashboard", params={"doctor_id": 1, "date": "2026-11-10"}).text
-    assert re.findall(r'src="(https?://[^"]+)"', html) == [
-        "http://testserver/static/chart.umd.min.js",
-        "http://testserver/static/dashboard.js",
-    ]
+def test_dashboard_moved_to_admin_service(client: TestClient):
+    assert client.get("/dashboard").status_code == 404
 
 
 def test_default_settings_come_from_config():
     settings = get_kpi_settings()
     assert settings.service_minutes == 12
-    assert settings.dashboard_days == 7

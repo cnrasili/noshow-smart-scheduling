@@ -118,7 +118,3 @@ def test_booking_flow(client: TestClient, session_factory: sessionmaker[Session]
         client.get("/kpi", params={"doctor_id": 1, "date": "2026-11-12"}).json()["patients_seen"]
         > 0
     )
-
-    page = client.get("/dashboard", params={"doctor_id": 1, "date": DAY.isoformat()})
-    assert page.status_code == 200
-    assert "Dr. Ada Demir · 18 November 2026" in page.text

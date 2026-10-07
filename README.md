@@ -9,7 +9,7 @@
 
 > An appointment booking system that predicts which patients will miss their appointment, overbooks only where the risk is high, and measures the effect with discrete-event simulation.
 
-Outpatient clinics lose capacity when patients miss their appointments without notice, while overbooking every slot uniformly leads to congestion, long waiting times and physician overtime. This project builds a working appointment booking application in which a machine learning model estimates each patient's no-show probability at booking time. Slots are overbooked selectively, only where the no-show risk is high, and patients receive automated confirmation and reminder messages. The resulting schedules are evaluated with discrete-event simulation to show that both patient waiting time and physician idle time improve compared with fixed-interval booking, and the system reports utilization, idle time and overtime on an admin dashboard.
+Outpatient clinics lose capacity when patients miss their appointments without notice, while overbooking every slot uniformly leads to congestion, long waiting times and physician overtime. This project builds a working appointment booking application in which a machine learning model estimates each patient's no-show probability at booking time. Slots are overbooked selectively, only where the no-show risk is high, and patients receive automated confirmation and reminder messages. The resulting schedules are evaluated with discrete-event simulation to show that both patient waiting time and physician idle time improve compared with fixed-interval booking, and the system reports utilization, idle time and overtime on a separate administration screen.
 
 The project is developed as an interdisciplinary study combining industrial engineering (appointment template design, overbooking policy, simulation) and computer engineering (web application, model-serving API, reminder engine).
 
@@ -47,7 +47,7 @@ The project is developed as an interdisciplinary study combining industrial engi
 | **Selective overbooking** | A booked slot accepts an extra patient only when every booked patient is likely to miss the appointment, within the slot capacity and a daily limit. Every decision is logged with its reason. |
 | **Confirmation and reminders** | A confirmation is sent at booking and a reminder before the appointment; cancelled appointments stop their reminders. |
 | **Reminder A/B test** | Patients are split into reminder and control groups; the no-show rates of the groups are compared with a two-proportion z-test. |
-| **KPI dashboard** | Utilization, physician idle time, overtime, mean waiting time and overbooked slots per doctor and day. |
+| **Admin service** | Separate administration screen reachable only from the internal network, with its own administrator accounts, login protection and audit log. Shows utilization, physician idle time, overtime, mean waiting time and overbooked slots per doctor and day, and the reminder A/B test. |
 | **Simulation** | SimPy model of a clinic session that compares fixed-interval booking, overbooking rules and appointment templates on real appointment days. |
 | **Model reports** | Data cleaning, logistic regression and random forest, AUC and calibration reports. |
 
@@ -56,17 +56,19 @@ The project is developed as an interdisciplinary study combining industrial engi
 ```mermaid
 flowchart LR
     U([Patient / Doctor]) --> FE[Web frontend<br/>React]
+    A([Administrator]) --> ADM
     FE --> BE[Web backend<br/>FastAPI]
     BE -->|booking decision<br/>booking events| OS[Overbooking service<br/>FastAPI]
     BE --> DB[(PostgreSQL)]
     OS --> DB
     OS --> MAIL[Email<br/>SMTP / Mailpit]
-    OS --> DASH[KPI dashboard]
+    ADM[Admin service<br/>internal network only] -->|KPIs, A/B summary| OS
+    ADM --> DB
     ML[ML pipeline] -->|trained model| OS
     ML -->|no-show risks| SIM[SimPy simulation]
 ```
 
-The web backend asks the overbooking service before every booking. The service computes the features, scores the patient with the model, applies the overbooking rule and schedules the messages. Both backends share one PostgreSQL database with a single Alembic migration history.
+The web backend asks the overbooking service before every booking. The service computes the features, scores the patient with the model, applies the overbooking rule and schedules the messages. The admin service is a separate application for the hospital administration; it reads the KPIs from the overbooking service and is not reachable from the public website. All services share one PostgreSQL database with a single Alembic migration history.
 
 ## Tech Stack
 
@@ -75,7 +77,7 @@ The web backend asks the overbooking service before every booking. The service c
 | Web frontend | React 19, React Router, TypeScript, Vite |
 | Web backend | FastAPI, Pydantic |
 | Overbooking service | FastAPI, Pydantic, APScheduler, scikit-learn, joblib |
-| KPI dashboard | Jinja2, Chart.js (served by the overbooking service) |
+| Admin service | FastAPI, Jinja2, Chart.js |
 | Database | PostgreSQL 16, SQLAlchemy 2, Alembic |
 | Email | SMTP; Mailpit in development |
 | Prediction model | Python, pandas, scikit-learn, Jupyter |
@@ -93,16 +95,17 @@ cd noshow-smart-scheduling
 docker compose up --build -d
 docker compose exec web-backend python -m web_backend.seed
 docker compose exec overbooking-service python -m overbooking_service.demo
+docker compose exec admin-service python -m admin_service.create_admin --email admin@hospital.local
 ```
 
-The seed creates a fictional clinic with doctors, patients, login accounts and slots; the demo accounts are listed in the [web backend README](web/backend/README.md#demo-data). The overbooking service demo adds three weeks of booking history with outcomes and A/B groups for the KPI dashboard; see the [demo scenario](overbooking-service/README.md#demo-scenario).
+The seed creates a fictional clinic with doctors, patients, login accounts and slots; the demo accounts are listed in the [web backend README](web/backend/README.md#demo-data). The overbooking service demo adds three weeks of booking history with outcomes and A/B groups for the KPI screen; see the [demo scenario](overbooking-service/README.md#demo-scenario). The last command creates an administrator of the admin service and asks for a password.
 
 | Service | URL |
 |---|---|
 | Web application | http://localhost:5173 |
 | Web backend API docs | http://localhost:8000/docs |
 | Overbooking service API docs | http://localhost:8001/docs |
-| KPI dashboard | http://localhost:8001/dashboard |
+| Admin service (KPI screen) | http://localhost:8002 |
 | Mailpit (sent emails) | http://localhost:8025 |
 | PostgreSQL | `localhost:5432` |
 
@@ -127,7 +130,8 @@ Default settings work without configuration. To change them, copy `.env.example`
 |---|---|
 | [`web/frontend/`](web/frontend/) | Patient and doctor interfaces |
 | [`web/backend/`](web/backend/) | Booking API, login, slot generation, demo data |
-| [`overbooking-service/`](overbooking-service/) | Model-serving REST API, overbooking rule engine, reminder jobs, A/B logging, KPI dashboard |
+| [`overbooking-service/`](overbooking-service/) | Model-serving REST API, overbooking rule engine, reminder jobs, A/B logging, KPI calculation |
+| [`admin-service/`](admin-service/) | Administration screen: administrator login, KPI screen, audit log |
 | [`db/`](db/) | Shared SQLAlchemy models and Alembic migrations |
 | [`ml/`](ml/) | Data preparation, no-show prediction model (logistic regression / random forest), AUC and calibration |
 | [`simulation/`](simulation/) | Appointment templates, overbooking policies, SimPy discrete-event simulation |
@@ -142,7 +146,7 @@ Each component can also be run without Docker; see its README. The checks that C
 ```bash
 ruff check .
 ruff format --check .
-pytest web/backend overbooking-service
+pytest web/backend overbooking-service admin-service
 cd web/frontend && npm run lint && npm run format:check && npm run build
 ```
 
@@ -168,7 +172,7 @@ Components depend on each other through the files below. Changes to them are agr
 | [API contract](docs/api-contract.md) | Web backend and overbooking service |
 | [Model features](docs/features.md) | Prediction model, overbooking service and web backend |
 | [Model export](ml/export_model.py) | Prediction model and overbooking service |
-| [KPI definitions](docs/kpi-definitions.md) | Simulation and KPI dashboard |
+| [KPI definitions](docs/kpi-definitions.md) | Simulation and KPI screen |
 
 ## Workflow
 
@@ -185,7 +189,8 @@ Components depend on each other through the files below. Changes to them are agr
 | Component | Status |
 |---|---|
 | Booking application | Working: login, booking, cancellation, doctor views, attendance |
-| Overbooking service | Working: prediction, overbooking decision, messages, A/B test, KPI dashboard |
+| Overbooking service | Working: prediction, overbooking decision, messages, A/B test, KPIs |
+| Admin service | Working: administrator login, internal network restriction, KPI screen, audit log; account management planned |
 | Prediction model | Trained; the service still uses a placeholder model until the trained model is delivered |
 | Overbooking rule | Default threshold; the final rule and threshold come from the simulation study |
 | Simulation | Single session, appointment templates and real appointment days; extension to several physicians and departments planned |

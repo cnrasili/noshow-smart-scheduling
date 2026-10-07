@@ -3,23 +3,23 @@ requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "noshow-overbooking-service"
+name = "noshow-admin-service"
 version = "0.1.0"
-description = "No-show prediction, overbooking decisions, reminders and KPIs"
+description = "Hospital administration: administrator login and schedule KPI screen"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
-    "pydantic-settings[yaml]>=2.4",
-    "numpy>=1.26",
-    "pandas>=2.2",
-    "scikit-learn>=1.5,<2",
-    "joblib>=1.4",
-    "apscheduler>=3.10,<4",
+    "pydantic-settings>=2.4",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.9",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "httpx2>=2.13"]
 
 [tool.setuptools.packages.find]
-include = ["overbooking_service*"]
+include = ["admin_service*"]
+
+[tool.setuptools.package-data]
+admin_service = ["templates/*", "static/*"]

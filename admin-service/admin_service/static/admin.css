@@ -1,4 +1,4 @@
-/* Schedule KPI dashboard */
+/* Admin service pages */
 :root {
   --bg: #f7f7f5;
   --surface: #ffffff;
@@ -163,4 +163,46 @@ footer {
 footer {
   margin-top: 32px;
   font-size: 0.85rem;
+}
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+nav a {
+  color: var(--accent);
+}
+
+nav form {
+  margin-left: auto;
+  align-items: center;
+}
+
+button.secondary {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+.login {
+  max-width: 360px;
+  margin: 48px auto;
+}
+
+.stack {
+  display: grid;
+  gap: 12px;
+}
+
+.error {
+  padding: 10px 12px;
+  border: 1px solid #d9534f;
+  border-radius: 6px;
+  color: #d9534f;
 }

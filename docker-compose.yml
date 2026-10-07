@@ -79,5 +79,24 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  admin-service:
+    build:
+      context: .
+      dockerfile: admin-service/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-noshow}:${POSTGRES_PASSWORD:-noshow}@db:5432/${POSTGRES_DB:-noshow}
+      ADMIN_OVERBOOKING_SERVICE_URL: http://overbooking-service:8001
+      # Requests from the host reach the container through the Docker network gateway
+      ADMIN_ALLOWED_NETWORKS: ${ADMIN_ALLOWED_NETWORKS:-127.0.0.0/8,::1/128,172.16.0.0/12}
+      WATCHFILES_FORCE_POLLING: "true"
+    # Published on the loopback interface only: other machines cannot reach the admin service
+    ports:
+      - "127.0.0.1:${ADMIN_SERVICE_PORT:-8002}:8002"
+    volumes:
+      - ./admin-service/admin_service:/app/admin-service/admin_service
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
 volumes:
   db-data:
