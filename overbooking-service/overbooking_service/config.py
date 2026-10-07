@@ -1,3 +1,4 @@
+from enum import StrEnum
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -30,10 +31,20 @@ class AbTestSettings(BaseModel):
     salt: str = Field(min_length=1)
 
 
+class SessionDefinition(StrEnum):
+    """What counts as a doctor's session for the KPIs."""
+
+    # First slot start to last slot end of the day
+    SLOTS = "slots"
+    # The doctor's working hours of the weekday; days without working hours fall back to SLOTS
+    SCHEDULE = "schedule"
+
+
 class KpiSettings(BaseModel):
     """KPI calculation settings."""
 
     service_minutes: float = Field(gt=0)
+    session: SessionDefinition = SessionDefinition.SLOTS
 
 
 class Settings(BaseSettings):

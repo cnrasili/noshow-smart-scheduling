@@ -152,7 +152,7 @@ Each appointment that can get a reminder is assigned to the `reminder` or `contr
 
 The booking application does not record consultation times, so the KPIs replay the day from the schedule:
 
-- The session runs from the doctor's first slot start to the last slot end.
+- The session runs from the doctor's first slot start to the last slot end (`kpi.session: slots`), or over the doctor's working hours of the weekday (`kpi.session: schedule`). With `schedule`, time within the working hours without slots counts as idle and work after the working hours as overtime; a day without working hours falls back to `slots`.
 - Patients with `attended = true` are seen in slot order, each for `service_minutes`, and arrive on time.
 - Appointments without a recorded attendance are not counted as seen.
 
@@ -161,6 +161,7 @@ The default consultation length is the simulation's mean service time.
 | Setting | Default | Meaning |
 |---|---|---|
 | `kpi.service_minutes` | 12 | Consultation length in minutes |
+| `kpi.session` | `slots` | Session definition: `slots` or `schedule`; the final choice belongs to the session parameters decided with the simulation side |
 
 ## Demo Data
 
