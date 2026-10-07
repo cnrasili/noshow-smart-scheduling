@@ -56,6 +56,28 @@ Models trained on named columns receive a DataFrame; others receive an array in 
 
 The current model is a placeholder (`dummy-v0`) created by `scripts/make_dummy_model.py`.
 
+### Installing a Delivered Model
+
+The prediction model side delivers `model.joblib` and `feature_schema.json` in `ml/models/`. Install them with:
+
+```bash
+python -m overbooking_service.install_model --source ../ml/models
+```
+
+The command refuses the model, and keeps the installed one, when:
+
+- a file is missing or the model cannot be loaded (feature count, trained column names or `positive_class` do not match the schema),
+- the schema features differ from the features the service computes (`overbooking_service/features.py`),
+- a no-show probability lies outside 0–1, or long lead times with past no-shows do not score higher than reliable short-notice patients.
+
+A different scikit-learn minor version is reported as a warning. The same checks are the acceptance tests in `tests/test_model_acceptance.py`. Commit the installed files, then restart the service to load the model; with Docker Compose rebuild it, since the model is part of the image:
+
+```bash
+docker compose up --build -d overbooking-service
+```
+
+The previously installed model stays available in the Git history.
+
 ## Patient Data
 
 Features are computed from the patient record and appointment history in the `patients` and `appointments` tables. Only appointments with a recorded `attended` value count as history. Access goes through the `PatientDataSource` interface in `overbooking_service/data_source.py`; `/predict` returns `503` when the tables cannot be read.
