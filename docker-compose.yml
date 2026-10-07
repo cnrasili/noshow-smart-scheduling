@@ -39,6 +39,10 @@ services:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-noshow}:${POSTGRES_PASSWORD:-noshow}@db:5432/${POSTGRES_DB:-noshow}
       OVERBOOKING_SERVICE_URL: http://overbooking-service:8001
       FRONTEND_ORIGIN: http://localhost:${WEB_FRONTEND_PORT:-5173}
+      # Internal account API for the admin service; disabled while empty
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-}
+      # Length of newly generated slots in minutes; 20 while empty
+      SLOT_MINUTES: ${SLOT_MINUTES:-}
       WATCHFILES_FORCE_POLLING: "true"
     ports:
       - "${WEB_BACKEND_PORT:-8000}:8000"

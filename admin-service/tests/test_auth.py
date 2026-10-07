@@ -71,7 +71,10 @@ def test_wrong_password_and_unknown_email_get_same_answer(
 
 def test_website_accounts_cannot_log_in(client: TestClient, log_in, session_factory):
     with session_factory() as session:
-        patient = Patient(full_name="P", email="p@demo.local", age=30, gender="F")
+        # Fictional national ID number of the web backend demo pattern
+        patient = Patient(
+            national_id="99999000184", full_name="P", email="p@demo.local", age=30, gender="F"
+        )
         session.add(patient)
         session.flush()
         session.add(

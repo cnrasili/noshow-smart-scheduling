@@ -14,6 +14,7 @@ from overbooking_service.config import settings
 from overbooking_service.dependencies import get_data_source, get_session
 from overbooking_service.features import PastAppointment, PatientRecord
 from overbooking_service.main import app
+from overbooking_service.national_id import fictional_national_id
 
 
 class FakeDataSource:
@@ -50,7 +51,13 @@ def make_clinic(session: Session, today: date) -> None:
     tz = settings.clinic_timezone
     session.add_all(Doctor(full_name=name) for name in CLINIC_DOCTORS)
     session.add_all(
-        Patient(full_name=f"Patient {n}", email=f"patient{n}@demo.local", age=30 + n, gender="F")
+        Patient(
+            national_id=fictional_national_id(n),
+            full_name=f"Patient {n}",
+            email=f"patient{n}@demo.local",
+            age=30 + n,
+            gender="F",
+        )
         for n in range(1, CLINIC_PATIENTS + 1)
     )
     session.flush()

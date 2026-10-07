@@ -16,6 +16,7 @@ from overbooking_service.data_source import (
 )
 from overbooking_service.dependencies import get_data_source
 from overbooking_service.main import app
+from overbooking_service.national_id import fictional_national_id
 
 CLINIC = ZoneInfo("Europe/Istanbul")
 
@@ -26,7 +27,12 @@ def utc(day: int, hour: int, minute: int = 0) -> datetime:
 
 def patient(patient_id: int, **fields) -> Patient:
     values = {"full_name": f"Patient {patient_id}", "age": 40, "gender": "F"} | fields
-    return Patient(id=patient_id, email=f"p{patient_id}@example.com", **values)
+    return Patient(
+        id=patient_id,
+        national_id=fictional_national_id(patient_id),
+        email=f"p{patient_id}@example.com",
+        **values,
+    )
 
 
 def appointment(patient_id: int, slot_id: int, day: int, **fields) -> Appointment:

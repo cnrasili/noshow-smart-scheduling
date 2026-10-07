@@ -12,6 +12,7 @@ from overbooking_service.ab import Group, assign_group, two_proportion_test
 from overbooking_service.config import AbTestSettings
 from overbooking_service.dependencies import get_ab_settings, get_now
 from overbooking_service.main import app
+from overbooking_service.national_id import fictional_national_id
 
 NOW = datetime(2026, 11, 2, 9, 0, tzinfo=UTC)
 SALT = "reminder-ab-v1"
@@ -141,6 +142,7 @@ def seed_outcomes(session: Session, outcomes: dict[str, list[bool | None]]) -> N
                 [
                     Patient(
                         id=appointment_id,
+                        national_id=fictional_national_id(appointment_id),
                         full_name="Patient",
                         email=f"p{appointment_id}@example.com",
                         age=40,
@@ -208,6 +210,7 @@ def test_patient_unit_counts_each_patient_once(
             session.add(
                 Patient(
                     id=patient_id,
+                    national_id=fictional_national_id(patient_id),
                     full_name="Patient",
                     email=f"p{patient_id}@example.com",
                     age=40,
