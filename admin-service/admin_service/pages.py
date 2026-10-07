@@ -45,7 +45,7 @@ def kpi_page(
                 days.append({"date": current, "kpis": overbooking.kpi(selected.id, current)})
         ab = overbooking.ab_summary()
     except OverbookingUnavailable:
-        days, error = [], "The overbooking service is not reachable; KPIs cannot be shown."
+        days, error = [], "Randevu karar servisine ulaşılamıyor; göstergeler gösterilemiyor."
 
     return templates.TemplateResponse(
         request,
@@ -61,7 +61,7 @@ def kpi_page(
             "error": error,
             "chart": [
                 {
-                    "date": d["date"].isoformat(),
+                    "date": d["date"].strftime("%d.%m"),
                     "utilization": round(d["kpis"]["utilization"] * 100, 1),
                     "idle": round(d["kpis"]["idle_minutes"], 1),
                     "overtime": round(d["kpis"]["overtime_minutes"], 1),

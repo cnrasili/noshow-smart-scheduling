@@ -40,7 +40,7 @@ def test_outside_clients_are_rejected_before_any_page(path: str):
     with TestClient(app, client=("203.0.113.7", 40000)) as outside:
         response = outside.get(path)
     assert response.status_code == 403
-    assert "hospital network" in response.text
+    assert "hastane iç ağından" in response.text
 
 
 def test_forwarded_headers_do_not_grant_access():

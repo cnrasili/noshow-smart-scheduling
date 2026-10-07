@@ -1,20 +1,20 @@
 {% extends "base.html" %}
-{% block title %}Create a doctor account{% endblock %}
+{% block title %}Hekim hesabı aç{% endblock %}
 {% block content %}
 <section class="form-page">
-  <h1>Create a doctor account</h1>
-  <p class="muted">The doctor logs in with the email address. An initial password is generated and shown once; slots are opened for the next two weeks.</p>
+  <h1>Hekim hesabı aç</h1>
+  <p class="muted">Hekim e-posta adresiyle giriş yapar. İlk şifre otomatik oluşturulur ve bir kez gösterilir; önümüzdeki iki hafta için slotlar açılır.</p>
   {% if error %}
   <p class="error" role="alert">{{ error }}</p>
   {% endif %}
   <form method="post" action="{{ url_for('create_doctor') }}" class="stack">
     <input type="hidden" name="csrf_token" value="{{ csrf(request) }}" />
     <label>
-      Full name
+      Ad soyad
       <input name="full_name" value="{{ values.full_name or '' }}" required maxlength="255" />
     </label>
     <label>
-      Department
+      Bölüm
       <input name="specialty" value="{{ values.specialty or '' }}" required maxlength="255" list="specialties" />
       <datalist id="specialties">
         {% for specialty in specialties %}
@@ -23,24 +23,24 @@
       </datalist>
     </label>
     <label>
-      Email
+      E-posta
       <input type="email" name="email" value="{{ values.email or '' }}" required maxlength="255" />
     </label>
     <fieldset>
-      <legend>Working hours (leave a day empty if the doctor does not work)</legend>
+      <legend>Çalışma saatleri (hekimin çalışmadığı günleri boş bırakın)</legend>
       <table class="hours">
         <tbody>
           {% for weekday, day in weekdays %}
           <tr>
             <th scope="row">{{ day }}</th>
-            <td><input type="time" name="start_{{ weekday }}" value="{{ values['start_' ~ weekday] or '' }}" aria-label="{{ day }} start" /></td>
-            <td><input type="time" name="end_{{ weekday }}" value="{{ values['end_' ~ weekday] or '' }}" aria-label="{{ day }} end" /></td>
+            <td><input type="time" name="start_{{ weekday }}" value="{{ values['start_' ~ weekday] or '' }}" aria-label="{{ day }} başlangıç" /></td>
+            <td><input type="time" name="end_{{ weekday }}" value="{{ values['end_' ~ weekday] or '' }}" aria-label="{{ day }} bitiş" /></td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </fieldset>
-    <button type="submit">Create account</button>
+    <button type="submit">Hesabı aç</button>
   </form>
 </section>
 {% endblock %}

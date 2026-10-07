@@ -33,7 +33,7 @@ class AllowedNetworksMiddleware:
             client = scope.get("client")
             if not is_allowed(client[0] if client else None, self.networks):
                 response = PlainTextResponse(
-                    "The admin service is only available from the hospital network.",
+                    "Yönetim paneline yalnızca hastane iç ağından erişilebilir.",
                     status_code=403,
                 )
                 await response(scope, receive, send)

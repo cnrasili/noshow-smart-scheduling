@@ -10,11 +10,11 @@ new Chart(document.getElementById("kpi-chart"), {
   data: {
     labels: rows.map((r) => r.date),
     datasets: [
-      { type: "bar", label: "Idle (min)", data: rows.map((r) => r.idle), backgroundColor: "#8fb3ee", yAxisID: "minutes" },
-      { type: "bar", label: "Overtime (min)", data: rows.map((r) => r.overtime), backgroundColor: "#e8a25c", yAxisID: "minutes" },
+      { type: "bar", label: "Boş süre (dk)", data: rows.map((r) => r.idle), backgroundColor: "#8fb3ee", yAxisID: "minutes" },
+      { type: "bar", label: "Fazla mesai (dk)", data: rows.map((r) => r.overtime), backgroundColor: "#e8a25c", yAxisID: "minutes" },
       {
         type: "line",
-        label: "Utilization (%)",
+        label: "Doluluk (%)",
         data: rows.map((r) => r.utilization),
         borderColor: "#2f9e6e",
         backgroundColor: "#2f9e6e",
@@ -27,8 +27,8 @@ new Chart(document.getElementById("kpi-chart"), {
     maintainAspectRatio: false,
     interaction: { mode: "index", intersect: false },
     scales: {
-      minutes: { position: "left", beginAtZero: true, title: { display: true, text: "Minutes" } },
-      percent: { position: "right", beginAtZero: true, grid: { drawOnChartArea: false }, title: { display: true, text: "Utilization (%)" } },
+      minutes: { position: "left", beginAtZero: true, title: { display: true, text: "Dakika" } },
+      percent: { position: "right", beginAtZero: true, grid: { drawOnChartArea: false }, title: { display: true, text: "Doluluk (%)" } },
     },
   },
 });

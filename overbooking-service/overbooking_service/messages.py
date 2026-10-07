@@ -1,9 +1,28 @@
 from datetime import datetime
 from enum import StrEnum
 
+# Turkish names, independent of the server's locale
+MONTHS = [
+    "Ocak",
+    "Şubat",
+    "Mart",
+    "Nisan",
+    "Mayıs",
+    "Haziran",
+    "Temmuz",
+    "Ağustos",
+    "Eylül",
+    "Ekim",
+    "Kasım",
+    "Aralık",
+]
+WEEKDAYS = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"]
+
 CANCEL_NOTE = (
-    "If you cannot attend, please cancel the appointment so that another patient can use it."
+    "Randevunuza gelemeyecekseniz lütfen iptal edin; böylece randevu saati başka bir hastaya "
+    "verilebilir."
 )
+ARRIVAL_NOTE = "Lütfen randevu saatinden 15 dakika önce poliklinik bankosuna başvurun."
 
 
 class Kind(StrEnum):
@@ -19,9 +38,20 @@ class Status(StrEnum):
     EXPIRED = "expired"
 
 
+def turkish_date_time(moment: datetime) -> str:
+    """Date and time in Turkish, for example "19 Ekim 2026 Pazartesi, 13:20"."""
+    return (
+        f"{moment.day} {MONTHS[moment.month - 1]} {moment.year} "
+        f"{WEEKDAYS[moment.weekday()]}, {moment:%H:%M}"
+    )
+
+
 def render(kind: Kind, appointment_start: datetime) -> tuple[str, str]:
     """Return the subject and body of a message."""
-    when = f"{appointment_start:%d %B %Y, %H:%M}"
+    when = turkish_date_time(appointment_start)
     if kind is Kind.CONFIRMATION:
-        return "Appointment confirmed", f"Your appointment on {when} is confirmed.\n\n{CANCEL_NOTE}"
-    return "Appointment reminder", f"Reminder: you have an appointment on {when}.\n\n{CANCEL_NOTE}"
+        return "Randevunuz onaylandı", f"{when} tarihli randevunuz onaylandı.\n\n{CANCEL_NOTE}"
+    return (
+        "Randevu hatırlatması",
+        f"Hatırlatma: {when} tarihinde randevunuz var. {ARRIVAL_NOTE}\n\n{CANCEL_NOTE}",
+    )

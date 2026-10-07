@@ -21,8 +21,8 @@ from noshow_db.models.admin import AdminSession, AdminUser
 
 router = APIRouter()
 
-WRONG_CREDENTIALS = "Wrong email or password."
-LOCKED = "Too many failed logins. Try again later."
+WRONG_CREDENTIALS = "E-posta veya şifre hatalı."
+LOCKED = "Çok fazla başarısız giriş denemesi. Lütfen daha sonra tekrar deneyin."
 
 
 def login_page(request: Request, error: str | None = None, status_code: int = 200) -> Response:

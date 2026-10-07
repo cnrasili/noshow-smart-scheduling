@@ -1,27 +1,27 @@
 {% extends "base.html" %}
-{% block title %}Audit log{% endblock %}
+{% block title %}Denetim kaydı{% endblock %}
 {% block content %}
 <header>
-  <h1>Audit log</h1>
-  <p class="muted">Latest {{ rows | length }} events, newest first. Times in UTC.</p>
+  <h1>Denetim kaydı</h1>
+  <p class="muted">Son {{ rows | length }} olay, en yenisi üstte. Saatler klinik saatiyle.</p>
 </header>
-<section aria-label="Audit log">
+<section aria-label="Denetim kaydı">
   {% if rows %}
   <table>
     <thead>
       <tr>
-        <th scope="col">Time</th>
-        <th scope="col">Event</th>
-        <th scope="col">Email</th>
-        <th scope="col">Client address</th>
-        <th scope="col">Detail</th>
+        <th scope="col">Zaman</th>
+        <th scope="col">Olay</th>
+        <th scope="col">E-posta</th>
+        <th scope="col">İstemci adresi</th>
+        <th scope="col">Ayrıntı</th>
       </tr>
     </thead>
     <tbody>
       {% for row in rows %}
       <tr>
-        <td>{{ row.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-        <td>{{ row.action }}</td>
+        <td>{{ row.created_at | clinic_time }}</td>
+        <td>{{ audit_events.get(row.action, row.action) }}</td>
         <td>{{ row.email }}</td>
         <td>{{ row.client_ip }}</td>
         <td>{{ row.detail or '' }}</td>
@@ -30,7 +30,7 @@
     </tbody>
   </table>
   {% else %}
-  <p class="empty">No events yet.</p>
+  <p class="empty">Henüz olay yok.</p>
   {% endif %}
 </section>
 {% endblock %}

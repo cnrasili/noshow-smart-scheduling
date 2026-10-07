@@ -33,7 +33,7 @@ def test_login_opens_kpi_page(client: TestClient, log_in, session_factory):
     response = log_in()
     assert response.status_code == 200
     assert response.url.path == "/kpi"
-    assert "Schedule KPIs" in response.text
+    assert "Randevu göstergeleri" in response.text
     assert actions(session_factory) == ["login"]
 
 
@@ -64,8 +64,8 @@ def test_wrong_password_and_unknown_email_get_same_answer(
     wrong = log_in(password="wrong password")
     unknown = log_in(email="nobody@hospital.local")
     assert wrong.status_code == unknown.status_code == 401
-    assert "Wrong email or password." in wrong.text
-    assert "Wrong email or password." in unknown.text
+    assert "E-posta veya şifre hatalı." in wrong.text
+    assert "E-posta veya şifre hatalı." in unknown.text
     assert actions(session_factory) == ["login_failed", "login_failed"]
 
 
@@ -94,7 +94,7 @@ def test_failed_logins_lock_the_login(client: TestClient, log_in, clock, session
         assert log_in(password="wrong password").status_code == 401
     locked = log_in()
     assert locked.status_code == 429
-    assert "Too many failed logins" in locked.text
+    assert "Çok fazla başarısız giriş denemesi" in locked.text
     assert actions(session_factory)[-1] == "login_locked"
 
     # The lock ends when the failures leave the window

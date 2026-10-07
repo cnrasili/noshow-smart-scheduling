@@ -43,7 +43,7 @@ def verify_csrf(
     """Reject a form that was not rendered for the current session."""
     session_token = request.cookies.get(SESSION_COOKIE, "")
     if not session_token or not hmac.compare_digest(token, csrf_token(session_token)):
-        raise HTTPException(403, "Invalid form token; reload the page and try again")
+        raise HTTPException(403, "Form doğrulanamadı; sayfayı yenileyip tekrar deneyin.")
 
 
 def as_utc(value: datetime) -> datetime:

@@ -3,6 +3,8 @@ from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from admin_service.turkish import api_error
+
 TIMEOUT_SECONDS = 10
 
 
@@ -11,23 +13,16 @@ class AccountsUnavailable(Exception):
 
 
 class AccountRejected(Exception):
-    """The internal account API refused the request; the message explains why."""
+    """The internal account API refused the request; the message explains why in Turkish."""
 
 
 def _rejection(status: int, body: bytes) -> str:
+    """Turkish message for the administrator from the API's error answer."""
     try:
         detail = json.loads(body).get("detail")
     except (ValueError, AttributeError):
         detail = None
-    if isinstance(detail, str):
-        return detail
-    if isinstance(detail, list):
-        # Validation errors: field and message of each
-        return "; ".join(
-            f"{'.'.join(str(p) for p in error.get('loc', [])[1:])}: {error.get('msg', '')}"
-            for error in detail
-        )
-    return f"Request refused ({status})"
+    return api_error(status, detail)
 
 
 class AccountsClient:
