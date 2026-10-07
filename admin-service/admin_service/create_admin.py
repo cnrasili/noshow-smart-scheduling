@@ -32,7 +32,8 @@ def create_admin(session: Session, email: str, password: str) -> AdminUser:
 
 def read_password(from_stdin: bool) -> str:
     if from_stdin:
-        return sys.stdin.readline().rstrip("\n")
+        # Windows pipes and files end the line with \r\n
+        return sys.stdin.readline().rstrip("\r\n")
     password = getpass.getpass("Password: ")
     if getpass.getpass("Repeat password: ") != password:
         raise ValueError("The passwords do not match")

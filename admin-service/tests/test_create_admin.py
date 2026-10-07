@@ -42,3 +42,17 @@ def test_command_creates_an_admin(
     monkeypatch.setattr("sys.stdin", io.StringIO("command line password\n"))
     main()
     assert capsys.readouterr().out == "Administrator cli@hospital.local created.\n"
+
+
+def test_command_strips_windows_line_endings(
+    session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setattr("admin_service.create_admin.SessionLocal", session_factory)
+    monkeypatch.setattr(
+        "sys.argv", ["create_admin", "--email", "win@hospital.local", "--password-stdin"]
+    )
+    monkeypatch.setattr("sys.stdin", io.StringIO("password from windows\r\n"))
+    main()
+    with session_factory() as session:
+        admin = session.scalar(select(AdminUser).where(AdminUser.email == "win@hospital.local"))
+    assert verify_password("password from windows", admin.password_hash)
