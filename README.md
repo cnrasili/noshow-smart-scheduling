@@ -109,6 +109,8 @@ The seed creates a fictional clinic with doctors, patients, login accounts and s
 | Mailpit (sent emails) | http://localhost:8025 |
 | PostgreSQL | `localhost:5432` |
 
+Only the website (web application and web backend) is reachable from other machines; the overbooking service, the admin service, Mailpit and PostgreSQL are published on `127.0.0.1` only.
+
 Default settings work without configuration. To change them, copy `.env.example` to `.env`.
 
 <details>

@@ -5,8 +5,9 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-noshow}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-noshow}
       POSTGRES_DB: ${POSTGRES_DB:-noshow}
+    # Internal services are published on the loopback interface only
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
@@ -28,8 +29,8 @@ services:
   mailpit:
     image: axllent/mailpit
     ports:
-      - "${MAILPIT_UI_PORT:-8025}:8025"
-      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"
+      - "127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025"
 
   web-backend:
     build:
@@ -75,8 +76,9 @@ services:
       SMTP_PORT: 1025
       MAIL_FROM: ${MAIL_FROM:-clinic@noshow.local}
       WATCHFILES_FORCE_POLLING: "true"
+    # Reached by the web backend and the admin service over the Docker network
     ports:
-      - "${OVERBOOKING_SERVICE_PORT:-8001}:8001"
+      - "127.0.0.1:${OVERBOOKING_SERVICE_PORT:-8001}:8001"
     volumes:
       - ./overbooking-service/overbooking_service:/app/overbooking-service/overbooking_service
     depends_on:
