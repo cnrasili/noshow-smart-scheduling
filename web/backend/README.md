@@ -33,6 +33,16 @@ Slot capacity and appointment dates are enforced by PostgreSQL triggers. Their t
 NOSHOW_TEST_DATABASE_URL=postgresql+psycopg://noshow:noshow@localhost:5432/noshow_test pytest
 ```
 
+## Slot Length
+
+`SLOT_MINUTES` sets the length of newly generated slots in minutes, both for doctors opening slots and for the demo seed. It defaults to `20` and must be a whole number from 5 to 120; any other value stops the web backend at startup with a clear message. The value itself is one of the session parameters decided by IEN-1.
+
+```bash
+SLOT_MINUTES=15 uvicorn web_backend.main:app --reload
+```
+
+Existing slots are not changed. Generating slots again after a change only fills working hours that no existing slot covers, so slots of different lengths never overlap.
+
 ## Demo Data
 
 `web_backend.seed` creates a fictional clinic through the account module: four doctors in three branches (Dahiliye, Kardiyoloji, Göz Hastalıkları) with their own working hours, eight patients, the login accounts, slots from three weeks ago to two weeks ahead and a few example appointments per doctor. Running it again only adds missing doctors, patients and slots, so it also upgrades a database seeded by an earlier version.

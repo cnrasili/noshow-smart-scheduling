@@ -88,8 +88,8 @@ export function SchedulePage() {
           </div>
           <form className="panel-body stack" onSubmit={generate}>
             <p className="muted">
-              Seçilen tarih aralığında çalışma saatlerine göre 20 dakikalık slotlar açılır. Daha
-              önce açılmış slotlar ve alınmış randevular değişmez.
+              Seçilen tarih aralığında çalışma saatlerine göre slotlar açılır. Daha önce açılmış
+              slotlar ve alınmış randevular değişmez.
             </p>
             <div className="filters">
               <label>
