@@ -7,6 +7,7 @@ Patient and doctor interfaces of the appointment booking application.
 - React 19 + TypeScript
 - Vite
 - oxlint and Prettier
+- Vitest and Testing Library
 
 ## Scope
 
@@ -44,3 +45,14 @@ The app runs on http://localhost:5173 and calls the web backend at `VITE_API_URL
 | `npm run lint`         | Lint with oxlint             |
 | `npm run format`       | Format with Prettier         |
 | `npm run format:check` | Check formatting             |
+| `npm test`             | Run the tests once           |
+
+## Tests
+
+Component tests use Vitest and Testing Library in jsdom (`vitest.config.ts`). They render the whole app at a page address and replace `fetch` with a fake backend (`src/test/backend.tsx`), so no backend has to run. They cover patient and doctor login (including the messages for wrong credentials and an invalid national ID number), booking with branch → doctor → day → time, the extra appointment display of a partly booked slot, cancellation, and the doctor's daily list with attendance marking.
+
+```bash
+npm test
+# or keep them running while you edit
+npx vitest
+```
