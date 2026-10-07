@@ -1,7 +1,7 @@
 """Add patient national ID
 
 Revision ID: a4c7e2f91b36
-Revises: d561909c92ca
+Revises: e4a7c9d2b1f6
 Create Date: 2026-10-07 10:00:00.000000
 
 Existing patients get a fictional number built from their id with the web backend's demo
@@ -17,7 +17,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "a4c7e2f91b36"
-down_revision: str | Sequence[str] | None = "d561909c92ca"
+down_revision: str | Sequence[str] | None = "e4a7c9d2b1f6"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
