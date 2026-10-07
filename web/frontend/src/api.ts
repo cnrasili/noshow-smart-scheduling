@@ -27,19 +27,19 @@ let memoryToken: string | null = null
 
 export function getToken(): string | null {
   try {
-    return localStorage.getItem(TOKEN_KEY) ?? memoryToken
+    return localStorage.getItem(TOKEN_KEY)
   } catch {
     return memoryToken
   }
 }
 
 function setToken(token: string | null) {
-  memoryToken = token
   try {
     if (token) localStorage.setItem(TOKEN_KEY, token)
     else localStorage.removeItem(TOKEN_KEY)
   } catch {
-    // Keep the in-memory token only
+    // Keep the token in memory only
+    memoryToken = token
   }
 }
 
