@@ -1,70 +1,21 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { NavLink, Navigate, Outlet, Route, Routes, useNavigate } from 'react-router'
+import { Navigate, Route, Routes, useNavigate } from 'react-router'
 import { api, getToken, onUnauthorized } from './api'
-import { INSTITUTION_NAME, SYSTEM_NAME } from './config'
 import { SchedulePage } from './pages/doctor/SchedulePage'
 import { WorklistPage } from './pages/doctor/WorklistPage'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { AppointmentsPage } from './pages/patient/AppointmentsPage'
 import { BookingPage } from './pages/patient/BookingPage'
+import { AboutPage } from './pages/site/AboutPage'
+import { AnnouncementPage, AnnouncementsPage } from './pages/site/AnnouncementsPage'
+import { ContactPage } from './pages/site/ContactPage'
+import { GuidePage } from './pages/site/GuidePage'
 import { PATHS, homeFor, loginFor } from './routes'
+import { SiteLayout } from './site/SiteLayout'
 import type { Me, Role } from './types'
 
 type Session = { status: 'loading' } | { status: 'signed-out' } | { status: 'signed-in'; me: Me }
-
-const NAV: Record<Role, { to: string; label: string }[]> = {
-  patient: [
-    { to: PATHS.booking, label: 'Randevu Al' },
-    { to: PATHS.appointments, label: 'Randevularım' },
-  ],
-  doctor: [
-    { to: PATHS.worklist, label: 'Hasta Listesi' },
-    { to: PATHS.schedule, label: 'Çalışma Takvimi' },
-  ],
-}
-
-function Shell({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
-  return (
-    <div className="shell">
-      <header className="topbar">
-        <div className="container topbar-inner">
-          <div className="brand">
-            <span className="brand-name">{INSTITUTION_NAME}</span>
-            <span className="brand-system">{SYSTEM_NAME}</span>
-          </div>
-          <div className="user">
-            <div className="user-text">
-              <span className="user-name">{me.name}</span>
-              <span className="user-role">
-                {me.role === 'doctor'
-                  ? `Hekim${me.specialty ? ` · ${me.specialty}` : ''}`
-                  : 'Hasta'}
-              </span>
-            </div>
-            <button type="button" onClick={onSignOut}>
-              Çıkış
-            </button>
-          </div>
-        </div>
-        <nav className="container nav" aria-label="Ana menü">
-          {NAV[me.role].map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) => (isActive ? 'is-active' : '')}
-            >
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-      </header>
-      <main className="container main">
-        <Outlet />
-      </main>
-    </div>
-  )
-}
 
 function App() {
   const navigate = useNavigate()
@@ -103,22 +54,27 @@ function App() {
   }
 
   // Login forms get a key per role so switching forms starts with empty fields
-  function publicPage(page: ReactNode) {
+  function signedOutOnly(page: ReactNode) {
     return me ? <Navigate to={homeFor(me.role)} replace /> : page
   }
 
   return (
     <Routes>
-      <Route path={PATHS.home} element={publicPage(<HomePage />)} />
-      <Route
-        path={PATHS.patientLogin}
-        element={publicPage(<LoginPage key="patient" role="patient" onSignedIn={signedIn} />)}
-      />
-      <Route
-        path={PATHS.doctorLogin}
-        element={publicPage(<LoginPage key="doctor" role="doctor" onSignedIn={signedIn} />)}
-      />
-      <Route element={me ? <Shell me={me} onSignOut={signOut} /> : <Outlet />}>
+      <Route element={<SiteLayout me={me} onSignOut={signOut} />}>
+        <Route path={PATHS.home} element={<HomePage />} />
+        <Route path={PATHS.about} element={<AboutPage />} />
+        <Route path={PATHS.announcements} element={<AnnouncementsPage />} />
+        <Route path={`${PATHS.announcements}/:slug`} element={<AnnouncementPage />} />
+        <Route path={PATHS.guide} element={<GuidePage />} />
+        <Route path={PATHS.contact} element={<ContactPage />} />
+        <Route
+          path={PATHS.patientLogin}
+          element={signedOutOnly(<LoginPage key="patient" role="patient" onSignedIn={signedIn} />)}
+        />
+        <Route
+          path={PATHS.doctorLogin}
+          element={signedOutOnly(<LoginPage key="doctor" role="doctor" onSignedIn={signedIn} />)}
+        />
         <Route
           path={PATHS.booking}
           element={only(
