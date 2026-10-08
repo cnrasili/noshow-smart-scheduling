@@ -1,3 +1,4 @@
+from collections import Counter
 from datetime import timedelta
 
 from sqlalchemy import delete, func, select
@@ -114,6 +115,50 @@ def test_seed_adds_missing_doctors_to_an_earlier_demo(db) -> None:
     db.commit()
 
     seed(db)
+
+    assert _count(db, Doctor) == len(DOCTORS)
+    assert _count(db, Patient) == len(PATIENTS)
+
+
+def test_original_demo_doctors_and_patients_stay_the_same(db) -> None:
+    seed(db)
+
+    first_four = [
+        ("Dr. Deniz Yıldız", "Dahiliye", "doktor@demo.local"),
+        ("Dr. Can Özkan", "Dahiliye", "can.ozkan@demo.local"),
+        ("Dr. Leyla Aksoy", "Kardiyoloji", "leyla.aksoy@demo.local"),
+        ("Dr. Ebru Kaplan", "Göz Hastalıkları", "ebru.kaplan@demo.local"),
+    ]
+    assert [(d.name, d.specialty, d.email) for d in DOCTORS[:4]] == first_four
+    assert [p[1] for p in PATIENTS] == [
+        "ayse@demo.local",
+        "mehmet@demo.local",
+        "zeynep@demo.local",
+        "ali@demo.local",
+        "elif@demo.local",
+        "burak@demo.local",
+        "selin@demo.local",
+        "hasan@demo.local",
+    ]
+
+
+def test_hospital_has_several_departments_with_two_or_three_doctors() -> None:
+    per_department = Counter(demo.specialty for demo in DOCTORS)
+
+    assert 8 <= len(per_department) <= 10
+    assert set(per_department.values()) <= {2, 3}
+    assert len({demo.email for demo in DOCTORS}) == len(DOCTORS)
+
+
+def test_seed_adds_the_new_doctors_to_a_four_doctor_database(db, monkeypatch) -> None:
+    from web_backend import seed as seed_module
+
+    monkeypatch.setattr(seed_module, "DOCTORS", DOCTORS[:4])
+    seed_module.seed(db)
+    assert _count(db, Doctor) == 4
+    monkeypatch.undo()
+
+    seed_module.seed(db)
 
     assert _count(db, Doctor) == len(DOCTORS)
     assert _count(db, Patient) == len(PATIENTS)

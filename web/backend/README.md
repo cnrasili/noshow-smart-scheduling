@@ -45,7 +45,7 @@ Existing slots are not changed. Generating slots again after a change only fills
 
 ## Demo Data
 
-`web_backend.seed` creates a fictional clinic through the account module: four doctors in three branches (Dahiliye, Kardiyoloji, Göz Hastalıkları) with their own working hours, eight patients, the login accounts, slots from three weeks ago to two weeks ahead and a few example appointments per doctor. Running it again only adds missing doctors, patients and slots, so it also upgrades a database seeded by an earlier version.
+`web_backend.seed` creates a fictional city hospital through the account module: twenty doctors in nine departments (two or three each, for example Dahiliye, Kardiyoloji, Göz Hastalıkları, Çocuk Sağlığı ve Hastalıkları) with their own working hours, eight patients, the login accounts, slots from three weeks ago to two weeks ahead and a few example appointments per doctor. Running it again only adds missing doctors, patients and slots, so it also upgrades a database seeded by an earlier version. The first four doctors (`doktor@demo.local`, `can.ozkan@demo.local`, `leyla.aksoy@demo.local`, `ebru.kaplan@demo.local`) and the eight patients are the original demo and stay unchanged.
 
 ```bash
 python -m web_backend.seed
