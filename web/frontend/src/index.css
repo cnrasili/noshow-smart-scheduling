@@ -696,6 +696,19 @@ label {
   padding: 14px 20px 6px;
 }
 
+/* Same column widths in every day's table so the columns line up */
+.upcoming-table {
+  table-layout: fixed;
+}
+
+.upcoming-table th:first-child {
+  width: 110px;
+}
+
+.upcoming-table th:last-child {
+  width: 160px;
+}
+
 .upcoming-day h3 .muted {
   font-weight: 400;
   font-size: 0.87rem;
