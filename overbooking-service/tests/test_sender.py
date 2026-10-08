@@ -55,6 +55,18 @@ def test_smtp_sender_builds_email(monkeypatch: pytest.MonkeyPatch):
     assert "=?utf-8?" in message.as_string()
 
 
+def test_smtp_sender_shows_hospital_name(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(sender_module.smtplib, "SMTP", FakeSmtp)
+    smtp_settings = settings.model_copy(
+        update={"smtp_host": "mailpit", "mail_from": "randevu@sehirhastanesi.example"}
+    )
+    make_sender(smtp_settings).send("patient@example.com", "Randevunuz onaylandı", "Metin")
+    _, message = FakeSmtp.sent[-1]
+    sender = message["From"].addresses[0]
+    assert sender.display_name == "Şehir Hastanesi"
+    assert sender.addr_spec == "randevu@sehirhastanesi.example"
+
+
 def test_default_reminder_settings_come_from_config():
     assert settings.reminders.hours_before == 24
     assert settings.reminders.max_attempts == 3

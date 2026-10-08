@@ -19,6 +19,7 @@ def csrf(request: Request) -> str:
 
 
 templates.env.globals["csrf"] = csrf
+templates.env.globals["panel_name"] = turkish.PANEL_NAME
 templates.env.globals["audit_events"] = turkish.AUDIT_EVENTS
 templates.env.globals["ab_groups"] = turkish.AB_GROUPS
 templates.env.filters["long_date"] = turkish.long_date

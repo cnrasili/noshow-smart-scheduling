@@ -63,6 +63,8 @@ def test_message_text_uses_local_appointment_time(
     assert "10 Kasım 2026 Salı, 09:30" in confirmation.body
     assert reminder.subject == "Randevu hatırlatması"
     assert "10 Kasım 2026 Salı, 09:30" in reminder.body
+    assert confirmation.body.endswith("\n\nŞehir Hastanesi")
+    assert reminder.body.endswith("\n\nŞehir Hastanesi")
 
 
 def test_no_reminder_when_appointment_is_too_close(client: TestClient):
