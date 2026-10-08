@@ -3,6 +3,9 @@
 from datetime import UTC, date, datetime
 from zoneinfo import ZoneInfo
 
+HOSPITAL_NAME = "Şehir Hastanesi"
+PANEL_NAME = f"{HOSPITAL_NAME} Yönetim Paneli"
+
 MONTHS = [
     "Ocak",
     "Şubat",

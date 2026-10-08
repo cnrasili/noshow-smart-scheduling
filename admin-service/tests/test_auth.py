@@ -20,6 +20,8 @@ def test_login_page_is_served(client: TestClient):
     response = client.get("/login")
     assert response.status_code == 200
     assert 'name="password"' in response.text
+    assert "<title>Yönetici girişi · Şehir Hastanesi Yönetim Paneli</title>" in response.text
+    assert "<h1>Şehir Hastanesi Yönetim Paneli</h1>" in response.text
 
 
 def test_pages_need_login(client: TestClient):
@@ -34,6 +36,8 @@ def test_login_opens_kpi_page(client: TestClient, log_in, session_factory):
     assert response.status_code == 200
     assert response.url.path == "/kpi"
     assert "Randevu göstergeleri" in response.text
+    assert "<title>Randevu göstergeleri · Şehir Hastanesi Yönetim Paneli</title>" in response.text
+    assert "<strong>Şehir Hastanesi Yönetim Paneli</strong>" in response.text
     assert actions(session_factory) == ["login"]
 
 

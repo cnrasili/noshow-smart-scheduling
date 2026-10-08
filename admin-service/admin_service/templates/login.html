@@ -2,7 +2,7 @@
 {% block title %}Yönetici girişi{% endblock %}
 {% block content %}
 <section class="login">
-  <h1>Hastane Yönetimi</h1>
+  <h1>{{ panel_name }}</h1>
   <p class="muted">Yalnızca hastane iç ağından erişilebilir. Her giriş kaydedilir.</p>
   {% if error %}
   <p class="error" role="alert">{{ error }}</p>

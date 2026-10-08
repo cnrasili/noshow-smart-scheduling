@@ -18,6 +18,9 @@ MONTHS = [
 ]
 WEEKDAYS = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"]
 
+# Fictional hospital shown as the sender and at the end of every message
+HOSPITAL_NAME = "Şehir Hastanesi"
+
 CANCEL_NOTE = (
     "Randevunuza gelemeyecekseniz lütfen iptal edin; böylece randevu saati başka bir hastaya "
     "verilebilir."
@@ -50,8 +53,12 @@ def render(kind: Kind, appointment_start: datetime) -> tuple[str, str]:
     """Return the subject and body of a message."""
     when = turkish_date_time(appointment_start)
     if kind is Kind.CONFIRMATION:
-        return "Randevunuz onaylandı", f"{when} tarihli randevunuz onaylandı.\n\n{CANCEL_NOTE}"
+        return (
+            "Randevunuz onaylandı",
+            f"{when} tarihli randevunuz onaylandı.\n\n{CANCEL_NOTE}\n\n{HOSPITAL_NAME}",
+        )
     return (
         "Randevu hatırlatması",
-        f"Hatırlatma: {when} tarihinde randevunuz var. {ARRIVAL_NOTE}\n\n{CANCEL_NOTE}",
+        f"Hatırlatma: {when} tarihinde randevunuz var. {ARRIVAL_NOTE}\n\n{CANCEL_NOTE}"
+        f"\n\n{HOSPITAL_NAME}",
     )

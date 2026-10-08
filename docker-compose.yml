@@ -74,7 +74,7 @@ services:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-noshow}:${POSTGRES_PASSWORD:-noshow}@db:5432/${POSTGRES_DB:-noshow}
       SMTP_HOST: mailpit
       SMTP_PORT: 1025
-      MAIL_FROM: ${MAIL_FROM:-clinic@noshow.local}
+      MAIL_FROM: ${MAIL_FROM:-randevu@sehirhastanesi.example}
       WATCHFILES_FORCE_POLLING: "true"
     # Reached by the web backend and the admin service over the Docker network
     ports:
