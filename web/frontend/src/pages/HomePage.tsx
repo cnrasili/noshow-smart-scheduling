@@ -17,6 +17,11 @@ const QUICK_ACTIONS = [
     text: 'Adres, toplu taşıma ve otopark bilgileri.',
   },
   {
+    to: PATHS.workingList,
+    title: 'Hekim Çalışma Listesi',
+    text: 'Hekimlerimizin haftalık poliklinik çalışma saatleri.',
+  },
+  {
     to: PATHS.guide,
     title: 'Hasta Rehberi',
     text: 'Randevu öncesi ve muayene günü bilmeniz gerekenler.',

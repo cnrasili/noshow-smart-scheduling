@@ -10,7 +10,10 @@ import { BookingPage } from './pages/patient/BookingPage'
 import { AboutPage } from './pages/site/AboutPage'
 import { AnnouncementPage, AnnouncementsPage } from './pages/site/AnnouncementsPage'
 import { ContactPage } from './pages/site/ContactPage'
+import { DepartmentPage, DepartmentsPage } from './pages/site/DepartmentsPage'
+import { DoctorsPage } from './pages/site/DoctorsPage'
 import { GuidePage } from './pages/site/GuidePage'
+import { WorkingListPage } from './pages/site/WorkingListPage'
 import { PATHS, homeFor, loginFor } from './routes'
 import { SiteLayout } from './site/SiteLayout'
 import type { Me, Role } from './types'
@@ -63,6 +66,10 @@ function App() {
       <Route element={<SiteLayout me={me} onSignOut={signOut} />}>
         <Route path={PATHS.home} element={<HomePage />} />
         <Route path={PATHS.about} element={<AboutPage />} />
+        <Route path={PATHS.departments} element={<DepartmentsPage />} />
+        <Route path={`${PATHS.departments}/:slug`} element={<DepartmentPage />} />
+        <Route path={PATHS.doctors} element={<DoctorsPage />} />
+        <Route path={PATHS.workingList} element={<WorkingListPage />} />
         <Route path={PATHS.announcements} element={<AnnouncementsPage />} />
         <Route path={`${PATHS.announcements}/:slug`} element={<AnnouncementPage />} />
         <Route path={PATHS.guide} element={<GuidePage />} />

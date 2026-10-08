@@ -820,6 +820,11 @@ label {
   grid-template-columns: minmax(0, 1fr);
 }
 
+/* Auto margins would otherwise shrink the page area to its content */
+.site > main {
+  width: 100%;
+}
+
 .site-header {
   background: var(--surface);
   border-top: 3px solid var(--brand);
@@ -1097,6 +1102,90 @@ label {
 
 .facts dd {
   color: var(--muted);
+}
+
+/* Departments and doctors */
+
+.department-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.department-link {
+  display: grid;
+  gap: 2px;
+  height: 100%;
+  padding: 16px 18px;
+  text-decoration: none;
+  color: var(--text);
+}
+
+.department-link:hover {
+  border-color: var(--brand);
+}
+
+.department-name {
+  font-weight: 600;
+  color: var(--brand-strong);
+}
+
+.doctor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.doctor-card {
+  display: flex;
+  gap: 14px;
+  padding: 16px;
+}
+
+.doctor-card-body {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  min-width: 0;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--brand-tint);
+  color: var(--brand-strong);
+  font-weight: 700;
+}
+
+.working-days {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.inline-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.working-list td,
+.working-list th {
+  white-space: nowrap;
+}
+
+.panel-head h2 a {
+  color: var(--brand-strong);
+  text-decoration: none;
 }
 
 /* Narrow screens */

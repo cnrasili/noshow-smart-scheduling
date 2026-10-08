@@ -7,6 +7,7 @@ import type {
   LoginCredentials,
   LoginResponse,
   Me,
+  PublicDoctor,
   ScheduleDay,
   Slot,
 } from './types'
@@ -104,6 +105,7 @@ export const api = {
     }
   },
   me: () => request<Me>('/auth/me'),
+  publicDoctors: () => request<PublicDoctor[]>('/public/doctors'),
   doctors: () => request<Doctor[]>('/doctors'),
   slots: (doctorId: number) => request<Slot[]>(`/slots?doctor_id=${doctorId}`),
   myAppointments: () => request<Appointment[]>('/patients/me/appointments'),

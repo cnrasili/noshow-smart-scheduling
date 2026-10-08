@@ -4,6 +4,9 @@ import type { Role } from './types'
 export const PATHS = {
   home: '/',
   about: '/hastanemiz',
+  departments: '/poliklinikler',
+  doctors: '/hekimlerimiz',
+  workingList: '/hekim-calisma-listesi',
   announcements: '/duyurular',
   guide: '/hasta-rehberi',
   contact: '/iletisim-ve-ulasim',
@@ -21,3 +24,16 @@ export const loginFor = (role: Role) =>
   role === 'patient' ? PATHS.patientLogin : PATHS.doctorLogin
 
 export const announcementPath = (slug: string) => `${PATHS.announcements}/${slug}`
+
+// Department addresses are built from the department name: "Göz Hastalıkları" -> "goz-hastaliklari"
+const ASCII: Record<string, string> = { ç: 'c', ğ: 'g', ı: 'i', ö: 'o', ş: 's', ü: 'u' }
+
+export const departmentSlug = (name: string) =>
+  name
+    .toLocaleLowerCase('tr-TR')
+    .replace(/[çğıöşü]/g, (letter) => ASCII[letter])
+    .normalize('NFD')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+
+export const departmentPath = (name: string) => `${PATHS.departments}/${departmentSlug(name)}`

@@ -84,3 +84,17 @@ export interface AgendaDay {
   slot_count: number
   appointments: AgendaAppointment[]
 }
+
+export interface PublicWorkingHours {
+  weekday: number
+  start_time: string
+  end_time: string
+}
+
+// A doctor as shown on the public hospital site; no account data
+export interface PublicDoctor {
+  id: number
+  full_name: string
+  specialty: string | null
+  working_hours: PublicWorkingHours[]
+}

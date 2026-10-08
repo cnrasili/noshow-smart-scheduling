@@ -14,6 +14,9 @@ interface MenuItem {
 const MAIN_MENU: MenuItem[] = [
   { to: PATHS.home, label: 'Anasayfa' },
   { to: PATHS.about, label: 'Hastanemiz' },
+  { to: PATHS.departments, label: 'Poliklinikler' },
+  { to: PATHS.doctors, label: 'Hekimlerimiz' },
+  { to: PATHS.workingList, label: 'Hekim Çalışma Listesi' },
   { to: PATHS.announcements, label: 'Duyurular' },
   { to: PATHS.guide, label: 'Hasta Rehberi' },
   { to: PATHS.contact, label: 'İletişim ve Ulaşım' },
@@ -33,8 +36,8 @@ const ACCOUNT_MENU: Record<Role, MenuItem[]> = {
 
 const QUICK_LINKS: MenuItem[] = [
   { to: PATHS.booking, label: 'Online Randevu' },
+  { to: PATHS.workingList, label: 'Hekim Çalışma Listesi' },
   { to: PATHS.guide, label: 'Hasta Rehberi' },
-  { to: PATHS.announcements, label: 'Duyurular' },
   { to: PATHS.contact, label: 'Nasıl Giderim?' },
 ]
 
@@ -81,7 +84,12 @@ function Header({ me, onSignOut }: { me: Me | null; onSignOut: () => void }) {
       <nav className="site-menu" aria-label="Ana menü">
         <div className="container site-menu-inner">
           {MAIN_MENU.map((item) => (
-            <NavLink key={item.to} to={item.to} end className={activeClass}>
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.to === PATHS.home}
+              className={activeClass}
+            >
               {item.label}
             </NavLink>
           ))}
