@@ -6,7 +6,8 @@ Interfaces between the components:
 
 - the web backend and the overbooking service (prediction, booking decision, booking events),
 - the admin service and the overbooking service (A/B summary, KPIs),
-- the admin service and the web backend (internal account API).
+- the admin service and the web backend (internal account API),
+- the web frontend and the web backend (doctor agenda).
 
 The web frontend calls only the web backend; it never calls the overbooking service or the internal account API.
 
@@ -358,3 +359,51 @@ Errors:
 |---|---|
 | 404 | Account not found |
 | 422 | Invalid request, for example a password shorter than 8 characters |
+
+## `GET /doctors/me/agenda` (web backend)
+
+Served by the web backend for the website's doctor screens. Returns every clinic day of a date range with the signed-in doctor's slot count and booked appointments; the doctor's patient list uses it for the week overview and the upcoming appointments. Read-only; the daily list with attendance marking keeps using `GET /doctors/me/calendar`.
+
+Needs a signed-in doctor (`Authorization: Bearer <token>`).
+
+Query parameters:
+
+| Parameter | Meaning |
+|---|---|
+| `date_from` | First clinic day, `YYYY-MM-DD` |
+| `date_to` | Last clinic day, `YYYY-MM-DD`; on or after `date_from`, at most 31 days in the range |
+
+Response (`200`), one entry per day of the range in order, days without slots included:
+
+```json
+[
+  {
+    "date": "2026-10-20",
+    "slot_count": 9,
+    "appointments": [
+      {
+        "id": 373,
+        "slot_id": 1204,
+        "start_at": "2026-10-20T06:00:00Z",
+        "end_at": "2026-10-20T06:20:00Z",
+        "patient_name": "Ayşe Kaya",
+        "extra": false
+      }
+    ]
+  },
+  { "date": "2026-10-21", "slot_count": 0, "appointments": [] }
+]
+```
+
+- Days are clinic days (`Europe/Istanbul`); times are UTC.
+- `slot_count` is 0 on days the doctor has no slots, for example days without working hours.
+- Appointments are ordered by slot time and then by booking order. `extra` is `true` for an appointment booked into a slot that already had a patient (an overbook).
+- No contact or account data is returned.
+
+Errors:
+
+| Status | Reason |
+|---|---|
+| 401 | Not signed in or session expired |
+| 403 | Signed in as a patient |
+| 422 | Invalid dates, `date_to` before `date_from`, or a range of more than 31 days |

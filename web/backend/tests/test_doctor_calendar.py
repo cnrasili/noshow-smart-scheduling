@@ -143,3 +143,68 @@ def test_doctor_reads_weekly_working_hours(db, client, doctor, doctor_headers):
         {"weekday": 0, "start_time": "09:00:00", "end_time": "12:00:00"},
         {"weekday": 2, "start_time": "13:00:00", "end_time": "16:00:00"},
     ]
+
+
+def _agenda(client, headers, date_from, date_to):
+    return client.get(
+        "/doctors/me/agenda",
+        params={"date_from": date_from.isoformat(), "date_to": date_to.isoformat()},
+        headers=headers,
+    )
+
+
+def test_agenda_lists_every_day_with_slots_and_appointments(
+    db, client, doctor, doctor_headers, make_patient
+):
+    start = today() + timedelta(days=1)
+    busy = start + timedelta(days=10)
+    first = _slot(db, doctor.id, datetime.combine(busy, time(9, 20), CLINIC_TZ))
+    _slot(db, doctor.id, datetime.combine(busy, time(9, 0), CLINIC_TZ))
+    _slot(db, doctor.id, datetime.combine(start, time(9, 0), CLINIC_TZ))
+    regular = _appointment(db, make_patient(name="Ayse Demo").id, first)
+    extra = _appointment(db, make_patient(email="ali@example.com", name="Ali Demo").id, first)
+
+    response = _agenda(client, doctor_headers, start, start + timedelta(days=13))
+
+    assert response.status_code == 200
+    days = response.json()
+    assert [d["date"] for d in days] == [(start + timedelta(days=n)).isoformat() for n in range(14)]
+    by_date = {d["date"]: d for d in days}
+    assert by_date[start.isoformat()]["slot_count"] == 1
+    assert by_date[start.isoformat()]["appointments"] == []
+    assert by_date[(start + timedelta(days=2)).isoformat()]["slot_count"] == 0
+    busy_day = by_date[busy.isoformat()]
+    assert busy_day["slot_count"] == 2
+    assert [(a["id"], a["patient_name"], a["extra"]) for a in busy_day["appointments"]] == [
+        (regular.id, "Ayse Demo", False),
+        (extra.id, "Ali Demo", True),
+    ]
+    assert "email" not in str(busy_day)
+
+
+def test_agenda_shows_only_own_slots(db, client, doctor_headers, make_doctor, make_patient):
+    other = make_doctor(email="other@example.com", name="Dr. Other")
+    day = today() + timedelta(days=2)
+    _appointment(
+        db, make_patient().id, _slot(db, other.id, datetime.combine(day, time(9), CLINIC_TZ))
+    )
+
+    days = _agenda(client, doctor_headers, day, day).json()
+
+    assert days == [{"date": day.isoformat(), "slot_count": 0, "appointments": []}]
+
+
+@pytest.mark.parametrize("length", [-1, 31])
+def test_agenda_rejects_reversed_or_long_ranges(client, doctor_headers, length):
+    start = today()
+
+    response = _agenda(client, doctor_headers, start, start + timedelta(days=length))
+
+    assert response.status_code == 422
+
+
+def test_patients_cannot_open_the_agenda(client, make_patient, login):
+    make_patient()
+    headers = login("patient@example.com")
+
+    assert _agenda(client, headers, today(), today()).status_code == 403

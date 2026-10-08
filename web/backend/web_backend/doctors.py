@@ -1,4 +1,4 @@
-from datetime import UTC, date, datetime, time
+from datetime import UTC, date, datetime, time, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -8,13 +8,16 @@ from sqlalchemy.orm import Session
 
 from noshow_db.models.core import Appointment, Doctor, DoctorSchedule, Patient, Slot
 from web_backend.auth import DoctorAccount, current_account
-from web_backend.clinic import as_utc, today
+from web_backend.clinic import CLINIC_TZ, as_utc, today
 from web_backend.db import get_db
 from web_backend.slots import clinic_days_in_utc
 
 router = APIRouter(tags=["doctors"], dependencies=[Depends(current_account)])
 
 DbSession = Annotated[Session, Depends(get_db)]
+
+# Longest date range of the agenda; enough for a month view
+MAX_AGENDA_DAYS = 31
 
 
 class DoctorOut(BaseModel):
@@ -45,6 +48,23 @@ class CalendarSlot(BaseModel):
     end_at: datetime
     max_patients: int
     appointments: list[CalendarAppointment]
+
+
+class AgendaAppointment(BaseModel):
+    id: int
+    slot_id: int
+    start_at: datetime
+    end_at: datetime
+    patient_name: str
+    # Booked into a slot that already had a patient (overbooking)
+    extra: bool
+
+
+class AgendaDay(BaseModel):
+    date: date
+    # 0 when the doctor has no slots that day
+    slot_count: int
+    appointments: list[AgendaAppointment]
 
 
 class AttendanceRequest(BaseModel):
@@ -105,6 +125,59 @@ def my_calendar(
         )
         for slot in slots
     ]
+
+
+@router.get("/doctors/me/agenda")
+def my_agenda(
+    account: DoctorAccount,
+    db: DbSession,
+    date_from: date,
+    date_to: date,
+) -> list[AgendaDay]:
+    """Every clinic day of a range with its slot count and booked appointments."""
+    if date_to < date_from or (date_to - date_from).days >= MAX_AGENDA_DAYS:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            f"date_to must be on or after date_from and at most {MAX_AGENDA_DAYS} days in range",
+        )
+    range_start, range_end = clinic_days_in_utc(date_from, date_to)
+    in_range = (
+        Slot.doctor_id == account.doctor_id,
+        Slot.start_at >= range_start,
+        Slot.start_at < range_end,
+    )
+
+    days = {
+        date_from + timedelta(days=n): AgendaDay(
+            date=date_from + timedelta(days=n), slot_count=0, appointments=[]
+        )
+        for n in range((date_to - date_from).days + 1)
+    }
+    for start_at in db.scalars(select(Slot.start_at).where(*in_range)):
+        days[as_utc(start_at).astimezone(CLINIC_TZ).date()].slot_count += 1
+
+    rows = db.execute(
+        select(Appointment, Slot, Patient.full_name)
+        .join(Slot, Slot.id == Appointment.slot_id)
+        .join(Patient, Patient.id == Appointment.patient_id)
+        .where(*in_range)
+        .order_by(Slot.start_at, Appointment.created_at, Appointment.id)
+    )
+    seen_slots: set[int] = set()
+    for appointment, slot, patient_name in rows:
+        start_at = as_utc(slot.start_at)
+        days[start_at.astimezone(CLINIC_TZ).date()].appointments.append(
+            AgendaAppointment(
+                id=appointment.id,
+                slot_id=slot.id,
+                start_at=start_at,
+                end_at=as_utc(slot.end_at),
+                patient_name=patient_name,
+                extra=slot.id in seen_slots,
+            )
+        )
+        seen_slots.add(slot.id)
+    return list(days.values())
 
 
 @router.patch("/appointments/{appointment_id}/attendance")
