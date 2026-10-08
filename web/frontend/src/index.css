@@ -696,6 +696,51 @@ label {
   position: relative;
 }
 
+/* Doctor's patient list */
+
+.day-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.day-title {
+  font-size: 1.2rem;
+}
+
+.link-button {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--brand);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.link-button:hover {
+  color: var(--brand-strong);
+  background: none;
+}
+
+.upcoming-day + .upcoming-day {
+  border-top: 1px solid var(--border);
+}
+
+.upcoming-day h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 14px 20px 6px;
+}
+
+.upcoming-day h3 .muted {
+  font-weight: 400;
+  font-size: 0.87rem;
+}
+
 .date-nav {
   display: flex;
   gap: 6px;

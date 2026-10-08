@@ -67,3 +67,20 @@ export interface CalendarSlot {
   max_patients: number
   appointments: CalendarAppointment[]
 }
+
+export interface AgendaAppointment {
+  id: number
+  slot_id: number
+  start_at: string
+  end_at: string
+  patient_name: string
+  // Booked into a slot that already had a patient (overbooking)
+  extra: boolean
+}
+
+export interface AgendaDay {
+  date: string
+  // 0 when the doctor has no slots that day
+  slot_count: number
+  appointments: AgendaAppointment[]
+}

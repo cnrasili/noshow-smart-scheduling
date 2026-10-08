@@ -1,4 +1,5 @@
 import type {
+  AgendaDay,
   Appointment,
   CalendarAppointment,
   CalendarSlot,
@@ -112,6 +113,10 @@ export const api = {
     request<void>(`/appointments/${appointmentId}`, { method: 'DELETE' }),
   calendar: (day: string) =>
     request<CalendarSlot[]>(`/doctors/me/calendar?date=${encodeURIComponent(day)}`),
+  agenda: (dateFrom: string, dateTo: string) =>
+    request<AgendaDay[]>(
+      `/doctors/me/agenda?date_from=${encodeURIComponent(dateFrom)}&date_to=${encodeURIComponent(dateTo)}`,
+    ),
   markAttendance: (appointmentId: number, attended: boolean) =>
     request<CalendarAppointment>(
       `/appointments/${appointmentId}/attendance`,
