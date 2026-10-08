@@ -12,7 +12,9 @@ export const PATHS = {
   contact: '/iletisim-ve-ulasim',
   patientLogin: '/giris/hasta',
   doctorLogin: '/giris/hekim',
-  booking: '/randevu-al',
+  booking: '/online-randevu',
+  // Earlier booking address; redirects to the booking
+  oldBooking: '/randevu-al',
   appointments: '/randevularim',
   worklist: '/hasta-listesi',
   schedule: '/calisma-takvimi',
@@ -37,3 +39,21 @@ export const departmentSlug = (name: string) =>
     .replace(/^-|-$/g, '')
 
 export const departmentPath = (name: string) => `${PATHS.departments}/${departmentSlug(name)}`
+
+// Query parameters of the booking that preselect a department or a doctor
+export const BOOKING_PARAMS = { department: 'brans', doctor: 'hekim' } as const
+
+/** Booking address, optionally with a department or a doctor selected in advance. */
+export function bookingPath(preselect: { department?: string; doctorId?: number } = {}): string {
+  const query = new URLSearchParams()
+  if (preselect.department) query.set(BOOKING_PARAMS.department, preselect.department)
+  if (preselect.doctorId !== undefined) query.set(BOOKING_PARAMS.doctor, String(preselect.doctorId))
+  const search = query.toString()
+  return search ? `${PATHS.booking}?${search}` : PATHS.booking
+}
+
+// Router state the login page receives when a signed-out visitor opened a protected page
+export interface LoginReturn {
+  from: string
+  role: Role
+}

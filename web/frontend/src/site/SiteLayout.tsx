@@ -25,7 +25,7 @@ const MAIN_MENU: MenuItem[] = [
 // Screens of a signed-in account, shown under the main menu
 const ACCOUNT_MENU: Record<Role, MenuItem[]> = {
   patient: [
-    { to: PATHS.booking, label: 'Randevu Al' },
+    { to: PATHS.booking, label: 'Online Randevu' },
     { to: PATHS.appointments, label: 'Randevularım' },
   ],
   doctor: [

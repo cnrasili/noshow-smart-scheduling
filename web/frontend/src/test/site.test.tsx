@@ -25,7 +25,11 @@ function expectFrame() {
   const header = screen.getByRole('banner')
   expect(within(header).getByRole('img', { name: `${INSTITUTION_NAME} logosu` })).toBeVisible()
   expect(within(header).getByText(INSTITUTION_NAME)).toBeInTheDocument()
-  expect(within(header).getByRole('link', { name: 'Online Randevu' })).toBeInTheDocument()
+  // A signed-in patient also has it in the account menu
+  expect(within(header).getAllByRole('link', { name: 'Online Randevu' })[0]).toHaveAttribute(
+    'href',
+    PATHS.booking,
+  )
   expect(screen.getByRole('navigation', { name: 'Ana menü' })).toBeInTheDocument()
   expect(within(screen.getByRole('contentinfo')).getByText(DISCLAIMER)).toBeInTheDocument()
 }
@@ -56,7 +60,7 @@ describe('hospital site frame', () => {
     fakeBackend({ ...signIn(PATIENT), 'GET /doctors': () => [] })
     renderApp(PATHS.booking)
 
-    expect(await screen.findByRole('heading', { name: 'Randevu Al' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Online Randevu' })).toBeVisible()
     expectFrame()
     const account = screen.getByRole('navigation', { name: 'Hesap menüsü' })
     expect(within(account).getByRole('link', { name: 'Randevularım' })).toBeInTheDocument()

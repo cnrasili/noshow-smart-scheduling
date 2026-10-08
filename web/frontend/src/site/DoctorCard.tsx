@@ -1,9 +1,10 @@
-import type { ReactNode } from 'react'
+import { Link } from 'react-router'
+import { bookingPath } from '../routes'
 import type { PublicDoctor } from '../types'
 import { departmentOf, initials, workingDays } from './doctors'
 
 /** A doctor with initials in place of a photo, department and working days. */
-export function DoctorCard({ doctor, children }: { doctor: PublicDoctor; children?: ReactNode }) {
+export function DoctorCard({ doctor }: { doctor: PublicDoctor }) {
   const days = workingDays(doctor)
   return (
     <article className="panel doctor-card" aria-labelledby={`doctor-${doctor.id}`}>
@@ -22,7 +23,13 @@ export function DoctorCard({ doctor, children }: { doctor: PublicDoctor; childre
         ) : (
           <p className="muted">Çalışma saati tanımlı değil</p>
         )}
-        {children}
+        <Link
+          to={bookingPath({ doctorId: doctor.id })}
+          className="button doctor-booking"
+          aria-label={`${doctor.full_name}: Online Randevu`}
+        >
+          Online Randevu
+        </Link>
       </div>
     </article>
   )

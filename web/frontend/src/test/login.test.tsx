@@ -18,7 +18,7 @@ describe('patient login', () => {
     await user.type(screen.getByLabelText('Şifre'), 'demo1234')
     await user.click(screen.getByRole('button', { name: 'Giriş yap' }))
 
-    expect(await screen.findByRole('heading', { name: 'Randevu Al' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Online Randevu' })).toBeInTheDocument()
     expect(calls.find((c) => c.path === '/auth/login')?.body).toEqual({
       role: 'patient',
       national_id: '99999000184',

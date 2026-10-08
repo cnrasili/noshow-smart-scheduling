@@ -1164,6 +1164,13 @@ label {
   font-weight: 700;
 }
 
+.doctor-booking {
+  justify-self: start;
+  margin-top: 8px;
+  padding: 5px 12px;
+  font-size: 0.88rem;
+}
+
 .working-days {
   list-style: none;
   margin: 4px 0 0;

@@ -1,6 +1,6 @@
 import { Link, useParams } from 'react-router'
 import { DEPARTMENT_INFO } from '../../content/departments'
-import { PATHS, departmentPath, departmentSlug } from '../../routes'
+import { PATHS, bookingPath, departmentPath, departmentSlug } from '../../routes'
 import { DoctorCard, DoctorsPending } from '../../site/DoctorCard'
 import { byDepartment, usePublicDoctors } from '../../site/doctors'
 import { PageHeader } from '../../ui'
@@ -49,7 +49,7 @@ export function DepartmentPage() {
   return (
     <>
       <PageHeader title={name} description={DEPARTMENT_INFO[name]}>
-        <Link to={PATHS.booking} className="button primary">
+        <Link to={bookingPath({ department: name })} className="button primary">
           Online Randevu
         </Link>
       </PageHeader>

@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Navigate, Route, Routes, useNavigate } from 'react-router'
+import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router'
 import { api, getToken, onUnauthorized } from './api'
 import { SchedulePage } from './pages/doctor/SchedulePage'
 import { WorklistPage } from './pages/doctor/WorklistPage'
@@ -14,14 +14,32 @@ import { DepartmentPage, DepartmentsPage } from './pages/site/DepartmentsPage'
 import { DoctorsPage } from './pages/site/DoctorsPage'
 import { GuidePage } from './pages/site/GuidePage'
 import { WorkingListPage } from './pages/site/WorkingListPage'
-import { PATHS, homeFor, loginFor } from './routes'
+import { PATHS, homeFor, loginFor, type LoginReturn } from './routes'
 import { SiteLayout } from './site/SiteLayout'
+import { PageHeader } from './ui'
 import type { Me, Role } from './types'
 
 type Session = { status: 'loading' } | { status: 'signed-out' } | { status: 'signed-in'; me: Me }
 
+// A doctor opening Online Randevu learns that booking needs a patient account
+function BookingNeedsPatient() {
+  return (
+    <>
+      <PageHeader title="Online Randevu" />
+      <section className="panel panel-body stack-tight">
+        <p>
+          Online Randevu ile randevu almak için hasta hesabıyla giriş yapmanız gerekir. Hekim
+          hesabıyla randevu alınamaz.
+        </p>
+        <Link to={PATHS.worklist}>Hasta Listesine dön</Link>
+      </section>
+    </>
+  )
+}
+
 function App() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [session, setSession] = useState<Session>(() =>
     getToken() ? { status: 'loading' } : { status: 'signed-out' },
   )
@@ -39,9 +57,16 @@ function App() {
   if (session.status === 'loading') return <p className="center muted">Yükleniyor…</p>
   const me = session.status === 'signed-in' ? session.me : null
 
+  // After signing in, continue to the page that sent the visitor to the login (for example
+  // the booking with its preselection); otherwise to the account's own home
+  function afterLogin(user: Me) {
+    const back = location.state as LoginReturn | null
+    return back?.role === user.role ? back.from : homeFor(user.role)
+  }
+
   function signedIn(next: Me) {
     setSession({ status: 'signed-in', me: next })
-    navigate(homeFor(next.role), { replace: true })
+    navigate(afterLogin(next), { replace: true })
   }
 
   async function signOut() {
@@ -52,13 +77,16 @@ function App() {
 
   // Signed-out visitors go to the login form of the page's role; others to their own home
   function only(role: Role, page: ReactNode) {
-    if (!me) return <Navigate to={loginFor(role)} replace />
+    if (!me) {
+      const back: LoginReturn = { from: location.pathname + location.search, role }
+      return <Navigate to={loginFor(role)} replace state={back} />
+    }
     return me.role === role ? page : <Navigate to={homeFor(me.role)} replace />
   }
 
   // Login forms get a key per role so switching forms starts with empty fields
   function signedOutOnly(page: ReactNode) {
-    return me ? <Navigate to={homeFor(me.role)} replace /> : page
+    return me ? <Navigate to={afterLogin(me)} replace /> : page
   }
 
   return (
@@ -84,10 +112,20 @@ function App() {
         />
         <Route
           path={PATHS.booking}
-          element={only(
-            'patient',
-            <BookingPage onShowAppointments={() => navigate(PATHS.appointments)} />,
-          )}
+          element={
+            me?.role === 'doctor' ? (
+              <BookingNeedsPatient />
+            ) : (
+              only(
+                'patient',
+                <BookingPage onShowAppointments={() => navigate(PATHS.appointments)} />,
+              )
+            )
+          }
+        />
+        <Route
+          path={PATHS.oldBooking}
+          element={<Navigate to={PATHS.booking + location.search} replace />}
         />
         <Route
           path={PATHS.appointments}
