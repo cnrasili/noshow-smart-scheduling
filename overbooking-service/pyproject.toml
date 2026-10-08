@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "noshow-overbooking-service"
 version = "0.1.0"
 description = "No-show prediction, overbooking decisions, reminders and KPIs"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",

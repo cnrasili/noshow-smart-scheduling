@@ -95,8 +95,9 @@ services:
       # Account management through the web backend's internal account API
       ADMIN_WEB_BACKEND_URL: http://web-backend:8000
       ADMIN_INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-}
-      # Requests from the host reach the container through the Docker network gateway
-      ADMIN_ALLOWED_NETWORKS: ${ADMIN_ALLOWED_NETWORKS:-127.0.0.0/8,::1/128,172.16.0.0/12}
+      # Requests from the host arrive from the Docker network gateway (Windows, Linux)
+      # or from Docker Desktop's VM network on Mac
+      ADMIN_ALLOWED_NETWORKS: ${ADMIN_ALLOWED_NETWORKS:-127.0.0.0/8,::1/128,172.16.0.0/12,192.168.65.0/24}
       WATCHFILES_FORCE_POLLING: "true"
     # Published on the loopback interface only: other machines cannot reach the admin service
     ports:
