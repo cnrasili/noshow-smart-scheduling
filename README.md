@@ -231,7 +231,7 @@ Components depend on each other through the files below. Changes to them are agr
 
 ## Workflow
 
-- `main` always contains working code and is updated only by the maintainer through reviewed pull requests.
+- `main` always contains working code and only the maintainer updates it: teammates' changes come through reviewed pull requests; the maintainer's own changes are pushed directly after the checks pass locally.
 - Each contributor works on one branch and keeps it up to date with `main` (`git merge origin/main`). Older branches of the same contributor are removed automatically by the `Branch cleanup` workflow; unmerged work is kept as an `archive/...` tag.
 - Pull requests reference the issue they solve (`Closes #<number>`); open work is tracked in [GitHub Issues](https://github.com/cnrasili/noshow-smart-scheduling/issues).
 - Each issue has one assignee and covers one component; its Scope section lists the files it may change. Work needed in another component is requested in a comment, not made in the same pull request.
