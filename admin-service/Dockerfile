@@ -2,9 +2,11 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+COPY constraints.txt .
 COPY db/ db/
 COPY admin-service/ admin-service/
-RUN pip install --no-cache-dir ./db && pip install --no-cache-dir -e ./admin-service
+RUN pip install --no-cache-dir -c constraints.txt ./db \
+    && pip install --no-cache-dir -c constraints.txt -e ./admin-service
 
 WORKDIR /app/admin-service
 EXPOSE 8002
