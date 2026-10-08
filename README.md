@@ -154,6 +154,19 @@ cd web/frontend && npm run lint && npm run format:check && npm test && npm run b
 
 Tests that need PostgreSQL run only when `NOSHOW_TEST_DATABASE_URL` points to a disposable database (see the [web backend README](web/backend/README.md)).
 
+### Pinned Versions
+
+The Docker images and CI install the exact Python package versions in [`constraints.txt`](constraints.txt); the frontend uses `package-lock.json`. To use the same versions locally, add `-c constraints.txt` to `pip install`.
+
+To upgrade, create a fresh Python 3.12 environment, install all components without the constraints file, run all checks above, and save the result:
+
+```bash
+pip install ruff -e db -e "web/backend[dev]" -e "overbooking-service[dev]" -e "admin-service[dev]"
+pip freeze --exclude-editable > constraints.txt
+```
+
+Keep the three comment lines at the top of the file, and generate it on Linux (for example in a `python:3.12-slim` container), since CI and Docker run on Linux.
+
 ## Dataset
 
 The prediction model is trained on the public [Medical Appointment No Shows](https://www.kaggle.com/datasets/joniarroba/noshowappointments) dataset (Hoppen, 2016), which contains about 110,000 appointments from public clinics in Vitória, Brazil.

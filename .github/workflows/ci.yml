@@ -14,7 +14,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install packages
-        run: pip install ruff -e db -e "web/backend[dev]" -e "overbooking-service[dev]" -e "admin-service[dev]"
+        run: pip install -c constraints.txt ruff -e db -e "web/backend[dev]" -e "overbooking-service[dev]" -e "admin-service[dev]"
       - name: Lint
         run: ruff check . && ruff format --check .
       - name: Test web backend
