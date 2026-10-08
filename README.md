@@ -190,7 +190,7 @@ pytest web/backend overbooking-service admin-service
 cd web/frontend && npm run lint && npm run format:check && npm test && npm run build
 ```
 
-Tests that need PostgreSQL run only when `NOSHOW_TEST_DATABASE_URL` points to a disposable database (see the [web backend README](web/backend/README.md)).
+Tests that need PostgreSQL run only when `NOSHOW_TEST_DATABASE_URL` points to a disposable database (see the [web backend README](web/backend/README.md)); CI starts one for them.
 
 ### Pinned Versions
 
