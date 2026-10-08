@@ -10,7 +10,7 @@ from sqlalchemy.pool import StaticPool
 
 from noshow_db.base import Base
 from noshow_db.models.core import Appointment, Patient, Slot
-from noshow_db.models.service import AbAssignment
+from noshow_db.models.service import AbAssignment, BookingDecision
 from overbooking_service.ab import assign_group
 from overbooking_service.config import settings
 from overbooking_service.demo import DemoConfig, free_national_ids, seed
@@ -98,6 +98,28 @@ def test_seed_books_with_the_overbooking_rule(seeded: Session):
     )
     assert overbooks, "small demo should overbook with a low threshold"
     assert max(overbooks.values()) <= RULE.daily_overbook_limit
+
+
+def test_seed_logs_its_decisions(seeded: Session):
+    decisions = list(seeded.scalars(select(BookingDecision)))
+    generated = [(a, slot) for a, slot in rows(seeded) if not is_seeded(slot)]
+    per_slot = Counter(slot.id for _, slot in generated)
+
+    # Every generated appointment has the decision that granted it
+    granted = Counter((d.patient_id, d.slot_id) for d in decisions if d.allow)
+    assert granted == Counter((a.patient_id, slot.id) for a, slot in generated)
+    assert sum(d.overbook for d in decisions) == sum(n - 1 for n in per_slot.values())
+    assert {d.threshold for d in decisions} == {RULE.threshold}
+
+
+def test_seed_logs_refused_requests(clinic: Clinic, predictor: Predictor):
+    session = seeded_clinic(clinic)
+    # No overbooking, so requests beyond the slot capacity are refused
+    strict = OverbookingRule(threshold=0.99, daily_overbook_limit=0)
+    result = seed(session, SMALL, predictor, strict)
+    refused = list(session.scalars(select(BookingDecision).where(BookingDecision.allow.is_(False))))
+    assert 0 < len(refused) <= result.rejected
+    assert all(d.reason.startswith("Slot is") for d in refused)
 
 
 def test_seeded_dates_are_consistent(seeded: Session):

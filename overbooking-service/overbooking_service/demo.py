@@ -19,7 +19,7 @@ from noshow_db import SessionLocal
 from noshow_db.models.core import Appointment, Doctor, Patient, Slot
 from noshow_db.models.service import AbAssignment
 from overbooking_service.ab import assign_group
-from overbooking_service.booking import evaluate
+from overbooking_service.booking import decision_record, evaluate
 from overbooking_service.config import Settings, settings
 from overbooking_service.data_source import DbPatientSource, DbSlotSource
 from overbooking_service.national_id import fictional_national_id
@@ -235,11 +235,17 @@ def book(
     if any(b.patient_id == patient_id for state in states for b in state.bookings):
         return None
     candidates = [s for s in states if not s.bookings] + [s for s in states if s.bookings]
+    refusal = None
     for state in candidates:
-        decision, p_noshow, _ = evaluate(
+        evaluated = evaluate(
             patients, slot_source, predictor, rule, patient_id, state, booking_date
         )
+        decision, p_noshow, _ = evaluated
+        record = decision_record(
+            patient_id, state.slot_id, booking_date, evaluated, rule, predictor
+        )
         if decision.allow:
+            session.add(record)
             appointment = Appointment(
                 patient_id=patient_id,
                 slot_id=state.slot_id,
@@ -249,6 +255,10 @@ def book(
             session.add(appointment)
             session.flush()
             return appointment, p_noshow, decision.overbook
+        refusal = refusal or record
+    # A refused request is logged once, for the first slot it asked for
+    if refusal is not None:
+        session.add(refusal)
     return None
 
 

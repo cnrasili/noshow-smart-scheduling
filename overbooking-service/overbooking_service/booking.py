@@ -59,6 +59,30 @@ def evaluate(
     return decide(booked_risks, slot.max_patients, daily_overbooks, rule), p_noshow, booked_risks
 
 
+def decision_record(
+    patient_id: int,
+    slot_id: int,
+    booking_date: date,
+    evaluated: tuple[Decision, float, list[float]],
+    rule: OverbookingRule,
+    predictor: Predictor,
+) -> BookingDecision:
+    """Decision log row of one booking request."""
+    decision, p_noshow, booked_risks = evaluated
+    return BookingDecision(
+        patient_id=patient_id,
+        slot_id=slot_id,
+        booking_date=booking_date,
+        p_noshow=p_noshow,
+        booked_p_noshow=min(booked_risks) if booked_risks else None,
+        allow=decision.allow,
+        overbook=decision.overbook,
+        reason=decision.reason,
+        threshold=rule.threshold,
+        model_version=predictor.version,
+    )
+
+
 @router.post(
     "/booking-decision",
     responses={
@@ -86,25 +110,14 @@ def booking_decision(
         )
         if evaluated is None:
             raise HTTPException(404, f"Patient {body.patient_id} not found")
-        decision, p_noshow, booked_risks = evaluated
+        decision, p_noshow, _ = evaluated
     except DataSourceUnavailable as exc:
         raise HTTPException(503, str(exc)) from exc
 
-    # Decision log
-    session.add(
-        BookingDecision(
-            patient_id=body.patient_id,
-            slot_id=body.slot_id,
-            booking_date=body.booking_date,
-            p_noshow=p_noshow,
-            booked_p_noshow=min(booked_risks) if booked_risks else None,
-            allow=decision.allow,
-            overbook=decision.overbook,
-            reason=decision.reason,
-            threshold=rule.threshold,
-            model_version=predictor.version,
-        )
+    record = decision_record(
+        body.patient_id, body.slot_id, body.booking_date, evaluated, rule, predictor
     )
+    session.add(record)
     session.commit()
 
     return BookingDecisionResponse(

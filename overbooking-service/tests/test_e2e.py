@@ -114,7 +114,8 @@ def test_booking_flow(client: TestClient, session_factory: sessionmaker[Session]
     with session_factory() as session:
         session.get(Appointment, appointment_id).attended = True
         session.commit()
-        assert session.scalar(select(func.count()).select_from(BookingDecision)) == 1
+        live = select(func.count()).where(BookingDecision.patient_id == NEW_PATIENT)
+        assert session.scalar(live) == 1
 
     after = client.get("/ab/summary").json()
     index = 0 if group == "reminder" else 1

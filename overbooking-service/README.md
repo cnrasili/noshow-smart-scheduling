@@ -170,6 +170,7 @@ The default consultation length is the simulation's mean service time.
 - 200 patients without login accounts, with attributes drawn at rates similar to the public dataset. The seeded patients with accounts also take part.
 - The generated patients get fictional national ID numbers of the web backend's demo pattern (prefix `99999`, a four-digit number from 1000 up, check digits); numbers already in use are skipped. They are made up and belong to no real person.
 - Booking requests for the seeded doctors' slots from three weeks before the demo date to one week after it, processed with the same overbooking rule as `/booking-decision`: the first empty slot, otherwise the first slot the rule allows to overbook.
+- Every request is logged in `booking_decisions` like a live booking: the granted decision, or the refusal for the first slot the request asked for. The admin service shows the log on its decisions page.
 - Past appointments get an outcome drawn from the model's `p_noshow` and, when a reminder was possible, an A/B group. Future appointments have no outcome, so free slots remain for live bookings.
 - Doctor-days the seed already booked are left unchanged, so the doctor can mark attendance in the web application. Their past bookings get an A/B group, so marking attendance changes `/ab/summary`.
 - No messages are created for the generated appointments; only appointments reported to `POST /events/appointment-booked` get a confirmation and a reminder.
