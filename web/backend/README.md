@@ -70,6 +70,10 @@ The demo patients' national ID numbers are **fictional**. They are valid by the 
 
 The migration that adds the national ID column gives existing patients a fictional number built from their id with the same pattern, so a database seeded before it gets the numbers above. Alternatively, recreate the database, run `alembic upgrade head` and the seed again.
 
+## Public Hospital Site
+
+`GET /public/doctors` lists every doctor with department and weekly working hours, without sign-in, for the hospital site's department, doctor and working list pages. It returns no e-mail addresses or other account data (see the [API contract](../../docs/api-contract.md#get-publicdoctors-web-backend)).
+
 ## Authentication
 
 `POST /auth/login` takes the role of the login form and the credentials of that role:

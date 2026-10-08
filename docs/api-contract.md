@@ -7,7 +7,7 @@ Interfaces between the components:
 - the web backend and the overbooking service (prediction, booking decision, booking events),
 - the admin service and the overbooking service (A/B summary, KPIs),
 - the admin service and the web backend (internal account API),
-- the web frontend and the web backend (doctor agenda).
+- the web frontend and the web backend (doctor agenda, public doctor list).
 
 The web frontend calls only the web backend; it never calls the overbooking service or the internal account API.
 
@@ -407,3 +407,27 @@ Errors:
 | 401 | Not signed in or session expired |
 | 403 | Signed in as a patient |
 | 422 | Invalid dates, `date_to` before `date_from`, or a range of more than 31 days |
+
+## `GET /public/doctors` (web backend)
+
+Served by the web backend for the public pages of the hospital site (departments, doctors, doctor working list). Read-only and without sign-in.
+
+Response (`200`), ordered by department and then by name:
+
+```json
+[
+  {
+    "id": 3,
+    "full_name": "Dr. Leyla Aksoy",
+    "specialty": "Kardiyoloji",
+    "working_hours": [
+      { "weekday": 1, "start_time": "09:00:00", "end_time": "12:00:00" },
+      { "weekday": 3, "start_time": "09:00:00", "end_time": "12:00:00" }
+    ]
+  }
+]
+```
+
+- `specialty` is the doctor's department; `null` if not set. Departments are the distinct `specialty` values.
+- `working_hours` are the weekly working hours (`weekday` 0 = Monday … 6 = Sunday), one interval per weekday, ordered by weekday; empty if none are set.
+- No e-mail addresses, account data or appointments are returned.
