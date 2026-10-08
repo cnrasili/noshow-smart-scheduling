@@ -257,3 +257,59 @@ code {
   font-size: 1.1rem;
   user-select: all;
 }
+
+table.decisions th,
+table.decisions td {
+  text-align: left;
+  vertical-align: top;
+}
+
+table.decisions small {
+  display: block;
+}
+
+meter {
+  width: 88px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
+.badge.extra {
+  border-color: #e8a25c;
+  background: rgb(232 162 92 / 18%);
+}
+
+.badge.refused {
+  border-color: #d9534f;
+  background: rgb(217 83 79 / 15%);
+}
+
+.outcome.came {
+  color: #2f9e6e;
+}
+
+.outcome.missed {
+  color: #d9534f;
+}
+
+.outcome.unmarked,
+.outcome.upcoming {
+  color: var(--muted);
+}
+
+tr.refused td {
+  background: rgb(217 83 79 / 6%);
+}
+
+.reasons {
+  margin: 0 0 8px;
+  padding-left: 20px;
+}

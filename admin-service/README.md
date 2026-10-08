@@ -32,13 +32,14 @@ A real hospital would also place the admin service behind a VPN or on a separate
 |---|---|
 | `/login` | Administrator login |
 | `/kpi` | Schedule KPIs per doctor and day, the last days as chart and table, and the reminder A/B test |
+| `/decisions` | The model's predicted no-show risks and the booking decisions: a doctor's slots on a day with each patient's risk, the decision and the outcome; for the last 30 days the decisions by kind, the actual no-show rate per predicted risk band, and the outcomes of slots with an extra appointment |
 | `/patients` | Patients with search by name or national ID number; password reset for patients with a login account |
 | `/patients/new` | Create a patient account |
 | `/doctors` | Doctors with department, working hours and password reset |
 | `/doctors/new` | Create a doctor account with weekly working hours; slots are opened for the next two weeks |
 | `/audit` | The latest audit log events |
 
-KPIs and the A/B summary come from the overbooking service (`GET /kpi`, `GET /ab/summary`, see the [API contract](../docs/api-contract.md)); the admin service does not compute them itself.
+KPIs and the A/B summary come from the overbooking service (`GET /kpi`, `GET /ab/summary`, see the [API contract](../docs/api-contract.md)); the admin service does not compute them itself. The decisions page reads the overbooking service's decision log (`booking_decisions`) and the appointments from the database.
 
 Patient and doctor lists are read from the database. Accounts are created and passwords reset through the web backend's internal account API, which owns the account rules (national ID check, unique email, password hashing); see the [API contract](../docs/api-contract.md#internal-account-api-web-backend).
 

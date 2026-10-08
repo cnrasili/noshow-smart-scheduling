@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from admin_service import accounts, auth, pages
+from admin_service import accounts, auth, decisions, pages
 from admin_service.config import settings
 from admin_service.dependencies import NotLoggedIn
 from admin_service.network import AllowedNetworksMiddleware
@@ -14,6 +14,7 @@ app = FastAPI(title="Admin Service", docs_url=None, redoc_url=None, openapi_url=
 app.add_middleware(AllowedNetworksMiddleware, networks=settings.allowed_networks)
 app.include_router(auth.router)
 app.include_router(pages.router)
+app.include_router(decisions.router)
 app.include_router(accounts.router)
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 

@@ -35,6 +35,31 @@ AUDIT_EVENTS = {
 }
 AB_GROUPS = {"reminder": "Hatırlatma", "control": "Kontrol"}
 
+# Booking decisions of the overbooking service and appointment outcomes
+DECISION_KINDS = {
+    "normal": "Normal randevu",
+    "extra": "Ek randevu",
+    "unknown": "Karar kaydı yok",
+}
+REFUSALS = {
+    "low_risk": "Saatteki hastanın riski eşiğin altında",
+    "limit": "Günlük ek randevu sınırı dolu",
+    "full": "Saat dolu",
+    "duplicate": "Hasta bu saatte zaten kayıtlı",
+}
+OUTCOMES = {
+    "came": "Geldi",
+    "missed": "Gelmedi",
+    "unmarked": "İşaretlenmedi",
+    "upcoming": "Bekleniyor",
+}
+EXTRA_OUTCOMES = {
+    "filled": "En az bir hasta gelmedi; boşluk dolduruldu",
+    "all_came": "Hepsi geldi; bekleme ya da fazla mesai oluştu",
+    "none_came": "Hiçbiri gelmedi",
+    "pending": "Geliş kaydı bekleniyor",
+}
+
 
 def long_date(day: date) -> str:
     """For example "10 Kasım 2026 Salı"."""
