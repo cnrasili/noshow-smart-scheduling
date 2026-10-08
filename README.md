@@ -87,7 +87,7 @@ The web backend asks the overbooking service before every booking. The service c
 
 ## Getting Started
 
-Requirements: Docker Desktop.
+Requirements: Docker Desktop (Windows, macOS) or Docker Engine with Compose (Linux), about 3 GB of disk space, and internet access for the first build.
 
 ```bash
 git clone https://github.com/cnrasili/noshow-smart-scheduling.git
@@ -143,7 +143,7 @@ Each folder has its own README with setup and usage details.
 
 ## Development
 
-Each component can also be run without Docker; see its README. The checks that CI runs:
+Each component can also be run without Docker with Python 3.12 or newer and Node.js 24; see its README. The checks that CI runs:
 
 ```bash
 ruff check .
@@ -156,7 +156,7 @@ Tests that need PostgreSQL run only when `NOSHOW_TEST_DATABASE_URL` points to a 
 
 ### Pinned Versions
 
-The Docker images and CI install the exact Python package versions in [`constraints.txt`](constraints.txt); the frontend uses `package-lock.json`. To use the same versions locally, add `-c constraints.txt` to `pip install`.
+The Docker images and CI install the exact Python package versions in [`constraints.txt`](constraints.txt); the frontend uses `package-lock.json`. To use the same versions locally (Python 3.12 or newer), add `-c constraints.txt` to `pip install`.
 
 To upgrade, create a fresh Python 3.12 environment, install all components without the constraints file, run all checks above, and save the result:
 

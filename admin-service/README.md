@@ -82,7 +82,7 @@ Environment variables:
 | `ADMIN_LOCKOUT_MINUTES` | 15 | Window for counting failed logins |
 | `ADMIN_DASHBOARD_DAYS` | 7 | Days shown in the KPI chart and table |
 
-In Docker Compose, requests from the host reach the container through the Docker network gateway, so the Compose file also allows the Docker address ranges; the loopback-only port binding keeps other machines out.
+In Docker Compose, requests from the host do not arrive from `127.0.0.1`: on Windows and Linux they come from the Docker network gateway (`172.16.0.0/12`), on Docker Desktop for Mac from its VM network (`192.168.65.0/24`). The Compose file therefore also allows these ranges; the loopback-only port binding keeps other machines out.
 
 ## Tests
 
