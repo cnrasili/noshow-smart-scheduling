@@ -71,6 +71,25 @@ describe('patient login', () => {
     )
     expect(screen.getByRole('heading', { name: 'Hasta girişi' })).toBeInTheDocument()
   })
+
+  it('tells the user to wait after too many failed attempts', async () => {
+    fakeBackend({
+      'POST /auth/login': () => ({
+        status: 429,
+        body: { detail: 'Too many failed login attempts; try again later' },
+      }),
+    })
+    renderApp('/giris/hasta')
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText('T.C. kimlik numarası'), '99999000184')
+    await user.type(screen.getByLabelText('Şifre'), 'demo1234')
+    await user.click(screen.getByRole('button', { name: 'Giriş yap' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Çok fazla başarısız giriş denemesi yapıldı. Lütfen 15 dakika sonra tekrar deneyin.',
+    )
+  })
 })
 
 describe('doctor login', () => {

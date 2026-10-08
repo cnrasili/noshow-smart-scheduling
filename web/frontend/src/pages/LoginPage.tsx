@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
-import { api, errorText } from '../api'
+import { ApiError, api, errorText } from '../api'
 import { INSTITUTION_NAME, SYSTEM_NAME } from '../config'
 import { isValidNationalId } from '../nationalId'
 import { PATHS, loginFor } from '../routes'
@@ -8,6 +8,9 @@ import type { LoginCredentials, Me, Role } from '../types'
 
 // Backend answers for wrong credentials; both are shown with the form's own message
 const WRONG_CREDENTIALS = ['Wrong national ID number or password', 'Wrong email or password']
+// Shown when the backend refuses logins after too many failures (429)
+const TOO_MANY_ATTEMPTS =
+  'Çok fazla başarısız giriş denemesi yapıldı. Lütfen 15 dakika sonra tekrar deneyin.'
 
 const COPY: Record<
   Role,
@@ -50,7 +53,8 @@ export function LoginPage({ role, onSignedIn }: { role: Role; onSignedIn: (me: M
       onSignedIn(await api.login(credentials))
     } catch (err) {
       const message = errorText(err)
-      setError(WRONG_CREDENTIALS.includes(message) ? copy.wrongCredentials : message)
+      if (err instanceof ApiError && err.status === 429) setError(TOO_MANY_ATTEMPTS)
+      else setError(WRONG_CREDENTIALS.includes(message) ? copy.wrongCredentials : message)
     } finally {
       setBusy(false)
     }
