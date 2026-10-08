@@ -87,18 +87,53 @@ The web backend asks the overbooking service before every booking. The service c
 
 ## Getting Started
 
-Requirements: Docker Desktop (Windows, macOS) or Docker Engine with Compose (Linux), about 3 GB of disk space, and internet access for the first build.
+Requirements: Docker Desktop (Windows, macOS) or Docker Engine with Compose (Linux), about 3 GB of disk space, and internet access for the first build. Start Docker before the first command.
 
-```bash
-git clone https://github.com/cnrasili/noshow-smart-scheduling.git
-cd noshow-smart-scheduling
-docker compose up --build -d
-docker compose exec web-backend python -m web_backend.seed
-docker compose exec overbooking-service python -m overbooking_service.demo
-docker compose exec admin-service python -m admin_service.create_admin --email admin@hospital.local
-```
+1. Get the code and start all services:
 
-The seed creates a fictional clinic with doctors, patients, login accounts and slots; demo patients have fictional national ID numbers, and the demo accounts are listed in the [web backend README](web/backend/README.md#demo-data). The overbooking service demo adds three weeks of booking history with outcomes and A/B groups for the KPI screen; see the [demo scenario](overbooking-service/README.md#demo-scenario). The last command creates an administrator of the admin service and asks for a password.
+   ```bash
+   git clone https://github.com/cnrasili/noshow-smart-scheduling.git
+   cd noshow-smart-scheduling
+   docker compose up --build -d
+   ```
+
+2. Load the demo data, once on a new database:
+
+   ```bash
+   docker compose exec web-backend python -m web_backend.seed
+   docker compose exec overbooking-service python -m overbooking_service.demo
+   ```
+
+   The seed creates a fictional clinic with doctors, patients, login accounts and slots. The overbooking service demo adds three weeks of booking history with outcomes and A/B groups for the KPI screen; see the [demo scenario](overbooking-service/README.md#demo-scenario).
+
+3. Create an administrator for the admin service; the command asks for a password twice:
+
+   ```bash
+   docker compose exec admin-service python -m admin_service.create_admin --email admin@hospital.local
+   ```
+
+4. Open the web application at http://localhost:5173 and log in with a demo account. All demo accounts use the password `demo1234`:
+
+   | Role | Login |
+   |---|---|
+   | Patient | National ID number `99999000184` |
+   | Doctor | Email `doktor@demo.local` |
+
+   The other demo accounts are listed in the [web backend README](web/backend/README.md#demo-data); their national ID numbers are fictional. The admin service at http://localhost:8002 uses the administrator from step 3.
+
+5. Optional: creating patient and doctor accounts in the admin service needs a shared secret. Without it the admin service shows the KPIs, but account management is disabled. Generate a random value:
+
+   ```bash
+   docker compose exec web-backend python -c "import secrets; print(secrets.token_urlsafe(32))"
+   ```
+
+   Copy `.env.example` to `.env`, set `INTERNAL_API_TOKEN=` to the generated value, and apply it:
+
+   ```bash
+   docker compose up -d
+   ```
+
+After every `git pull`, run `docker compose up --build -d` again; it rebuilds the services and updates the database schema. The demo data steps are needed only once per database.
 
 | Service | URL |
 |---|---|
@@ -121,7 +156,10 @@ Default settings work without configuration. To change them, copy `.env.example`
 | `error during connect` or `cannot find the file specified` | Start Docker Desktop and wait until it is running. |
 | `port is already allocated` | Copy `.env.example` to `.env` and change the port of that service, for example `DB_PORT=5433`. |
 | Code changes are not picked up | File watching uses polling in Docker; wait a few seconds or restart the service with `docker compose restart <service>`. |
+| New features are missing after `git pull`, or the services were started with Docker Desktop's start button | The start button reuses the old images. Run `docker compose up --build -d`. |
 | Database schema is out of date | Run `docker compose up --build migrate`. |
+| Admin service answers 403 ("only available from the hospital network") | Your Docker setup reaches the container from another address. Add its network to `ADMIN_ALLOWED_NETWORKS` in `.env`; see the [admin service settings](admin-service/README.md#settings). |
+| `requires a different Python` when installing without Docker | Use Python 3.12 or newer; Python 3.11 is not supported. |
 | Start from a clean database | Run `docker compose down -v`. This deletes all local data. |
 
 </details>
@@ -167,6 +205,8 @@ pip freeze --exclude-editable > constraints.txt
 
 Keep the three comment lines at the top of the file, and generate it on Linux (for example in a `python:3.12-slim` container), since CI and Docker run on Linux.
 
+When a pull request adds or upgrades a Python package, it also adds the exact version to `constraints.txt`; otherwise Docker and CI install that package unpinned.
+
 ## Dataset
 
 The prediction model is trained on the public [Medical Appointment No Shows](https://www.kaggle.com/datasets/joniarroba/noshowappointments) dataset (Hoppen, 2016), which contains about 110,000 appointments from public clinics in Vitória, Brazil.
@@ -197,6 +237,7 @@ Components depend on each other through the files below. Changes to them are agr
 - Each issue has one assignee and covers one component; its Scope section lists the files it may change. Work needed in another component is requested in a comment, not made in the same pull request.
 - Commit messages are one line in the form `type: Imperative short message`, for example `feat: Add prediction endpoint` or `fix: Correct lead time calculation`.
 - Database changes go through Alembic migrations in [`db/`](db/).
+- New Python packages are added to [`constraints.txt`](constraints.txt) with their exact version (see [Pinned Versions](#pinned-versions)).
 - Never commit secrets or the dataset. Copy `.env.example` to `.env` and fill in local values.
 
 ## Project Status
