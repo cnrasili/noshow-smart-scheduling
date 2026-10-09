@@ -1,13 +1,16 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
-import { api, errorText } from '../api'
-import { INSTITUTION_NAME, SYSTEM_NAME } from '../config'
+import { ApiError, api, errorText } from '../api'
 import { isValidNationalId } from '../nationalId'
 import { PATHS, loginFor } from '../routes'
+import { usePageTitle } from '../site/title'
 import type { LoginCredentials, Me, Role } from '../types'
 
 // Backend answers for wrong credentials; both are shown with the form's own message
 const WRONG_CREDENTIALS = ['Wrong national ID number or password', 'Wrong email or password']
+// Shown when the backend refuses logins after too many failures (429)
+const TOO_MANY_ATTEMPTS =
+  'Çok fazla başarısız giriş denemesi yapıldı. Lütfen 15 dakika sonra tekrar deneyin.'
 
 const COPY: Record<
   Role,
@@ -34,6 +37,7 @@ export function LoginPage({ role, onSignedIn }: { role: Role; onSignedIn: (me: M
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const copy = COPY[role]
+  usePageTitle(copy.title)
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -50,84 +54,70 @@ export function LoginPage({ role, onSignedIn }: { role: Role; onSignedIn: (me: M
       onSignedIn(await api.login(credentials))
     } catch (err) {
       const message = errorText(err)
-      setError(WRONG_CREDENTIALS.includes(message) ? copy.wrongCredentials : message)
+      if (err instanceof ApiError && err.status === 429) setError(TOO_MANY_ATTEMPTS)
+      else setError(WRONG_CREDENTIALS.includes(message) ? copy.wrongCredentials : message)
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <div className="public-page">
-      <header className="topbar">
-        <div className="container topbar-inner">
-          <Link to={PATHS.home} className="brand">
-            <span className="brand-name">{INSTITUTION_NAME}</span>
-            <span className="brand-system">{SYSTEM_NAME}</span>
-          </Link>
+    <div className="login-main">
+      <form className="panel login-card" onSubmit={submit}>
+        <div className="panel-head">
+          <h1>{copy.title}</h1>
+          <p className="muted">{copy.description}</p>
         </div>
-      </header>
-
-      <main className="login-main">
-        <form className="panel login-card" onSubmit={submit}>
-          <div className="panel-head">
-            <h1>{copy.title}</h1>
-            <p className="muted">{copy.description}</p>
-          </div>
-          <div className="panel-body stack-tight">
-            {role === 'patient' ? (
-              <label>
-                T.C. kimlik numarası
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="username"
-                  maxLength={11}
-                  value={login}
-                  onChange={(event) => setLogin(event.target.value.replace(/\D/g, ''))}
-                  required
-                />
-              </label>
-            ) : (
-              <label>
-                E-posta adresi
-                <input
-                  type="email"
-                  autoComplete="username"
-                  value={login}
-                  onChange={(event) => setLogin(event.target.value)}
-                  required
-                />
-              </label>
-            )}
+        <div className="panel-body stack-tight">
+          {role === 'patient' ? (
             <label>
-              Şifre
+              T.C. kimlik numarası
               <input
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
+                type="text"
+                inputMode="numeric"
+                autoComplete="username"
+                maxLength={11}
+                value={login}
+                onChange={(event) => setLogin(event.target.value.replace(/\D/g, ''))}
                 required
               />
             </label>
-            {error && (
-              <p className="form-error" role="alert">
-                {error}
-              </p>
-            )}
-            <button type="submit" className="primary block" disabled={busy}>
-              {busy ? 'Giriş yapılıyor…' : 'Giriş yap'}
-            </button>
-          </div>
-          <div className="login-links">
-            <Link to={PATHS.home}>‹ Anasayfa</Link>
-            <Link to={loginFor(role === 'patient' ? 'doctor' : 'patient')}>{copy.other}</Link>
-          </div>
-        </form>
-      </main>
-
-      <footer className="public-footer">
-        Demo ortamı. Sistemdeki hasta ve hekim kayıtları gerçek kişilere ait değildir.
-      </footer>
+          ) : (
+            <label>
+              E-posta adresi
+              <input
+                type="email"
+                autoComplete="username"
+                value={login}
+                onChange={(event) => setLogin(event.target.value)}
+                required
+              />
+            </label>
+          )}
+          <label>
+            Şifre
+            <input
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+            />
+          </label>
+          {error && (
+            <p className="form-error" role="alert">
+              {error}
+            </p>
+          )}
+          <button type="submit" className="primary block" disabled={busy}>
+            {busy ? 'Giriş yapılıyor…' : 'Giriş yap'}
+          </button>
+        </div>
+        <div className="login-links">
+          <Link to={PATHS.home}>‹ Anasayfa</Link>
+          <Link to={loginFor(role === 'patient' ? 'doctor' : 'patient')}>{copy.other}</Link>
+        </div>
+      </form>
     </div>
   )
 }

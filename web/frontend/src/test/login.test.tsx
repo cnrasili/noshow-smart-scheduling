@@ -18,7 +18,7 @@ describe('patient login', () => {
     await user.type(screen.getByLabelText('Şifre'), 'demo1234')
     await user.click(screen.getByRole('button', { name: 'Giriş yap' }))
 
-    expect(await screen.findByRole('heading', { name: 'Randevu Al' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Online Randevu' })).toBeInTheDocument()
     expect(calls.find((c) => c.path === '/auth/login')?.body).toEqual({
       role: 'patient',
       national_id: '99999000184',
@@ -70,6 +70,25 @@ describe('patient login', () => {
       'T.C. kimlik numarası veya şifre hatalı.',
     )
     expect(screen.getByRole('heading', { name: 'Hasta girişi' })).toBeInTheDocument()
+  })
+
+  it('tells the user to wait after too many failed attempts', async () => {
+    fakeBackend({
+      'POST /auth/login': () => ({
+        status: 429,
+        body: { detail: 'Too many failed login attempts; try again later' },
+      }),
+    })
+    renderApp('/giris/hasta')
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText('T.C. kimlik numarası'), '99999000184')
+    await user.type(screen.getByLabelText('Şifre'), 'demo1234')
+    await user.click(screen.getByRole('button', { name: 'Giriş yap' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Çok fazla başarısız giriş denemesi yapıldı. Lütfen 15 dakika sonra tekrar deneyin.',
+    )
   })
 })
 

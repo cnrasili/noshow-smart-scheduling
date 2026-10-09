@@ -1,73 +1,45 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { NavLink, Navigate, Outlet, Route, Routes, useNavigate } from 'react-router'
+import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router'
 import { api, getToken, onUnauthorized } from './api'
-import { INSTITUTION_NAME, SYSTEM_NAME } from './config'
 import { SchedulePage } from './pages/doctor/SchedulePage'
 import { WorklistPage } from './pages/doctor/WorklistPage'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { AppointmentsPage } from './pages/patient/AppointmentsPage'
 import { BookingPage } from './pages/patient/BookingPage'
-import { PATHS, homeFor, loginFor } from './routes'
+import { AboutPage } from './pages/site/AboutPage'
+import { AnnouncementPage, AnnouncementsPage } from './pages/site/AnnouncementsPage'
+import { ContactPage } from './pages/site/ContactPage'
+import { DepartmentPage, DepartmentsPage } from './pages/site/DepartmentsPage'
+import { DoctorsPage } from './pages/site/DoctorsPage'
+import { GuidePage } from './pages/site/GuidePage'
+import { WorkingListPage } from './pages/site/WorkingListPage'
+import { PATHS, homeFor, loginFor, type LoginReturn } from './routes'
+import { SiteLayout } from './site/SiteLayout'
+import { PageHeader } from './ui'
 import type { Me, Role } from './types'
 
 type Session = { status: 'loading' } | { status: 'signed-out' } | { status: 'signed-in'; me: Me }
 
-const NAV: Record<Role, { to: string; label: string }[]> = {
-  patient: [
-    { to: PATHS.booking, label: 'Randevu Al' },
-    { to: PATHS.appointments, label: 'Randevularım' },
-  ],
-  doctor: [
-    { to: PATHS.worklist, label: 'Hasta Listesi' },
-    { to: PATHS.schedule, label: 'Çalışma Takvimi' },
-  ],
-}
-
-function Shell({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
+// A doctor opening Online Randevu learns that booking needs a patient account
+function BookingNeedsPatient() {
   return (
-    <div className="shell">
-      <header className="topbar">
-        <div className="container topbar-inner">
-          <div className="brand">
-            <span className="brand-name">{INSTITUTION_NAME}</span>
-            <span className="brand-system">{SYSTEM_NAME}</span>
-          </div>
-          <div className="user">
-            <div className="user-text">
-              <span className="user-name">{me.name}</span>
-              <span className="user-role">
-                {me.role === 'doctor'
-                  ? `Hekim${me.specialty ? ` · ${me.specialty}` : ''}`
-                  : 'Hasta'}
-              </span>
-            </div>
-            <button type="button" onClick={onSignOut}>
-              Çıkış
-            </button>
-          </div>
-        </div>
-        <nav className="container nav" aria-label="Ana menü">
-          {NAV[me.role].map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) => (isActive ? 'is-active' : '')}
-            >
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-      </header>
-      <main className="container main">
-        <Outlet />
-      </main>
-    </div>
+    <>
+      <PageHeader title="Online Randevu" />
+      <section className="panel panel-body stack-tight">
+        <p>
+          Online Randevu ile randevu almak için hasta hesabıyla giriş yapmanız gerekir. Hekim
+          hesabıyla randevu alınamaz.
+        </p>
+        <Link to={PATHS.worklist}>Hasta Listesine dön</Link>
+      </section>
+    </>
   )
 }
 
 function App() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [session, setSession] = useState<Session>(() =>
     getToken() ? { status: 'loading' } : { status: 'signed-out' },
   )
@@ -85,9 +57,16 @@ function App() {
   if (session.status === 'loading') return <p className="center muted">Yükleniyor…</p>
   const me = session.status === 'signed-in' ? session.me : null
 
+  // After signing in, continue to the page that sent the visitor to the login (for example
+  // the booking with its preselection); otherwise to the account's own home
+  function afterLogin(user: Me) {
+    const back = location.state as LoginReturn | null
+    return back?.role === user.role ? back.from : homeFor(user.role)
+  }
+
   function signedIn(next: Me) {
     setSession({ status: 'signed-in', me: next })
-    navigate(homeFor(next.role), { replace: true })
+    navigate(afterLogin(next), { replace: true })
   }
 
   async function signOut() {
@@ -98,33 +77,55 @@ function App() {
 
   // Signed-out visitors go to the login form of the page's role; others to their own home
   function only(role: Role, page: ReactNode) {
-    if (!me) return <Navigate to={loginFor(role)} replace />
+    if (!me) {
+      const back: LoginReturn = { from: location.pathname + location.search, role }
+      return <Navigate to={loginFor(role)} replace state={back} />
+    }
     return me.role === role ? page : <Navigate to={homeFor(me.role)} replace />
   }
 
   // Login forms get a key per role so switching forms starts with empty fields
-  function publicPage(page: ReactNode) {
-    return me ? <Navigate to={homeFor(me.role)} replace /> : page
+  function signedOutOnly(page: ReactNode) {
+    return me ? <Navigate to={afterLogin(me)} replace /> : page
   }
 
   return (
     <Routes>
-      <Route path={PATHS.home} element={publicPage(<HomePage />)} />
-      <Route
-        path={PATHS.patientLogin}
-        element={publicPage(<LoginPage key="patient" role="patient" onSignedIn={signedIn} />)}
-      />
-      <Route
-        path={PATHS.doctorLogin}
-        element={publicPage(<LoginPage key="doctor" role="doctor" onSignedIn={signedIn} />)}
-      />
-      <Route element={me ? <Shell me={me} onSignOut={signOut} /> : <Outlet />}>
+      <Route element={<SiteLayout me={me} onSignOut={signOut} />}>
+        <Route path={PATHS.home} element={<HomePage />} />
+        <Route path={PATHS.about} element={<AboutPage />} />
+        <Route path={PATHS.departments} element={<DepartmentsPage />} />
+        <Route path={`${PATHS.departments}/:slug`} element={<DepartmentPage />} />
+        <Route path={PATHS.doctors} element={<DoctorsPage />} />
+        <Route path={PATHS.workingList} element={<WorkingListPage />} />
+        <Route path={PATHS.announcements} element={<AnnouncementsPage />} />
+        <Route path={`${PATHS.announcements}/:slug`} element={<AnnouncementPage />} />
+        <Route path={PATHS.guide} element={<GuidePage />} />
+        <Route path={PATHS.contact} element={<ContactPage />} />
+        <Route
+          path={PATHS.patientLogin}
+          element={signedOutOnly(<LoginPage key="patient" role="patient" onSignedIn={signedIn} />)}
+        />
+        <Route
+          path={PATHS.doctorLogin}
+          element={signedOutOnly(<LoginPage key="doctor" role="doctor" onSignedIn={signedIn} />)}
+        />
         <Route
           path={PATHS.booking}
-          element={only(
-            'patient',
-            <BookingPage onShowAppointments={() => navigate(PATHS.appointments)} />,
-          )}
+          element={
+            me?.role === 'doctor' ? (
+              <BookingNeedsPatient />
+            ) : (
+              only(
+                'patient',
+                <BookingPage onShowAppointments={() => navigate(PATHS.appointments)} />,
+              )
+            )
+          }
+        />
+        <Route
+          path={PATHS.oldBooking}
+          element={<Navigate to={PATHS.booking + location.search} replace />}
         />
         <Route
           path={PATHS.appointments}

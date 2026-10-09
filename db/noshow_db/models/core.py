@@ -143,3 +143,17 @@ class AuthSession(Base):
     token_hash: Mapped[str] = mapped_column(String(64), unique=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class LoginFailure(Base):
+    """A failed website login, counted per login name and per client address to limit guessing.
+
+    The login name (national ID number or e-mail address) is stored only as a SHA-256 hash.
+    """
+
+    __tablename__ = "login_failures"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    login_hash: Mapped[str] = mapped_column(String(64), index=True)
+    client_ip: Mapped[str] = mapped_column(String(64), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)

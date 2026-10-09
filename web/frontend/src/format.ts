@@ -58,6 +58,20 @@ export function addDays(key: string, days: number): string {
   return date.toISOString().slice(0, 10)
 }
 
+/** Monday of the week that contains a day key. */
+export function weekStart(key: string): string {
+  const weekday = (new Date(`${key}T12:00:00Z`).getUTCDay() + 6) % 7
+  return addDays(key, -weekday)
+}
+
+/** "Bugün" or "Yarın" for today and tomorrow, otherwise null. */
+export function relativeDayLabel(key: string): string | null {
+  const today = todayKey()
+  if (key === today) return 'Bugün'
+  if (key === addDays(today, 1)) return 'Yarın'
+  return null
+}
+
 export const hasStarted = (iso: string) => new Date(iso).getTime() <= Date.now()
 
 export const appointmentNumber = (id: number) => `R-${String(id).padStart(6, '0')}`

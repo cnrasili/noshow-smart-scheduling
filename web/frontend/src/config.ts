@@ -1,3 +1,2 @@
-// Fictional institution shown in the interface
-export const INSTITUTION_NAME = 'Merkez Poliklinik'
-export const SYSTEM_NAME = 'Randevu Sistemi'
+// Fictional hospital shown on the site; the only place its name is defined
+export const INSTITUTION_NAME = 'Şehir Hastanesi'

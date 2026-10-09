@@ -1,19 +1,22 @@
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import Session
 
-from noshow_db.models.core import AuthSession, Doctor, Patient, UserAccount
+from noshow_db.models.core import AuthSession, Doctor, LoginFailure, Patient, UserAccount
 from web_backend.clinic import as_utc
 from web_backend.db import get_db
 from web_backend.national_id import is_valid_national_id
 from web_backend.security import hash_password, hash_token, new_token, verify_password
 
 SESSION_LIFETIME = timedelta(hours=12)
+# Failed logins of one login name or from one client address allowed within the window
+MAX_FAILED_LOGINS = 5
+LOCKOUT_WINDOW = timedelta(minutes=15)
 
 # Compared against when the login name is unknown so both failure paths take similar time
 _DUMMY_HASH = hash_password("unused-password")
@@ -41,6 +44,8 @@ LoginRequest = Annotated[PatientLogin | DoctorLogin, Body(discriminator="role")]
 
 WRONG_PATIENT_LOGIN = "Wrong national ID number or password"
 WRONG_DOCTOR_LOGIN = "Wrong email or password"
+# Same answer for known and unknown login names, so it does not reveal an account
+TOO_MANY_LOGINS = "Too many failed login attempts; try again later"
 
 
 class Me(BaseModel):
@@ -119,15 +124,50 @@ def _find_account(db: Session, body: PatientLogin | DoctorLogin) -> UserAccount 
     return account if account is not None and account.role == "doctor" else None
 
 
+def _login_hash(body: PatientLogin | DoctorLogin) -> str:
+    """Hash of the role and the normalized login name; the national ID is never stored."""
+    name = body.national_id.strip() if isinstance(body, PatientLogin) else body.email.strip()
+    return hash_token(f"{body.role}:{name.lower()}")
+
+
+def _is_locked(db: Session, login_hash: str, client_ip: str, now: datetime) -> bool:
+    failures = db.scalar(
+        select(func.count())
+        .select_from(LoginFailure)
+        .where(
+            LoginFailure.created_at >= now - LOCKOUT_WINDOW,
+            or_(LoginFailure.login_hash == login_hash, LoginFailure.client_ip == client_ip),
+        )
+    )
+    return failures >= MAX_FAILED_LOGINS
+
+
+def _record_failure(db: Session, login_hash: str, client_ip: str, now: datetime) -> None:
+    # Rows outside the window no longer count, so they are removed on the way
+    db.execute(delete(LoginFailure).where(LoginFailure.created_at < now - LOCKOUT_WINDOW))
+    db.add(LoginFailure(login_hash=login_hash, client_ip=client_ip, created_at=now))
+    db.commit()
+
+
 @router.post("/login")
-def login(body: LoginRequest, db: DbSession) -> LoginResponse:
+def login(body: LoginRequest, request: Request, db: DbSession) -> LoginResponse:
     wrong = WRONG_PATIENT_LOGIN if body.role == "patient" else WRONG_DOCTOR_LOGIN
+    now = datetime.now(UTC)
+    login_hash = _login_hash(body)
+    client_ip = request.client.host if request.client else "unknown"
+    # Checked before the password, so a locked login is refused even with the right one
+    if _is_locked(db, login_hash, client_ip, now):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, TOO_MANY_LOGINS)
+
     account = _find_account(db, body)
     if account is None:
         verify_password(body.password, _DUMMY_HASH)
+    if account is None or not verify_password(body.password, account.password_hash):
+        _record_failure(db, login_hash, client_ip, now)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, wrong)
-    if not verify_password(body.password, account.password_hash):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, wrong)
+
+    # Earlier failures of this login name do not count against the next session
+    db.execute(delete(LoginFailure).where(LoginFailure.login_hash == login_hash))
 
     token = new_token()
     db.add(

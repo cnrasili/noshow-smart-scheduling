@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { api, errorText } from '../../api'
 import {
   appointmentNumber,
@@ -10,6 +11,7 @@ import {
   formatTimeRange,
 } from '../../format'
 import type { Appointment, Doctor, Slot } from '../../types'
+import { BOOKING_PARAMS } from '../../routes'
 import { Notice, PageHeader, type NoticeState } from '../../ui'
 
 type SlotState = 'free' | 'extra' | 'taken' | 'mine'
@@ -91,7 +93,19 @@ function AppointmentSlip({
   )
 }
 
+/** The doctor to start with: the one asked for, else the first of the department asked for. */
+function initialDoctor(doctors: Doctor[], department: string | null, doctorId: string | null) {
+  return (
+    doctors.find((d) => String(d.id) === doctorId) ??
+    doctors.find((d) => branchLabel(d.specialty) === department) ??
+    doctors[0]
+  )
+}
+
 export function BookingPage({ onShowAppointments }: { onShowAppointments: () => void }) {
+  const [params] = useSearchParams()
+  const preselectedDepartment = params.get(BOOKING_PARAMS.department)
+  const preselectedDoctor = params.get(BOOKING_PARAMS.doctor)
   const [doctors, setDoctors] = useState<Doctor[]>([])
   const [branch, setBranch] = useState<string | null>(null)
   const [doctorId, setDoctorId] = useState<number | null>(null)
@@ -110,14 +124,15 @@ export function BookingPage({ onShowAppointments }: { onShowAppointments: () => 
       .doctors()
       .then((list) => {
         setDoctors(list)
-        const first = list[0]
+        // A department or doctor chosen on the hospital site is selected; it can be changed
+        const first = initialDoctor(list, preselectedDepartment, preselectedDoctor)
         if (first) {
           setBranch(branchLabel(first.specialty))
           setDoctorId(first.id)
         }
       })
       .catch(showError)
-  }, [])
+  }, [preselectedDepartment, preselectedDoctor])
 
   useEffect(() => {
     if (doctorId === null) return
@@ -135,7 +150,11 @@ export function BookingPage({ onShowAppointments }: { onShowAppointments: () => 
   }, [doctorId])
 
   const branches = useMemo(
-    () => [...new Set(doctors.map((d) => branchLabel(d.specialty)))].sort(),
+    // Turkish collation puts "Çocuk…" between "C" and "D", as on the Poliklinikler page
+    () =>
+      [...new Set(doctors.map((d) => branchLabel(d.specialty)))].sort((a, b) =>
+        a.localeCompare(b, 'tr'),
+      ),
     [doctors],
   )
   const branchDoctors = doctors.filter((d) => branchLabel(d.specialty) === branch)
@@ -181,7 +200,7 @@ export function BookingPage({ onShowAppointments }: { onShowAppointments: () => 
     <>
       <Notice notice={notice} onClose={closeNotice} />
       <PageHeader
-        title="Randevu Al"
+        title="Online Randevu"
         description="Branş ve hekim seçip uygun gün ve saati belirleyin."
       />
 

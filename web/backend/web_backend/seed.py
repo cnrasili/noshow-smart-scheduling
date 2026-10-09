@@ -33,7 +33,7 @@ class DemoDoctor:
     end: time
 
 
-# Several doctors and branches so the branch and doctor choice is meaningful in the demo
+# Several doctors in each of nine branches, so the hospital site and the booking look real
 DOCTORS = [
     DemoDoctor(
         "Dr. Deniz Yıldız", "Dahiliye", "doktor@demo.local", (0, 1, 2, 3, 4), time(9), time(12)
@@ -49,6 +49,135 @@ DOCTORS = [
         (0, 1, 3),
         time(13),
         time(15),
+    ),
+    # The doctors above are the original demo; the ones below make it look like a city hospital
+    DemoDoctor(
+        "Dr. Murat Aydemir",
+        "Dahiliye",
+        "murat.aydemir@demo.local",
+        (1, 3),
+        time(13),
+        time(17),
+    ),
+    DemoDoctor(
+        "Dr. Selim Karataş",
+        "Kardiyoloji",
+        "selim.karatas@demo.local",
+        (0, 2, 4),
+        time(13),
+        time(16),
+    ),
+    DemoDoctor(
+        "Dr. Nihan Erdem",
+        "Göz Hastalıkları",
+        "nihan.erdem@demo.local",
+        (2, 4),
+        time(9),
+        time(12),
+    ),
+    DemoDoctor(
+        "Dr. Gökhan Tekin",
+        "Çocuk Sağlığı ve Hastalıkları",
+        "gokhan.tekin@demo.local",
+        (0, 1, 2, 3, 4),
+        time(9),
+        time(12),
+    ),
+    DemoDoctor(
+        "Dr. Esra Yalçın",
+        "Çocuk Sağlığı ve Hastalıkları",
+        "esra.yalcin@demo.local",
+        (0, 2, 4),
+        time(13),
+        time(16),
+    ),
+    DemoDoctor(
+        "Dr. Tolga Şen",
+        "Çocuk Sağlığı ve Hastalıkları",
+        "tolga.sen@demo.local",
+        (1, 3),
+        time(13),
+        time(16),
+    ),
+    DemoDoctor(
+        "Dr. Pınar Uysal",
+        "Kadın Hastalıkları ve Doğum",
+        "pinar.uysal@demo.local",
+        (0, 1, 3),
+        time(9),
+        time(12),
+    ),
+    DemoDoctor(
+        "Dr. Derya Kılıç",
+        "Kadın Hastalıkları ve Doğum",
+        "derya.kilic@demo.local",
+        (2, 4),
+        time(13),
+        time(16),
+    ),
+    DemoDoctor(
+        "Dr. Kerem Öz",
+        "Ortopedi ve Travmatoloji",
+        "kerem.oz@demo.local",
+        (0, 2),
+        time(9),
+        time(12),
+    ),
+    DemoDoctor(
+        "Dr. Hakan Bulut",
+        "Ortopedi ve Travmatoloji",
+        "hakan.bulut@demo.local",
+        (1, 3, 4),
+        time(13),
+        time(16),
+    ),
+    DemoDoctor(
+        "Dr. Aslı Korkmaz",
+        "Kulak Burun Boğaz",
+        "asli.korkmaz@demo.local",
+        (0, 3),
+        time(13),
+        time(16),
+    ),
+    DemoDoctor(
+        "Dr. Emre Polat",
+        "Kulak Burun Boğaz",
+        "emre.polat@demo.local",
+        (1, 2, 4),
+        time(9),
+        time(12),
+    ),
+    DemoDoctor(
+        "Dr. Sevgi Duman",
+        "Nöroloji",
+        "sevgi.duman@demo.local",
+        (1, 3),
+        time(9),
+        time(12),
+    ),
+    DemoDoctor(
+        "Dr. Onur Avcı",
+        "Nöroloji",
+        "onur.avci@demo.local",
+        (0, 4),
+        time(13),
+        time(16),
+    ),
+    DemoDoctor(
+        "Dr. Melis Ateş",
+        "Dermatoloji",
+        "melis.ates@demo.local",
+        (0, 2, 4),
+        time(9),
+        time(12),
+    ),
+    DemoDoctor(
+        "Dr. Serkan Güneş",
+        "Dermatoloji",
+        "serkan.gunes@demo.local",
+        (1, 3),
+        time(13),
+        time(16),
     ),
 ]
 DOCTOR_EMAIL = DOCTORS[0].email

@@ -45,7 +45,7 @@ Existing slots are not changed. Generating slots again after a change only fills
 
 ## Demo Data
 
-`web_backend.seed` creates a fictional clinic through the account module: four doctors in three branches (Dahiliye, Kardiyoloji, Göz Hastalıkları) with their own working hours, eight patients, the login accounts, slots from three weeks ago to two weeks ahead and a few example appointments per doctor. Running it again only adds missing doctors, patients and slots, so it also upgrades a database seeded by an earlier version.
+`web_backend.seed` creates a fictional city hospital through the account module: twenty doctors in nine departments (two or three each, for example Dahiliye, Kardiyoloji, Göz Hastalıkları, Çocuk Sağlığı ve Hastalıkları) with their own working hours, eight patients, the login accounts, slots from three weeks ago to two weeks ahead and a few example appointments per doctor. Running it again only adds missing doctors, patients and slots, so it also upgrades a database seeded by an earlier version. The first four doctors (`doktor@demo.local`, `can.ozkan@demo.local`, `leyla.aksoy@demo.local`, `ebru.kaplan@demo.local`) and the eight patients are the original demo and stay unchanged.
 
 ```bash
 python -m web_backend.seed
@@ -70,6 +70,10 @@ The demo patients' national ID numbers are **fictional**. They are valid by the 
 
 The migration that adds the national ID column gives existing patients a fictional number built from their id with the same pattern, so a database seeded before it gets the numbers above. Alternatively, recreate the database, run `alembic upgrade head` and the seed again.
 
+## Public Hospital Site
+
+`GET /public/doctors` lists every doctor with department and weekly working hours, without sign-in, for the hospital site's department, doctor and working list pages. It returns no e-mail addresses or other account data (see the [API contract](../../docs/api-contract.md#get-publicdoctors-web-backend)).
+
 ## Authentication
 
 `POST /auth/login` takes the role of the login form and the credentials of that role:
@@ -78,6 +82,10 @@ The migration that adds the national ID column gives existing patients a fiction
 - Doctors: `{"role": "doctor", "email": "…", "password": "…"}`.
 
 Wrong credentials, an invalid national ID number and a login through the other role's form all get the same `401` ("Wrong national ID number or password" or "Wrong email or password"). There is no self-registration; accounts are created by the hospital. A successful login returns a bearer token that is valid for 12 hours; send it as `Authorization: Bearer <token>`. Passwords are hashed with scrypt and only a hash of each token is stored (`user_accounts` and `auth_sessions` tables).
+
+Failed logins are limited to slow down password guessing. After 5 failures within 15 minutes for one login name (national ID number or e-mail address, known or not) or from one client address, further logins for that name or from that address get `429` ("Too many failed login attempts; try again later") until the window has passed, even with the correct password. Failures are kept in the `login_failures` table with a SHA-256 hash of the role and login name instead of the name itself; a successful login clears the failures of its name. With Docker Desktop all browsers on the host may reach the backend from the same address, so five wrong passwords there block every login for 15 minutes.
+
+Every response carries the headers `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY` and `Cache-Control: no-store`.
 
 ## Accounts
 

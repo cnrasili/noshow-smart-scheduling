@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
+import { usePageTitle } from './site/title'
 
 export interface NoticeState {
   kind: 'success' | 'error'
@@ -44,6 +45,8 @@ export function PageHeader({
   description?: string
   children?: ReactNode
 }) {
+  // Every page with a header also names the browser tab
+  usePageTitle(title)
   return (
     <div className="page-header">
       <div>

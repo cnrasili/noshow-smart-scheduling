@@ -1,4 +1,5 @@
 import type {
+  AgendaDay,
   Appointment,
   CalendarAppointment,
   CalendarSlot,
@@ -6,6 +7,7 @@ import type {
   LoginCredentials,
   LoginResponse,
   Me,
+  PublicDoctor,
   ScheduleDay,
   Slot,
 } from './types'
@@ -103,6 +105,7 @@ export const api = {
     }
   },
   me: () => request<Me>('/auth/me'),
+  publicDoctors: () => request<PublicDoctor[]>('/public/doctors'),
   doctors: () => request<Doctor[]>('/doctors'),
   slots: (doctorId: number) => request<Slot[]>(`/slots?doctor_id=${doctorId}`),
   myAppointments: () => request<Appointment[]>('/patients/me/appointments'),
@@ -112,6 +115,10 @@ export const api = {
     request<void>(`/appointments/${appointmentId}`, { method: 'DELETE' }),
   calendar: (day: string) =>
     request<CalendarSlot[]>(`/doctors/me/calendar?date=${encodeURIComponent(day)}`),
+  agenda: (dateFrom: string, dateTo: string) =>
+    request<AgendaDay[]>(
+      `/doctors/me/agenda?date_from=${encodeURIComponent(dateFrom)}&date_to=${encodeURIComponent(dateTo)}`,
+    ),
   markAttendance: (appointmentId: number, attended: boolean) =>
     request<CalendarAppointment>(
       `/appointments/${appointmentId}/attendance`,

@@ -57,7 +57,7 @@ function backend(
 
 async function chooseCardiology() {
   const user = userEvent.setup()
-  renderApp('/randevu-al')
+  renderApp('/online-randevu')
   await screen.findByRole('option', { name: 'Kardiyoloji' })
   await user.selectOptions(screen.getByLabelText('Branş'), 'Kardiyoloji')
   expect(screen.getByLabelText('Hekim')).toHaveValue('2')
