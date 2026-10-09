@@ -101,6 +101,28 @@ describe('Online Randevu', () => {
     expect(screen.queryByText('Randevu Al')).not.toBeInTheDocument()
   })
 
+  it('lists the departments in Turkish alphabetical order', async () => {
+    fakeBackend({
+      ...signIn(PATIENT),
+      ...booking,
+      'GET /doctors': () => [
+        ...DOCTORS,
+        { id: 5, full_name: 'Dr. Gökhan Tekin', specialty: 'Çocuk Sağlığı ve Hastalıkları' },
+        { id: 6, full_name: 'Dr. Ece Can', specialty: 'Cildiye' },
+      ],
+    })
+    renderApp(PATHS.booking)
+
+    await screen.findByRole('option', { name: 'Kardiyoloji' })
+    const options = within(screen.getByLabelText('Branş')).getAllByRole('option')
+    expect(options.map((option) => option.textContent)).toEqual([
+      'Cildiye',
+      'Çocuk Sağlığı ve Hastalıkları',
+      'Dahiliye',
+      'Kardiyoloji',
+    ])
+  })
+
   it('ignores an unknown preselection', async () => {
     fakeBackend({ ...signIn(PATIENT), ...booking })
     renderApp(bookingPath({ department: 'Yok', doctorId: 99 }))

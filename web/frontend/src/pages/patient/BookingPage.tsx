@@ -150,7 +150,11 @@ export function BookingPage({ onShowAppointments }: { onShowAppointments: () => 
   }, [doctorId])
 
   const branches = useMemo(
-    () => [...new Set(doctors.map((d) => branchLabel(d.specialty)))].sort(),
+    // Turkish collation puts "Çocuk…" between "C" and "D", as on the Poliklinikler page
+    () =>
+      [...new Set(doctors.map((d) => branchLabel(d.specialty)))].sort((a, b) =>
+        a.localeCompare(b, 'tr'),
+      ),
     [doctors],
   )
   const branchDoctors = doctors.filter((d) => branchLabel(d.specialty) === branch)
