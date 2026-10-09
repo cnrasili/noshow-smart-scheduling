@@ -83,7 +83,14 @@ The migration that adds the national ID column gives existing patients a fiction
 
 Wrong credentials, an invalid national ID number and a login through the other role's form all get the same `401` ("Wrong national ID number or password" or "Wrong email or password"). There is no self-registration; accounts are created by the hospital. A successful login returns a bearer token that is valid for 12 hours; send it as `Authorization: Bearer <token>`. Passwords are hashed with scrypt and only a hash of each token is stored (`user_accounts` and `auth_sessions` tables).
 
-Failed logins are limited to slow down password guessing. After 5 failures within 15 minutes for one login name (national ID number or e-mail address, known or not) or from one client address, further logins for that name or from that address get `429` ("Too many failed login attempts; try again later") until the window has passed, even with the correct password. Failures are kept in the `login_failures` table with a SHA-256 hash of the role and login name instead of the name itself; a successful login clears the failures of its name. With Docker Desktop all browsers on the host may reach the backend from the same address, so five wrong passwords there block every login for 15 minutes.
+Failed logins are limited to slow down password guessing. After 5 failures within 15 minutes for one login name (national ID number or e-mail address, known or not), further logins for that name get `429` ("Too many failed login attempts; try again later") until the window has passed, even with the correct password. Other accounts are not affected, so a few wrong passwords on a shared computer, or from browsers that reach the backend through the same address (a hospital gateway, or every browser on a Docker Desktop host), do not lock anyone else. A much higher limit per client address, 50 failures within 15 minutes across any login names, still stops one client from trying many names. Failures are kept in the `login_failures` table with a SHA-256 hash of the role and login name instead of the name itself; a successful login clears the failures of its name.
+
+Both limits are settings; any value other than a whole number from 1 to 10000 stops the web backend at startup with a clear message:
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `LOGIN_MAX_FAILURES_PER_NAME` | `5` | Failed logins of one login name within 15 minutes before that name is locked |
+| `LOGIN_MAX_FAILURES_PER_ADDRESS` | `50` | Failed logins from one client address within 15 minutes, across all names, before that address is locked |
 
 Every response carries the headers `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY` and `Cache-Control: no-store`.
 
