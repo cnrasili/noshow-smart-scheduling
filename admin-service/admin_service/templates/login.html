@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Yönetici girişi{% endblock %}
+{% block content %}
+<section class="login">
+  <h1>{{ panel_name }}</h1>
+  <p class="muted">Yalnızca hastane iç ağından erişilebilir. Her giriş kaydedilir.</p>
+  {% if error %}
+  <p class="error" role="alert">{{ error }}</p>
+  {% endif %}
+  <form method="post" action="{{ url_for('login') }}" class="stack">
+    <label>
+      E-posta
+      <input type="email" name="email" autocomplete="username" required maxlength="255" />
+    </label>
+    <label>
+      Şifre
+      <input type="password" name="password" autocomplete="current-password" required maxlength="255" />
+    </label>
+    <button type="submit">Giriş yap</button>
+  </form>
+</section>
+{% endblock %}

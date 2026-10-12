@@ -1,4 +1,5 @@
 """Appointment template definition and HTML renderer shared by the template files."""
+
 from __future__ import annotations
 
 import dataclasses
@@ -11,8 +12,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from clinic_sim import Layout, Policy, SessionConfig, fixed_interval, threshold_rule  # noqa: E402
 
 HTML_DIR = Path(__file__).parent / "html"
-REQUESTS = 20                 # booking requests per session, identical for every template
-SESSION_MIN = 240             # planned session length (minutes), identical for every template
+REQUESTS = 20  # booking requests per session, identical for every template
+SESSION_MIN = 240  # planned session length (minutes), identical for every template
 
 
 @dataclass(frozen=True)
@@ -22,39 +23,52 @@ class Template:
     idea: str
     n_slots: int
     slot_min: float
-    threshold: float | None = None            # None = no overbooking
-    blocked: tuple[int, ...] = ()             # buffer slots (stay empty)
+    threshold: float | None = None  # None = no overbooking
+    blocked: tuple[int, ...] = ()  # buffer slots (stay empty)
     overbook_slots: tuple[int, ...] | None = None
-    offset: float = 0.0                       # second patient starts this fraction of a slot later
+    offset: float = 0.0  # second patient starts this fraction of a slot later
     thresholds_to_try: tuple[float, ...] = ()  # candidate thresholds for tuning
 
     def config(self, base: SessionConfig | None = None) -> SessionConfig:
-        return dataclasses.replace(base or SessionConfig(), n_slots=self.n_slots, slot_min=self.slot_min,
-                                   requests=REQUESTS)
+        return dataclasses.replace(
+            base or SessionConfig(), n_slots=self.n_slots, slot_min=self.slot_min, requests=REQUESTS
+        )
 
     def layout(self) -> Layout:
-        return Layout(frozenset(self.blocked), None if self.overbook_slots is None else frozenset(self.overbook_slots),
-                      self.offset)
+        return Layout(
+            frozenset(self.blocked),
+            None if self.overbook_slots is None else frozenset(self.overbook_slots),
+            self.offset,
+        )
 
     def policy(self) -> Policy:
         return fixed_interval() if self.threshold is None else threshold_rule(self.threshold)
 
-    def with_threshold(self, t: float) -> "Template":
+    def with_threshold(self, t: float) -> Template:
         return dataclasses.replace(self, threshold=t)
 
     def rules(self) -> list[str]:
-        out = [f"{self.n_slots} slots x {self.slot_min:g} min = {self.n_slots * self.slot_min:g} min session"]
+        out = [
+            f"{self.n_slots} slots x {self.slot_min:g} min = {self.n_slots * self.slot_min:g} min session"
+        ]
         if self.blocked:
             out.append("Buffer (no patient): slot " + ", ".join(str(b + 1) for b in self.blocked))
         if self.threshold is None:
             out.append("One patient per slot, no overbooking")
         else:
-            out.append(f"Overbook a booked slot only if its patient has a no-show risk of at least {self.threshold:.2f} "
-                       "(max 2 per slot, 4 overbooked slots per session)")
+            out.append(
+                f"Overbook a booked slot only if its patient has a no-show risk of at least {self.threshold:.2f} "
+                "(max 2 per slot, 4 overbooked slots per session)"
+            )
             if self.overbook_slots is not None:
-                out.append(f"Overbooking allowed only in slots {min(self.overbook_slots) + 1}-{max(self.overbook_slots) + 1}")
-            out.append("Second patient starts at the same time as the first" if self.offset == 0
-                       else f"Second patient starts {self.offset * self.slot_min:g} min after the slot start")
+                out.append(
+                    f"Overbooking allowed only in slots {min(self.overbook_slots) + 1}-{max(self.overbook_slots) + 1}"
+                )
+            out.append(
+                "Second patient starts at the same time as the first"
+                if self.offset == 0
+                else f"Second patient starts {self.offset * self.slot_min:g} min after the slot start"
+            )
         return out
 
 
@@ -73,7 +87,12 @@ h1{font-size:21px;margin:0}p{color:var(--mute)}.card{background:var(--card);bord
 """
 
 
-def render_html(t: Template, path: Path | None = None, note: str = "", back: tuple[str, str] = ("../../output/templates_hub.html", "Templates")) -> Path:
+def render_html(
+    t: Template,
+    path: Path | None = None,
+    note: str = "",
+    back: tuple[str, str] = ("../../output/templates_hub.html", "Templates"),
+) -> Path:
     """Write a self-contained HTML picture of the template."""
     scale = 4.2  # px per minute
     cells = []
@@ -89,9 +108,13 @@ def render_html(t: Template, path: Path | None = None, note: str = "", back: tup
         if cls == "ob":
             ox = t.offset * w
             extra = f'<i style="left:{ox:.0f}px" title="second patient starts here"></i>'
-        cells.append(f'<div class="slot {cls}" style="left:{x:.0f}px;width:{w - 2:.0f}px"><b>{label}</b>{extra}</div>')
-    ticks = "".join(f'<span style="left:{m * scale:.0f}px">{m}</span>'
-                    for m in range(0, int(t.n_slots * t.slot_min) + 1, 60))
+        cells.append(
+            f'<div class="slot {cls}" style="left:{x:.0f}px;width:{w - 2:.0f}px"><b>{label}</b>{extra}</div>'
+        )
+    ticks = "".join(
+        f'<span style="left:{m * scale:.0f}px">{m}</span>'
+        for m in range(0, int(t.n_slots * t.slot_min) + 1, 60)
+    )
     width = t.n_slots * t.slot_min * scale
     rules = "".join(f"<li>{html.escape(r)}</li>" for r in t.rules())
     banner = f'<div class="card"><b>{html.escape(note)}</b></div>' if note else ""

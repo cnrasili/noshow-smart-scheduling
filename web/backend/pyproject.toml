@@ -6,14 +6,15 @@ build-backend = "setuptools.build_meta"
 name = "noshow-web-backend"
 version = "0.1.0"
 description = "Backend of the appointment booking application"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
+    "httpx2>=2.13",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "httpx2>=2.13"]
+dev = ["pytest>=8"]
 
 [tool.setuptools.packages.find]
 include = ["web_backend*"]

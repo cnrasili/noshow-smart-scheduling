@@ -9,6 +9,7 @@ The data has no doctor information, so the records of a date are dealt randomly 
 booking requests each (16 slots of 15 minutes). Inside a session patients are in real booking order. Risk and
 attendance are real; consultation length and lateness are simulated (they are not in the data).
 """
+
 import argparse
 import dataclasses
 import json
@@ -17,12 +18,24 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-
-from clinic_sim import SessionConfig, cost_rule, draw_session, fixed_interval, simulate_session, threshold_rule
+from clinic_sim import (
+    SessionConfig,
+    cost_rule,
+    draw_session,
+    fixed_interval,
+    simulate_session,
+    threshold_rule,
+)
 
 OUT = Path(__file__).resolve().parent / "output"
-RISKS = Path(__file__).resolve().parents[1] / "ml" / "data" / "processed" / "risks_random_forest.csv"
-SOURCES = {"rf": ("p", "random forest"), "lr": ("p_lr", "logistic regression"), "r4": ("p_r4", "rule R4")}
+RISKS = (
+    Path(__file__).resolve().parents[1] / "ml" / "data" / "processed" / "risks_random_forest.csv"
+)
+SOURCES = {
+    "rf": ("p", "random forest"),
+    "lr": ("p_lr", "logistic regression"),
+    "r4": ("p_r4", "rule R4"),
+}
 
 
 def sessions_of(day: pd.DataFrame, cfg: SessionConfig, seed: int):
@@ -30,50 +43,96 @@ def sessions_of(day: pd.DataFrame, cfg: SessionConfig, seed: int):
     idx = np.random.default_rng(seed).permutation(len(day))
     n = cfg.n_requests
     for s, start in enumerate(range(0, len(day), n)):
-        part = day.iloc[np.sort(idx[start:start + n])]
+        part = day.iloc[np.sort(idx[start : start + n])]
         yield s, part.sort_values("ScheduledDay", kind="stable")
 
 
-def simulate_day(day: pd.DataFrame, cfg: SessionConfig, risk_col: str, seed: int, policies: dict, animate: str):
+def simulate_day(
+    day: pd.DataFrame, cfg: SessionConfig, risk_col: str, seed: int, policies: dict, animate: str
+):
     """Run every session with every policy. Returns aggregates per policy and per-record details of `animate`."""
-    agg = {name: {"seen": 0, "deferred": 0, "wait_sum": 0.0, "idle": 0.0, "overtime": 0.0, "busy": 0.0,
-                  "ob_slots": 0, "sessions": 0} for name in policies}
+    agg = {
+        name: {
+            "seen": 0,
+            "deferred": 0,
+            "wait_sum": 0.0,
+            "idle": 0.0,
+            "overtime": 0.0,
+            "busy": 0.0,
+            "ob_slots": 0,
+            "sessions": 0,
+        }
+        for name in policies
+    }
     records = []
     rng = np.random.default_rng(seed + 1)
     for s, part in sessions_of(day, cfg, seed):
         scfg = dataclasses.replace(cfg, requests=len(part))
-        draws = dataclasses.replace(draw_session(scfg, rng, None), risk=part[risk_col].to_numpy(),
-                                    shows=(part["y"].to_numpy() == 0))
-        rows = [[None] * 3 + [-1, None, None, None, 0] * 2 for _ in range(len(part))]  # filled below
+        draws = dataclasses.replace(
+            draw_session(scfg, rng, None),
+            risk=part[risk_col].to_numpy(),
+            shows=(part["y"].to_numpy() == 0),
+        )
+        rows = [
+            [None] * 3 + [-1, None, None, None, 0] * 2 for _ in range(len(part))
+        ]  # filled below
         for name, policy in policies.items():
             r = simulate_session(scfg, policy, draws, detail=(name in ("fixed", animate)))
             a = agg[name]
-            a["seen"] += r["seen"]; a["deferred"] += r["deferred"]; a["wait_sum"] += r["mean_wait"] * r["seen"]
-            a["idle"] += r["idle"]; a["overtime"] += r["overtime"]; a["busy"] += r["utilization"]
-            a["ob_slots"] += r["overbooked_slots"]; a["sessions"] += 1
+            a["seen"] += r["seen"]
+            a["deferred"] += r["deferred"]
+            a["wait_sum"] += r["mean_wait"] * r["seen"]
+            a["idle"] += r["idle"]
+            a["overtime"] += r["overtime"]
+            a["busy"] += r["utilization"]
+            a["ob_slots"] += r["overbooked_slots"]
+            a["sessions"] += 1
             if "detail" in r:
                 col = 3 if name == "fixed" else 8
                 for i in range(len(part)):
-                    rows[i][col] = -1                                  # deferred until proven booked
+                    rows[i][col] = -1  # deferred until proven booked
                 for p in r["detail"]:
                     i = p["patient"]
-                    rows[i][col:col + 5] = [p["slot"], round(max(p["appointment"], p["arrival"]), 1), round(p["start"], 1),
-                                            round(p["end"], 1), int(p["overbooked"])]
+                    rows[i][col : col + 5] = [
+                        p["slot"],
+                        round(max(p["appointment"], p["arrival"]), 1),
+                        round(p["start"], 1),
+                        round(p["end"], 1),
+                        int(p["overbooked"]),
+                    ]
                 for i, slot in r["no_shows"]:
                     rows[i][col] = int(slot)
         for i, (_, rec) in enumerate(part.iterrows()):
-            records.append([int(rec["AppointmentID"]), rec["ScheduledDay"].strftime("%m-%d %H:%M"), int(rec["Age"]),
-                            int(rec["LeadDays"]), round(float(rec["p"]), 3), round(float(rec["p_lr"]), 3),
-                            round(float(rec["p_r4"]), 3), int(rec["y"]), s, *rows[i][3:]])
+            records.append(
+                [
+                    int(rec["AppointmentID"]),
+                    rec["ScheduledDay"].strftime("%m-%d %H:%M"),
+                    int(rec["Age"]),
+                    int(rec["LeadDays"]),
+                    round(float(rec["p"]), 3),
+                    round(float(rec["p_lr"]), 3),
+                    round(float(rec["p_r4"]), 3),
+                    int(rec["y"]),
+                    s,
+                    *rows[i][3:],
+                ]
+            )
     return agg, records
 
 
 def summarize(agg: dict, n_records: int) -> dict:
     out = {}
     for name, a in agg.items():
-        out[name] = {"seen": a["seen"], "deferred": a["deferred"], "mean_wait": a["wait_sum"] / max(a["seen"], 1),
-                     "idle_h": a["idle"] / 60, "overtime_h": a["overtime"] / 60, "utilization": a["busy"] / a["sessions"],
-                     "ob_slots": a["ob_slots"], "sessions": a["sessions"]}
+        out[name] = {
+            "seen": a["seen"],
+            "deferred": a["deferred"],
+            "mean_wait": a["wait_sum"] / max(a["seen"], 1),
+            "idle_h": a["idle"] / 60,
+            "overtime_h": a["overtime"] / 60,
+            "utilization": a["busy"] / a["sessions"],
+            "ob_slots": a["ob_slots"],
+            "sessions": a["sessions"],
+        }
     return out
 
 
@@ -198,45 +257,82 @@ document.getElementById('otitle').textContent=META.animate_name;wire('cf','f');w
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("--risks", default=str(RISKS), help="CSV written by ml/build_reports.py")
-    ap.add_argument("--source", choices=list(SOURCES), default="rf", help="risk used for the overbooking decision")
+    ap.add_argument(
+        "--source",
+        choices=list(SOURCES),
+        default="rf",
+        help="risk used for the overbooking decision",
+    )
     ap.add_argument("--threshold", type=float, default=0.30)
     ap.add_argument("--no-open", action="store_true")
     args = ap.parse_args()
     if not Path(args.risks).exists():
-        raise SystemExit(f"{args.risks} not found. Run ml/build_reports.py first (it needs the Kaggle data in ml/data/raw).")
+        raise SystemExit(
+            f"{args.risks} not found. Run ml/build_reports.py first (it needs the Kaggle data in ml/data/raw)."
+        )
 
     pool = pd.read_csv(args.risks, parse_dates=["ScheduledDay", "AppointmentDay"])
     risk_col, source_name = SOURCES[args.source]
     pool["p_sim"] = pool[risk_col]
     cfg = SessionConfig()
     animate = f"threshold {args.threshold:.2f}"
-    policies = {"fixed": fixed_interval(), animate: threshold_rule(args.threshold),
-                "threshold 0.20": threshold_rule(0.20), "threshold 0.40": threshold_rule(0.40),
-                "cost rule r=1.0": cost_rule(1.0), "cost rule r=0.5": cost_rule(0.5)}
+    policies = {
+        "fixed": fixed_interval(),
+        animate: threshold_rule(args.threshold),
+        "threshold 0.20": threshold_rule(0.20),
+        "threshold 0.40": threshold_rule(0.40),
+        "cost rule r=1.0": cost_rule(1.0),
+        "cost rule r=0.5": cost_rule(0.5),
+    }
     policies = dict(sorted(policies.items(), key=lambda kv: kv[0] != "fixed"))  # fixed first
     days = []
     for date, day in pool.groupby("AppointmentDay"):
         sim = day.copy()
-        sim["p"] = day["p_sim"]                                            # the column the simulation decides with
+        sim["p"] = day["p_sim"]  # the column the simulation decides with
         sim["p_rf"] = day["p"]
         agg, records = simulate_day(sim, cfg, "p", int(date.strftime("%Y%m%d")), policies, animate)
         # table columns always show RF / LR / R4: restore the RF column that the simulation column replaced
-        for rec, rf in zip(records, sim.set_index("AppointmentID").loc[[r[0] for r in records], "p_rf"]):
+        for rec, rf in zip(
+            records,
+            sim.set_index("AppointmentID").loc[[r[0] for r in records], "p_rf"],
+            strict=False,
+        ):
             rec[4] = round(float(rf), 3)
-        days.append({"date": f"{date:%d %b %Y}", "sessions": agg["fixed"]["sessions"], "records": records,
-                     "policies": summarize(agg, len(day))})
+        days.append(
+            {
+                "date": f"{date:%d %b %Y}",
+                "sessions": agg["fixed"]["sessions"],
+                "records": records,
+                "policies": summarize(agg, len(day)),
+            }
+        )
         f, o = days[-1]["policies"]["fixed"], days[-1]["policies"][animate]
-        print(f"{date:%Y-%m-%d}: {len(day)} appointments, {f['sessions']} sessions | seen {f['seen']} -> {o['seen']}, "
-              f"idle {f['idle_h']:.0f} h -> {o['idle_h']:.0f} h, mean wait {f['mean_wait']:.1f} -> {o['mean_wait']:.1f} min")
-    note = ("Every real appointment record of the day (test period of the Medical Appointment No Shows data) is dealt to clinic "
-            "sessions; risk and attendance are real, consultation length and lateness are simulated. The data has no doctor "
-            "information, so the split of patients over sessions is random.")
-    meta = {"session_min": cfg.session_min, "n_requests": cfg.n_requests, "animate": animate,
-            "animate_name": f"Selective overbooking ({animate}, risk: {source_name})"}
-    html = (HTML.replace("__DATA__", json.dumps({"days": days}, separators=(",", ":"))).replace("__META__", json.dumps(meta))
-            .replace("__NOTE__", note).replace("__SRC__", source_name).replace("__THR__", f"{args.threshold:.2f}"))
+        print(
+            f"{date:%Y-%m-%d}: {len(day)} appointments, {f['sessions']} sessions | seen {f['seen']} -> {o['seen']}, "
+            f"idle {f['idle_h']:.0f} h -> {o['idle_h']:.0f} h, mean wait {f['mean_wait']:.1f} -> {o['mean_wait']:.1f} min"
+        )
+    note = (
+        "Every real appointment record of the day (test period of the Medical Appointment No Shows data) is dealt to clinic "
+        "sessions; risk and attendance are real, consultation length and lateness are simulated. The data has no doctor "
+        "information, so the split of patients over sessions is random."
+    )
+    meta = {
+        "session_min": cfg.session_min,
+        "n_requests": cfg.n_requests,
+        "animate": animate,
+        "animate_name": f"Selective overbooking ({animate}, risk: {source_name})",
+    }
+    html = (
+        HTML.replace("__DATA__", json.dumps({"days": days}, separators=(",", ":")))
+        .replace("__META__", json.dumps(meta))
+        .replace("__NOTE__", note)
+        .replace("__SRC__", source_name)
+        .replace("__THR__", f"{args.threshold:.2f}")
+    )
     OUT.mkdir(exist_ok=True)
     path = OUT / "whole_day.html"
     path.write_text(html, encoding="utf-8")

@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "noshow-admin-service"
+version = "0.1.0"
+description = "Hospital administration: administrator login and schedule KPI screen"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic-settings>=2.4",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.9",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "httpx2>=2.13"]
+
+[tool.setuptools.packages.find]
+include = ["admin_service*"]
+
+[tool.setuptools.package-data]
+admin_service = ["templates/*", "static/*"]
