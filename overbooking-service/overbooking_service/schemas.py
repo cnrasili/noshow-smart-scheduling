@@ -46,6 +46,31 @@ class ScheduledMessage(BaseModel):
 
 class ScheduledMessages(BaseModel):
     messages: list[ScheduledMessage]
+    ab_group: str | None
+
+
+class KpiResponse(BaseModel):
+    utilization: float
+    idle_minutes: float
+    overtime_minutes: float
+    mean_wait_minutes: float
+    overbooked_slots: int
+    patients_seen: int
+
+
+class AbGroupSummary(BaseModel):
+    group: str
+    appointments: int
+    no_shows: int
+    no_show_rate: float | None
+
+
+class AbSummary(BaseModel):
+    unit: str
+    groups: list[AbGroupSummary]
+    difference: float | None
+    z: float | None
+    p_value: float | None
 
 
 class CancelledMessages(BaseModel):

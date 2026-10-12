@@ -1,8 +1,9 @@
 """Build a self-contained HTML dashboard: KPI cards comparing a booking policy with fixed-interval booking.
 
-    python dashboard.py --risks ../ml/data/processed/risks_random_forest.csv
-    -> simulation/output/dashboard.html (open in a browser)
+python dashboard.py --risks ../ml/data/processed/risks_random_forest.csv
+-> simulation/output/dashboard.html (open in a browser)
 """
+
 import argparse
 import base64
 import json
@@ -10,10 +11,16 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-
 import plots
 import value_ladder
-from clinic_sim import SessionConfig, cost_rule, draw_session, fixed_interval, simulate_session, threshold_rule
+from clinic_sim import (
+    SessionConfig,
+    cost_rule,
+    draw_session,
+    fixed_interval,
+    simulate_session,
+    threshold_rule,
+)
 
 OUT = Path(__file__).parent / "output"
 METRICS = {  # key: (label, unit, higher_is_better)
@@ -42,7 +49,13 @@ def simulate(cfg, pool, reps, seed) -> pd.DataFrame:
         d = draw_session(cfg, np.random.default_rng([seed, rep]), pool)
         oracle = type(d)((~d.shows).astype(float), d.shows, d.arrival_offset, d.service)
         for name, policy, is_oracle in POLICIES:
-            rows.append({"policy": name, "rep": rep, **simulate_session(cfg, policy, oracle if is_oracle else d)})
+            rows.append(
+                {
+                    "policy": name,
+                    "rep": rep,
+                    **simulate_session(cfg, policy, oracle if is_oracle else d),
+                }
+            )
     return pd.DataFrame(rows)
 
 
@@ -54,8 +67,16 @@ def summarize(res: pd.DataFrame) -> dict:
         out[name] = {}
         for m in METRICS:
             diff = g[m] - base[m]
-            half = lambda s: float(1.96 * s.std(ddof=1) / np.sqrt(len(s))) if len(s) > 1 else 0.0
-            out[name][m] = {"mean": float(g[m].mean()), "ci": half(g[m]), "delta": float(diff.mean()), "dci": half(diff)}
+
+            def half(s: pd.Series) -> float:
+                return float(1.96 * s.std(ddof=1) / np.sqrt(len(s))) if len(s) > 1 else 0.0
+
+            out[name][m] = {
+                "mean": float(g[m].mean()),
+                "ci": half(g[m]),
+                "delta": float(diff.mean()),
+                "dci": half(diff),
+            }
     return out
 
 
@@ -134,22 +155,34 @@ def main() -> None:
 
     data, sources = {}, {}
     for key, label, pool in [("synthetic", "Synthetic (calibrated Beta risks)", None)] + (
-            [("model", "Random forest (test period)", pd.read_csv(args.risks))] if args.risks else []):
+        [("model", "Random forest (test period)", pd.read_csv(args.risks))] if args.risks else []
+    ):
         data[key], sources[key] = summarize(simulate(cfg, pool, args.reps, args.seed)), label
 
     plots.tradeoff_chart(cfg, reps=args.reps)
     plots.timeline_chart(cfg)
     images = "".join(
         f'<h2>{title}</h2><img alt="{title}" src="data:image/png;base64,{b64(f)}">'
-        for title, f in [("Trade-off: idle time vs waiting time", "tradeoff.png"),
-                         ("One session, side by side", "timeline.png"),
-                         ("What each layer adds", "value_ladder.png")] if b64(f))
-    config = (f"{args.reps} simulated sessions per policy · {cfg.n_slots} slots × {cfg.slot_min:.0f} min · "
-              f"mean consultation {cfg.service_mean:.0f} min · {cfg.n_slots + cfg.extra_requests} booking requests per session · "
-              "parameters are assumptions")
-    html = (HTML.replace("__CONFIG__", config).replace("__IMAGES__", images)
-            .replace("__DATA__", json.dumps(data)).replace("__METRICS__", json.dumps(METRICS))
-            .replace("__SOURCES__", json.dumps(sources)).replace("__BASE__", json.dumps(POLICIES[0][0])))
+        for title, f in [
+            ("Trade-off: idle time vs waiting time", "tradeoff.png"),
+            ("One session, side by side", "timeline.png"),
+            ("What each layer adds", "value_ladder.png"),
+        ]
+        if b64(f)
+    )
+    config = (
+        f"{args.reps} simulated sessions per policy · {cfg.n_slots} slots × {cfg.slot_min:.0f} min · "
+        f"mean consultation {cfg.service_mean:.0f} min · {cfg.n_slots + cfg.extra_requests} booking requests per session · "
+        "parameters are assumptions"
+    )
+    html = (
+        HTML.replace("__CONFIG__", config)
+        .replace("__IMAGES__", images)
+        .replace("__DATA__", json.dumps(data))
+        .replace("__METRICS__", json.dumps(METRICS))
+        .replace("__SOURCES__", json.dumps(sources))
+        .replace("__BASE__", json.dumps(POLICIES[0][0]))
+    )
     OUT.mkdir(exist_ok=True)
     path = OUT / "dashboard.html"
     path.write_text(html, encoding="utf-8")

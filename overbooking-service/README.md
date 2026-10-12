@@ -9,7 +9,6 @@ Decision service behind the booking application. It serves the no-show model, de
 - scikit-learn and joblib for model serving
 - APScheduler for reminder jobs
 - Mailpit (SMTP) for confirmation and reminder emails in development
-- Jinja2 + Chart.js for the KPI dashboard
 - pytest
 
 ## Scope
@@ -18,7 +17,7 @@ Decision service behind the booking application. It serves the no-show model, de
 - Rule engine for slot-level overbooking
 - Scheduled confirmation and reminder jobs
 - Logging for the reminder A/B comparison
-- KPI dashboard: utilization, idle time, overtime
+- Schedule KPIs: utilization, idle time, overtime; shown on the KPI screen of the [admin service](../admin-service/)
 
 ## Endpoints
 
@@ -57,22 +56,47 @@ Models trained on named columns receive a DataFrame; others receive an array in 
 
 The current model is a placeholder (`dummy-v0`) created by `scripts/make_dummy_model.py`.
 
+### Installing a Delivered Model
+
+The prediction model side delivers `model.joblib` and `feature_schema.json` in `ml/models/`. Install them with:
+
+```bash
+python -m overbooking_service.install_model --source ../ml/models
+```
+
+The command refuses the model, and keeps the installed one, when:
+
+- a file is missing or the model cannot be loaded (feature count, trained column names or `positive_class` do not match the schema),
+- the schema features differ from the features the service computes (`overbooking_service/features.py`),
+- a no-show probability lies outside 0–1, or long lead times with past no-shows do not score higher than reliable short-notice patients.
+
+A different scikit-learn minor version is reported as a warning. The same checks are the acceptance tests in `tests/test_model_acceptance.py`. Commit the installed files, then restart the service to load the model; with Docker Compose rebuild it, since the model is part of the image:
+
+```bash
+docker compose up --build -d overbooking-service
+```
+
+The previously installed model stays available in the Git history.
+
 ## Patient Data
 
-Features are computed from the patient record and appointment history. Access goes through the `PatientDataSource` interface in `overbooking_service/data_source.py`. Until the booking application tables exist, `/predict` returns `503`.
+Features are computed from the patient record and appointment history in the `patients` and `appointments` tables. Only appointments with a recorded `attended` value count as history. Access goes through the `PatientDataSource` interface in `overbooking_service/data_source.py`; `/predict` returns `503` when the tables cannot be read.
 
 ## Overbooking Rule
 
 `POST /booking-decision` decides whether a patient may be booked into a slot. The rule is the pure function `decide` in `overbooking_service/rules.py`; the decision table is in the [API contract](../docs/api-contract.md#post-booking-decision).
 
-Slot state is read through the `SlotDataSource` interface in `overbooking_service/data_source.py`. Until the booking application tables exist, `/booking-decision` returns `503`.
+Slot state is read from the `slots` and `appointments` tables through the `SlotDataSource` interface in `overbooking_service/data_source.py`; `/booking-decision` returns `503` when the tables cannot be read.
+
+- Slot capacity is the slot's `max_patients` column.
+- The slot date is the date of `start_at` in `clinic_timezone` (`config.yaml`, default `Europe/Istanbul`), the same time zone as the database triggers.
+- Daily overbooks are the appointments after the first one in each slot of the doctor on that date.
 
 Rule parameters are read from `config.yaml`. The current values are defaults until the simulation study sets the final ones.
 
 | Setting | Default | Meaning |
 |---|---|---|
 | `threshold` | 0.30 | Minimum `p_noshow` of the booked patient for an overbook |
-| `max_patients_per_slot` | 2 | Maximum patients in one slot, including overbooks |
 | `daily_overbook_limit` | 2 | Maximum overbooks per doctor per day |
 
 Environment variables override the file, for example `OVERBOOKING__THRESHOLD=0.25`. With Docker Compose, rebuild the service after editing `config.yaml`.
@@ -110,3 +134,69 @@ Settings in `config.yaml`:
 | `max_attempts` | 3 | Send attempts before a message is marked `failed` |
 
 Messages are sent by email when `SMTP_HOST` is set; otherwise they are written to the service log. With Docker Compose, emails go to Mailpit at http://localhost:8025.
+
+## Reminder A/B Test
+
+Each appointment that can get a reminder is assigned to the `reminder` or `control` group, and the assignment is logged in the `ab_assignments` table. The control group gets the confirmation but no reminder. The group is a hash of the patient id and `salt`, so a patient stays in the same group for all appointments and the groups are about equal in size.
+
+`GET /ab/summary` compares the no-show rates of the two groups using `appointments.attended` (see the [API contract](../docs/api-contract.md#get-absummary)). With `unit=patient` each patient counts once, through the earliest appointment with an outcome; this keeps the observations of the z-test independent.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `ab_test.enabled` | true | Assign groups; when false, every appointment gets a reminder |
+| `ab_test.salt` | `reminder-ab-v1` | Hash salt; changing it reassigns patients |
+
+## KPIs
+
+`GET /kpi` returns utilization, physician idle time, overtime, mean waiting time and overbooked slots for a doctor and a date (see the [API contract](../docs/api-contract.md#get-kpi) and [KPI definitions](../docs/kpi-definitions.md)). The KPI screen of the [admin service](../admin-service/) shows them for the selected date and the days before it, with a chart and a table.
+
+The booking application does not record consultation times, so the KPIs replay the day from the schedule:
+
+- The session runs from the doctor's first slot start to the last slot end (`kpi.session: slots`), or over the doctor's working hours of the weekday (`kpi.session: schedule`). With `schedule`, time within the working hours without slots counts as idle and work after the working hours as overtime; a day without working hours falls back to `slots`.
+- Patients with `attended = true` are seen in slot order, each for `service_minutes`, and arrive on time.
+- Appointments without a recorded attendance are not counted as seen.
+
+The default consultation length is the simulation's mean service time.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `kpi.service_minutes` | 12 | Consultation length in minutes |
+| `kpi.session` | `slots` | Session definition: `slots` or `schedule`; the final choice belongs to the session parameters decided with the simulation side |
+
+## Demo Data
+
+`python -m overbooking_service.demo` adds simulated booking history to the clinic created by the web backend seed (`python -m web_backend.seed`):
+
+- 200 patients without login accounts, with attributes drawn at rates similar to the public dataset. The seeded patients with accounts also take part.
+- The generated patients get fictional national ID numbers of the web backend's demo pattern (prefix `99999`, a four-digit number from 1000 up, check digits); numbers already in use are skipped. They are made up and belong to no real person.
+- Booking requests for the seeded doctors' slots from three weeks before the demo date to one week after it, processed with the same overbooking rule as `/booking-decision`: the first empty slot, otherwise the first slot the rule allows to overbook.
+- Every request is logged in `booking_decisions` like a live booking: the granted decision, or the refusal for the first slot the request asked for. The admin service shows the log on its decisions page.
+- Past appointments get an outcome drawn from the model's `p_noshow` and, when a reminder was possible, an A/B group. Future appointments have no outcome, so free slots remain for live bookings.
+- Doctor-days the seed already booked are left unchanged, so the doctor can mark attendance in the web application. Their past bookings get an A/B group, so marking attendance changes `/ab/summary`.
+- No messages are created for the generated appointments; only appointments reported to `POST /events/appointment-booked` get a confirmation and a reminder.
+- Slot length and working hours come from the web backend seed.
+
+| Option | Default | Meaning |
+|---|---|---|
+| `--today` | today | Demo date in the clinic time zone |
+| `--seed` | 42 | Random seed; the same seed gives the same data |
+| `--reminder-effect` | 0 | Relative no-show reduction in the reminder group; 0 means reminders have no simulated effect |
+
+The command refuses to run before the web backend seed and when the demo history already exists. To start from an empty database, remove the Docker volume with `docker compose down -v`; this deletes all local data.
+
+### Demo Scenario
+
+1. Start the stack and load the demo data:
+
+   ```bash
+   docker compose up --build -d
+   docker compose exec web-backend python -m web_backend.seed
+   docker compose exec overbooking-service python -m overbooking_service.demo
+   ```
+
+   The last command prints an empty and a booked slot of the first doctor with slots after the demo date.
+
+2. Create an administrator (see the [admin service](../admin-service/README.md#setup)) and open the KPI screen at http://localhost:8002. The past days show utilization, idle time, overtime, waiting time and overbooked slots, and the reminder A/B test.
+3. Open http://localhost:8001/ab/summary to compare the no-show rates of the reminder and control groups, and http://localhost:8001/ab/summary?unit=patient for one observation per patient.
+4. In the API docs at http://localhost:8001/docs, call `POST /booking-decision` for the empty slot (normal booking) and for the booked slot (overbook or reject, with the reason).
+5. Call `POST /events/appointment-booked` for a new appointment id. The response shows the A/B group and the scheduled messages; the confirmation appears in Mailpit at http://localhost:8025 within a minute.

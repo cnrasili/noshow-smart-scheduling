@@ -1,8 +1,10 @@
-"""Template 3: a buffer slot in the middle, overbooking only after the buffer and not in the last slot.
+"""Template 3: a buffer slot in the middle, overbooking only after it and not in the last slot.
 
-Idea: delays caused by overbooking spread to all later patients. A buffer slot lets the physician catch up,
-and keeping overbooking away from the first half and the last slot limits cascades and overtime.
+Idea: delays caused by overbooking spread to all later patients. A buffer slot lets the physician
+catch up, and keeping overbooking away from the first half and the last slot limits cascades and
+overtime.
 """
+
 from template_base import Template, render_html
 
 TEMPLATE = Template(

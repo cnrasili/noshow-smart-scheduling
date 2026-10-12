@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Denetim kaydı{% endblock %}
+{% block content %}
+<header>
+  <h1>Denetim kaydı</h1>
+  <p class="muted">Son {{ rows | length }} olay, en yenisi üstte. Saatler klinik saatiyle.</p>
+</header>
+<section aria-label="Denetim kaydı">
+  {% if rows %}
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Zaman</th>
+        <th scope="col">Olay</th>
+        <th scope="col">E-posta</th>
+        <th scope="col">İstemci adresi</th>
+        <th scope="col">Ayrıntı</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td>{{ row.created_at | clinic_time }}</td>
+        <td>{{ audit_events.get(row.action, row.action) }}</td>
+        <td>{{ row.email }}</td>
+        <td>{{ row.client_ip }}</td>
+        <td>{{ row.detail or '' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">Henüz olay yok.</p>
+  {% endif %}
+</section>
+{% endblock %}

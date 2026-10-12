@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Hasta hesabı aç{% endblock %}
+{% block content %}
+<section class="form-page">
+  <h1>Hasta hesabı aç</h1>
+  <p class="muted">Hasta T.C. kimlik numarasıyla giriş yapar. İlk şifre otomatik oluşturulur ve bir kez gösterilir.</p>
+  {% if error %}
+  <p class="error" role="alert">{{ error }}</p>
+  {% endif %}
+  <form method="post" action="{{ url_for('create_patient') }}" class="stack">
+    <input type="hidden" name="csrf_token" value="{{ csrf(request) }}" />
+    <label>
+      T.C. kimlik numarası
+      <input name="national_id" value="{{ values.national_id or '' }}" required inputmode="numeric" pattern="[1-9][0-9]{10}" maxlength="11" />
+    </label>
+    <label>
+      Ad soyad
+      <input name="full_name" value="{{ values.full_name or '' }}" required maxlength="255" />
+    </label>
+    <label>
+      E-posta (randevu bildirimleri için)
+      <input type="email" name="email" value="{{ values.email or '' }}" required maxlength="255" />
+    </label>
+    <label>
+      Yaş
+      <input type="number" name="age" value="{{ values.age or '' }}" required min="0" max="130" />
+    </label>
+    <label>
+      Cinsiyet
+      <select name="gender" required>
+        <option value="F" {% if values.gender == 'F' %}selected{% endif %}>Kadın</option>
+        <option value="M" {% if values.gender == 'M' %}selected{% endif %}>Erkek</option>
+      </select>
+    </label>
+    <label>
+      Engellilik düzeyi (0–4)
+      <input type="number" name="handcap" value="{{ values.handcap or '0' }}" min="0" max="4" />
+    </label>
+    <fieldset>
+      <legend>Kayıtlı durumlar</legend>
+      {% for flag, label in flags.items() %}
+      <label class="check">
+        <input type="checkbox" name="{{ flag }}" {% if values[flag] %}checked{% endif %} />
+        {{ label }}
+      </label>
+      {% endfor %}
+    </fieldset>
+    <button type="submit">Hesabı aç</button>
+  </form>
+</section>
+{% endblock %}

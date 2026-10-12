@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Randevu göstergeleri{% endblock %}
+{% block content %}
+<header>
+  <h1>Randevu göstergeleri</h1>
+  <form method="get" action="{{ url_for('kpi_page') }}">
+    <label>
+      Hekim
+      <select name="doctor_id">
+        {% for doctor in doctors %}
+        <option value="{{ doctor.id }}" {% if selected and doctor.id == selected.id %}selected{% endif %}>
+          {{ doctor.full_name }}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      Tarih
+      <input type="date" name="date" value="{{ day.isoformat() }}" />
+    </label>
+    <button type="submit">Göster</button>
+  </form>
+</header>
+
+{% if error %}
+<p class="error" role="alert">{{ error }}</p>
+{% elif not selected %}
+<p class="empty">Henüz hekim kaydı yok.</p>
+{% else %}
+<section aria-label="{{ day | long_date }} göstergeleri">
+  <h2>{{ selected.full_name }} · {{ day | long_date }}</h2>
+  {% if today %}
+  <div class="tiles">
+    <div class="tile"><span>Doluluk</span><strong>{{ today.utilization | percent }}</strong></div>
+    <div class="tile"><span>Hekim boş süresi</span><strong>{{ today.idle_minutes | decimal(0) }} dk</strong></div>
+    <div class="tile"><span>Fazla mesai</span><strong>{{ today.overtime_minutes | decimal(0) }} dk</strong></div>
+    <div class="tile"><span>Ortalama bekleme</span><strong>{{ today.mean_wait_minutes | decimal }} dk</strong></div>
+    <div class="tile"><span>Ek randevulu slot</span><strong>{{ today.overbooked_slots }}</strong></div>
+    <div class="tile"><span>Muayene edilen hasta</span><strong>{{ today.patients_seen }}</strong></div>
+  </div>
+  {% else %}
+  <p class="empty">Bu tarihte slot yok.</p>
+  {% endif %}
+</section>
+
+<section aria-label="Son {{ days | length }} gün">
+  <h2>Son {{ days | length }} gün</h2>
+  {% if chart %}
+  <div class="chart"><canvas id="kpi-chart" aria-label="Günlük boş süre, fazla mesai ve doluluk" role="img"></canvas></div>
+  {% endif %}
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Tarih</th>
+        <th scope="col">Doluluk</th>
+        <th scope="col">Boş süre (dk)</th>
+        <th scope="col">Fazla mesai (dk)</th>
+        <th scope="col">Ort. bekleme (dk)</th>
+        <th scope="col">Ek randevulu slot</th>
+        <th scope="col">Muayene</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in days | reverse %}
+      <tr>
+        <td>{{ row.date.strftime('%d.%m.%Y') }}</td>
+        {% if row.kpis %}
+        <td>{{ row.kpis.utilization | percent }}</td>
+        <td>{{ row.kpis.idle_minutes | decimal(0) }}</td>
+        <td>{{ row.kpis.overtime_minutes | decimal(0) }}</td>
+        <td>{{ row.kpis.mean_wait_minutes | decimal }}</td>
+        <td>{{ row.kpis.overbooked_slots }}</td>
+        <td>{{ row.kpis.patients_seen }}</td>
+        {% else %}
+        <td colspan="6" class="muted">Slot yok</td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+{% if ab %}
+<section aria-label="Hatırlatma A/B testi">
+  <h2>Hatırlatma A/B testi</h2>
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Grup</th>
+        <th scope="col">Randevu</th>
+        <th scope="col">Gelmeyen</th>
+        <th scope="col">Gelmeme oranı</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for group in ab.groups %}
+      <tr>
+        <td>{{ ab_groups.get(group.group, group.group) }}</td>
+        <td>{{ group.appointments }}</td>
+        <td>{{ group.no_shows }}</td>
+        <td>{% if group.no_show_rate is not none %}{{ group.no_show_rate | percent }}{% else %}–{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted">
+    {% if ab.p_value is not none %}
+    Fark {{ (ab.difference * 100) | decimal }} yüzde puan, z = {{ ab.z | decimal(2) }}, p = {{ ab.p_value | decimal(3) }} (iki oran z-testi).
+    {% else %}
+    Test için henüz yeterli geliş kaydı yok.
+    {% endif %}
+  </p>
+</section>
+{% endif %}
+
+<footer>
+  Göstergeleri randevu karar servisi hesaplar; tanımlar docs/kpi-definitions.md belgesindedir. Geliş kaydı girilmemiş
+  randevular muayene edilmiş sayılmaz.
+</footer>
+{% endblock %}
+
+{% block scripts %}
+{% if chart %}
+<script type="application/json" id="kpi-data">{{ chart | tojson }}</script>
+<script src="{{ url_for('static', path='chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', path='kpi.js') }}"></script>
+{% endif %}
+{% endblock %}

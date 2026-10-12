@@ -1,4 +1,6 @@
+from enum import StrEnum
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, Field
 from pydantic_settings import (
@@ -22,6 +24,29 @@ class ReminderSettings(BaseModel):
     max_attempts: int = Field(ge=1)
 
 
+class AbTestSettings(BaseModel):
+    """Reminder A/B test settings."""
+
+    enabled: bool
+    salt: str = Field(min_length=1)
+
+
+class SessionDefinition(StrEnum):
+    """What counts as a doctor's session for the KPIs."""
+
+    # First slot start to last slot end of the day
+    SLOTS = "slots"
+    # The doctor's working hours of the weekday; days without working hours fall back to SLOTS
+    SCHEDULE = "schedule"
+
+
+class KpiSettings(BaseModel):
+    """KPI calculation settings."""
+
+    service_minutes: float = Field(gt=0)
+    session: SessionDefinition = SessionDefinition.SLOTS
+
+
 class Settings(BaseSettings):
     """Service settings read from environment variables and config.yaml."""
 
@@ -31,11 +56,15 @@ class Settings(BaseSettings):
     )
 
     model_dir: Path = SERVICE_ROOT / "models"
+    # Slot dates follow the clinic's local calendar
+    clinic_timezone: ZoneInfo
     overbooking: OverbookingRule
     reminders: ReminderSettings
+    ab_test: AbTestSettings
+    kpi: KpiSettings
     smtp_host: str | None = None
     smtp_port: int = 1025
-    mail_from: str = "clinic@noshow.local"
+    mail_from: str = "randevu@sehirhastanesi.example"
 
     @classmethod
     def settings_customise_sources(

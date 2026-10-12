@@ -3,8 +3,9 @@ to data/processed/: logistic_regression.xlsx, random_forest.xlsx, auc_calibratio
 
 Split: by appointment date (older appointments train, the latest ~20 % of rows test).
 Features follow docs/features.md (SMS_received is excluded).
-Rule baseline R4 (docs/formulas/rules.md) uses gender as the group in place of department.
+Rule baseline R4 uses gender as the group in place of department.
 """
+
 from pathlib import Path
 
 import numpy as np
@@ -13,17 +14,28 @@ from openpyxl import Workbook
 from openpyxl.chart import Reference, ScatterChart, Series
 from openpyxl.styles import Font
 from openpyxl.utils import get_column_letter as L
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.linear_model import LogisticRegression
 from scipy.optimize import brentq
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.inspection import permutation_importance
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import brier_score_loss, log_loss, roc_auc_score
 from sklearn.preprocessing import StandardScaler
 
 DATA = Path(__file__).parent / "data" / "processed"
 SRC = DATA / "appointments_clean.xlsx"
-FEATURES = ["LeadDays", "Weekday", "Age", "GenderMale", "Scholarship", "Hypertension", "Diabetes",
-            "Alcoholism", "Handicap", "PriorApptCount", "PriorNoShowCount"]
+FEATURES = [
+    "LeadDays",
+    "Weekday",
+    "Age",
+    "GenderMale",
+    "Scholarship",
+    "Hypertension",
+    "Diabetes",
+    "Alcoholism",
+    "Handicap",
+    "PriorApptCount",
+    "PriorNoShowCount",
+]
 K, K_P, EPS = 5, 5, 0.001
 BOLD = Font(bold=True)
 
@@ -37,7 +49,9 @@ def load():
     df = pd.read_excel(SRC, sheet_name="data")
     df["GenderMale"] = (df["Gender"] == "M").astype(int)
     dates = np.sort(df["AppointmentDay"].dt.normalize().unique())
-    counts = df.groupby(df["AppointmentDay"].dt.normalize()).size().reindex(dates).cumsum() / len(df)
+    counts = df.groupby(df["AppointmentDay"].dt.normalize()).size().reindex(dates).cumsum() / len(
+        df
+    )
     cut = counts[counts >= 0.80].index[0]  # last day of the training period
     train = df[df["AppointmentDay"].dt.normalize() <= cut].copy()
     test = df[df["AppointmentDay"].dt.normalize() > cut].copy()
@@ -106,11 +120,18 @@ def info_sheet(wb, rows):
 
 
 def split_info(train, test, cut):
-    return [("Train rows", len(train)), ("Test rows", len(test)),
-            ("Train period ends", f"{cut:%Y-%m-%d}"),
-            ("Test period", f"{test.AppointmentDay.min():%Y-%m-%d} to {test.AppointmentDay.max():%Y-%m-%d}"),
-            ("Target", "NoShow (1 = missed the appointment); predictions are no-show probabilities"),
-            ("Features", ", ".join(FEATURES)), ("Excluded", "SMS_received (sent after booking)")]
+    return [
+        ("Train rows", len(train)),
+        ("Test rows", len(test)),
+        ("Train period ends", f"{cut:%Y-%m-%d}"),
+        (
+            "Test period",
+            f"{test.AppointmentDay.min():%Y-%m-%d} to {test.AppointmentDay.max():%Y-%m-%d}",
+        ),
+        ("Target", "NoShow (1 = missed the appointment); predictions are no-show probabilities"),
+        ("Features", ", ".join(FEATURES)),
+        ("Excluded", "SMS_received (sent after booking)"),
+    ]
 
 
 def logistic_report(train, test, cut):
@@ -123,20 +144,39 @@ def logistic_report(train, test, cut):
     assert np.allclose(p, lr.predict_proba(sc.transform(test[FEATURES]))[:, 1])
 
     wb = Workbook()
-    info_sheet(wb, split_info(train, test, cut) + [("Model", "Logistic regression (L2-penalised, sklearn default C=1, lbfgs, unweighted; features standardised for fitting, coefficients converted to raw scale)")] +
-               [(f"Test {k}", round(v, 4)) for k, v in metrics(test["NoShow"], p).items()])
+    info_sheet(
+        wb,
+        split_info(train, test, cut)
+        + [
+            (
+                "Model",
+                "Logistic regression (L2-penalised, sklearn default C=1, lbfgs, unweighted; "
+                "features standardised for fitting, coefficients converted to raw scale)",
+            )
+        ]
+        + [(f"Test {k}", round(v, 4)) for k, v in metrics(test["NoShow"], p).items()],
+    )
     ws = wb.create_sheet("coefficients")
     header(ws, 1, ["Term", "Coefficient", "Odds ratio"])
-    ws.cell(2, 1, "Intercept"); ws.cell(2, 2, float(b0)); ws.cell(2, 3, "")
-    for i, (f, c) in enumerate(zip(FEATURES, coef), 3):
-        ws.cell(i, 1, f); ws.cell(i, 2, float(c)); ws.cell(i, 3, f"=EXP(B{i})")
+    ws.cell(2, 1, "Intercept")
+    ws.cell(2, 2, float(b0))
+    ws.cell(2, 3, "")
+    for i, (f, c) in enumerate(zip(FEATURES, coef, strict=False), 3):
+        ws.cell(i, 1, f)
+        ws.cell(i, 2, float(c))
+        ws.cell(i, 3, f"=EXP(B{i})")
     ws.column_dimensions["A"].width = 22
     ws.column_dimensions["B"].width = 16
 
     ws = wb.create_sheet("predictions")
     cols = ["AppointmentID"] + FEATURES + ["NoShow", "p_python", "p_excel_formula"]
     header(ws, 1, cols)
-    for r, (row, pp) in enumerate(zip(test[["AppointmentID"] + FEATURES + ["NoShow"]].itertuples(index=False), p), 2):
+    for r, (row, pp) in enumerate(
+        zip(
+            test[["AppointmentID"] + FEATURES + ["NoShow"]].itertuples(index=False), p, strict=False
+        ),
+        2,
+    ):
         for c, v in enumerate(row, 1):
             ws.cell(r, c, v.item() if hasattr(v, "item") else v)
         nf = len(FEATURES)
@@ -153,16 +193,28 @@ def forest_report(train, test, cut):
     rf.fit(train[FEATURES], train["NoShow"])
     p = rf.predict_proba(test[FEATURES])[:, 1]
     wb = Workbook()
-    info_sheet(wb, split_info(train, test, cut) +
-               [("Model", "Random forest: 300 trees, min_samples_leaf=50, random_state=42, unweighted")] +
-               [(f"Test {k}", round(v, 4)) for k, v in metrics(test["NoShow"], p).items()])
+    info_sheet(
+        wb,
+        split_info(train, test, cut)
+        + [("Model", "Random forest: 300 trees, min_samples_leaf=50, random_state=42, unweighted")]
+        + [(f"Test {k}", round(v, 4)) for k, v in metrics(test["NoShow"], p).items()],
+    )
     imp = pd.DataFrame({"Feature": FEATURES, "Importance": rf.feature_importances_}).sort_values(
-        "Importance", ascending=False)
+        "Importance", ascending=False
+    )
     dump_df(wb.create_sheet("feature_importance"), imp)
-    pi = permutation_importance(rf, test[FEATURES], test["NoShow"], scoring="roc_auc", n_repeats=5,
-                                random_state=0, n_jobs=-1)
-    pimp = pd.DataFrame({"Feature": FEATURES, "AUC drop when shuffled (test)": pi.importances_mean}).sort_values(
-        "AUC drop when shuffled (test)", ascending=False)
+    pi = permutation_importance(
+        rf,
+        test[FEATURES],
+        test["NoShow"],
+        scoring="roc_auc",
+        n_repeats=5,
+        random_state=0,
+        n_jobs=-1,
+    )
+    pimp = pd.DataFrame(
+        {"Feature": FEATURES, "AUC drop when shuffled (test)": pi.importances_mean}
+    ).sort_values("AUC drop when shuffled (test)", ascending=False)
     dump_df(wb.create_sheet("permutation_importance"), pimp)
     out = test[["AppointmentID"] + FEATURES + ["NoShow"]].copy()
     out["p_python"] = p
@@ -176,9 +228,12 @@ def eval_block(ws, name, pcol, n, top):
     last = n + 1
     y, p = f"predictions!$B$2:$B${last}", f"predictions!${pcol}$2:${pcol}${last}"
     ws.cell(top, 1, name).font = Font(bold=True, size=13)
-    ws.cell(top + 1, 1, "Positives (no-show)"); ws.cell(top + 1, 2, f"=SUM({y})")
-    ws.cell(top + 2, 1, "Negatives (show)"); ws.cell(top + 2, 2, f"=COUNT({y})-B{top + 1}")
-    ws.cell(top + 3, 1, "Brier score"); ws.cell(top + 3, 2, f"=SUMPRODUCT(({p}-{y})^2)/COUNT({y})")
+    ws.cell(top + 1, 1, "Positives (no-show)")
+    ws.cell(top + 1, 2, f"=SUM({y})")
+    ws.cell(top + 2, 1, "Negatives (show)")
+    ws.cell(top + 2, 2, f"=COUNT({y})-B{top + 1}")
+    ws.cell(top + 3, 1, "Brier score")
+    ws.cell(top + 3, 2, f"=SUMPRODUCT(({p}-{y})^2)/COUNT({y})")
     ws.cell(top + 4, 1, "AUC (trapezoid, 0.005 grid)")
     r0 = top + 7
     header(ws, r0 - 1, ["Threshold", "TPR", "FPR"])
@@ -189,7 +244,11 @@ def eval_block(ws, name, pcol, n, top):
         ws.cell(r, 2, f'=COUNTIFS({y},1,{p},">="&A{r})/$B${top + 1}')
         ws.cell(r, 3, f'=COUNTIFS({y},0,{p},">="&A{r})/$B${top + 2}')
     rl = r0 + steps - 1
-    ws.cell(top + 4, 2, f"=SUMPRODUCT((C{r0 + 1}:C{rl}-C{r0}:C{rl - 1})*(B{r0 + 1}:B{rl}+B{r0}:B{rl - 1}))/2")
+    ws.cell(
+        top + 4,
+        2,
+        f"=SUMPRODUCT((C{r0 + 1}:C{rl}-C{r0}:C{rl - 1})*(B{r0 + 1}:B{rl}+B{r0}:B{rl - 1}))/2",
+    )
 
     cc = 6  # calibration table starts at column F
     header_row = top + 6
@@ -206,18 +265,31 @@ def eval_block(ws, name, pcol, n, top):
         ws.cell(r, cc + 4, f"=AVERAGEIFS({p},{cond})")
         ws.cell(r, cc + 5, f"=AVERAGEIFS({y},{cond})")
 
-    roc = ScatterChart(); roc.title = f"ROC - {name}"; roc.style = 13
+    roc = ScatterChart()
+    roc.title = f"ROC - {name}"
+    roc.style = 13
     roc.x_axis.title, roc.y_axis.title = "FPR", "TPR"
-    s = Series(Reference(ws, min_col=2, min_row=r0, max_row=rl), Reference(ws, min_col=3, min_row=r0, max_row=rl), title="ROC")
-    s.marker.symbol = "none"; roc.series.append(s)
+    s = Series(
+        Reference(ws, min_col=2, min_row=r0, max_row=rl),
+        Reference(ws, min_col=3, min_row=r0, max_row=rl),
+        title="ROC",
+    )
+    s.marker.symbol = "none"
+    roc.series.append(s)
     roc.height, roc.width = 7.5, 9
     ws.add_chart(roc, f"{L(cc + 7)}{top}")
-    cal = ScatterChart(); cal.title = f"Calibration - {name}"; cal.style = 13
+    cal = ScatterChart()
+    cal.title = f"Calibration - {name}"
+    cal.style = 13
     cal.x_axis.title, cal.y_axis.title = "Mean predicted", "Observed rate"
     rr = Reference(ws, min_col=cc + 5, min_row=header_row + 1, max_row=header_row + 10)
     xx = Reference(ws, min_col=cc + 4, min_row=header_row + 1, max_row=header_row + 10)
-    s = Series(rr, xx, title="Model"); s.marker.symbol = "circle"; cal.series.append(s)
-    s = Series(xx, xx, title="Perfect"); s.marker.symbol = "none"; cal.series.append(s)
+    s = Series(rr, xx, title="Model")
+    s.marker.symbol = "circle"
+    cal.series.append(s)
+    s = Series(xx, xx, title="Perfect")
+    s.marker.symbol = "none"
+    cal.series.append(s)
     cal.height, cal.width = 7.5, 9
     ws.add_chart(cal, f"{L(cc + 7 + 10)}{top}")
     return rl + 3
@@ -227,25 +299,46 @@ def comparison_report(train, test, cut, preds, r4info):
     n = len(test)
     wb = Workbook()
     y = test["NoShow"]
-    rows = split_info(train, test, cut) + [("R4 rule", "docs/formulas/rules.md; gender used as group instead of department")]
+    rows = split_info(train, test, cut) + [
+        ("R4 rule", "Rule-based baseline; gender used as group instead of department")
+    ]
     for name, p in preds.items():
         lo, hi = bootstrap_auc_ci(y, p)
         a, sl = calibration_stats(y, p)
-        rows += [(f"{name} AUC (exact, Python)", round(roc_auc_score(y, p), 4)),
-                 (f"{name} AUC 95% CI (bootstrap, 200 resamples)", f"{lo:.3f} - {hi:.3f}"),
-                 (f"{name} Brier (Python)", round(brier_score_loss(y, p), 4)),
-                 (f"{name} calibration-in-the-large (0 = ideal)", round(a, 3)),
-                 (f"{name} calibration slope (1 = ideal)", round(sl, 3))]
+        rows += [
+            (f"{name} AUC (exact, Python)", round(roc_auc_score(y, p), 4)),
+            (f"{name} AUC 95% CI (bootstrap, 200 resamples)", f"{lo:.3f} - {hi:.3f}"),
+            (f"{name} Brier (Python)", round(brier_score_loss(y, p), 4)),
+            (f"{name} calibration-in-the-large (0 = ideal)", round(a, 3)),
+            (f"{name} calibration slope (1 = ideal)", round(sl, 3)),
+        ]
     base = np.full(len(y), train["NoShow"].mean())
-    rows += [("No-show rate: train / test", f"{train['NoShow'].mean():.4f} / {y.mean():.4f}"),
-             ("Brier of constant predictor (train rate)", round(brier_score_loss(y, base), 4)),
-             ("Note", "All models over-predict slightly because the no-show rate fell from train to test (prevalence shift)"),
-             ("How to read", "evaluation sheet: ROC and calibration tables are Excel formulas over the predictions sheet")]
+    rows += [
+        ("No-show rate: train / test", f"{train['NoShow'].mean():.4f} / {y.mean():.4f}"),
+        ("Brier of constant predictor (train rate)", round(brier_score_loss(y, base), 4)),
+        (
+            "Note",
+            "All models over-predict slightly because the no-show rate fell from train to test "
+            "(prevalence shift)",
+        ),
+        (
+            "How to read",
+            "evaluation sheet: ROC and calibration tables are Excel formulas "
+            "over the predictions sheet",
+        ),
+    ]
     info_sheet(wb, rows)
     ws = wb.create_sheet("predictions")
-    header(ws, 1, ["AppointmentID", "NoShow"] + [f"p_{k}" for k in preds] + ["Gender", "AgeBand", "PriorApptCount"])
+    header(
+        ws,
+        1,
+        ["AppointmentID", "NoShow"]
+        + [f"p_{k}" for k in preds]
+        + ["Gender", "AgeBand", "PriorApptCount"],
+    )
     for r in range(n):
-        ws.cell(r + 2, 1, int(test["AppointmentID"].iloc[r])); ws.cell(r + 2, 2, int(y.iloc[r]))
+        ws.cell(r + 2, 1, int(test["AppointmentID"].iloc[r]))
+        ws.cell(r + 2, 2, int(y.iloc[r]))
         for c, p in enumerate(preds.values(), 3):
             ws.cell(r + 2, c, float(p[r]))
         ws.cell(r + 2, 3 + len(preds), test["Gender"].iloc[r])
@@ -260,30 +353,47 @@ def comparison_report(train, test, cut, preds, r4info):
 
     sg = wb.create_sheet("subgroups")
     header(sg, 1, ["Group", "Rows", "No-show rate"] + [f"AUC {k}" for k in preds])
-    groups = {f"Gender {g}": test["Gender"].to_numpy() == g for g in sorted(test["Gender"].unique())}
-    groups.update({f"Age {a}": test["AgeBand"].astype(str).to_numpy() == a
-                   for a in sorted(test["AgeBand"].astype(str).unique())})
+    groups = {
+        f"Gender {g}": test["Gender"].to_numpy() == g for g in sorted(test["Gender"].unique())
+    }
+    groups.update(
+        {
+            f"Age {a}": test["AgeBand"].astype(str).to_numpy() == a
+            for a in sorted(test["AgeBand"].astype(str).unique())
+        }
+    )
     for r, (g, m) in enumerate(groups.items(), 2):
-        sg.cell(r, 1, g); sg.cell(r, 2, int(m.sum())); sg.cell(r, 3, float(y[m].mean()))
+        sg.cell(r, 1, g)
+        sg.cell(r, 2, int(m.sum()))
+        sg.cell(r, 3, float(y[m].mean()))
         for c, p in enumerate(preds.values(), 4):
             sg.cell(r, c, float(roc_auc_score(y[m], p[m])))
     sg.column_dimensions["A"].width = 18
 
     # R4 inputs (rates learned on the training period)
     rs = wb.create_sheet("r4_rates")
-    rs.cell(1, 1, "Global show rate (train)").font = BOLD; rs.cell(1, 2, float(r4info["s_bar"]))
-    rs.cell(3, 1, "Group").font = BOLD; rs.cell(3, 2, "Smoothed show rate (k=5)").font = BOLD
+    rs.cell(1, 1, "Global show rate (train)").font = BOLD
+    rs.cell(1, 2, float(r4info["s_bar"]))
+    rs.cell(3, 1, "Group").font = BOLD
+    rs.cell(3, 2, "Smoothed show rate (k=5)").font = BOLD
     r = 4
-    for k, v in {**{f"Gender {a}": b for a, b in r4info["gender"].items()},
-                 **{f"Age {a}": b for a, b in r4info["age"].items()}}.items():
-        rs.cell(r, 1, k); rs.cell(r, 2, float(v)); r += 1
+    for k, v in {
+        **{f"Gender {a}": b for a, b in r4info["gender"].items()},
+        **{f"Age {a}": b for a, b in r4info["age"].items()},
+    }.items():
+        rs.cell(r, 1, k)
+        rs.cell(r, 2, float(v))
+        r += 1
     rs.column_dimensions["A"].width = 28
     wb.save(DATA / "auc_calibration.xlsx")
 
 
 def cv_risks(df, folds: int = 5) -> pd.DataFrame:
-    """Out-of-sample risks for EVERY appointment day: days are dealt to folds (round robin over the calendar),
-    each fold is predicted by models trained on the other folds. Written to risks_all_days.csv for the simulation."""
+    """Out-of-sample risks for EVERY appointment day.
+
+    Days are dealt to folds (round robin over the calendar), each fold is predicted by models
+    trained on the other folds. Written to risks_all_days.csv for the simulation.
+    """
     days = sorted(df["AppointmentDay"].dt.normalize().unique())
     fold_of = {d: i % folds for i, d in enumerate(days)}
     df = df.copy()
@@ -293,16 +403,29 @@ def cv_risks(df, folds: int = 5) -> pd.DataFrame:
         tr, te = df[df.fold != k], df[df.fold == k]
         sc = StandardScaler().fit(tr[FEATURES])
         lr = LogisticRegression(max_iter=1000).fit(sc.transform(tr[FEATURES]), tr["NoShow"])
-        rf = RandomForestClassifier(n_estimators=300, min_samples_leaf=50, n_jobs=-1, random_state=42).fit(tr[FEATURES], tr["NoShow"])
+        rf = RandomForestClassifier(
+            n_estimators=300, min_samples_leaf=50, n_jobs=-1, random_state=42
+        ).fit(tr[FEATURES], tr["NoShow"])
         p_r4, _ = r4_predict(tr, te)
-        part = te[["AppointmentID", "ScheduledDay", "AppointmentDay", "Age", "LeadDays", "PriorApptCount"]].copy()
+        part = te[
+            ["AppointmentID", "ScheduledDay", "AppointmentDay", "Age", "LeadDays", "PriorApptCount"]
+        ].copy()
         part["p"], part["y"] = rf.predict_proba(te[FEATURES])[:, 1], te["NoShow"].to_numpy()
-        part["p_lr"], part["p_r4"], part["fold"] = lr.predict_proba(sc.transform(te[FEATURES]))[:, 1], p_r4, k
+        part["p_lr"], part["p_r4"], part["fold"] = (
+            lr.predict_proba(sc.transform(te[FEATURES]))[:, 1],
+            p_r4,
+            k,
+        )
         parts.append(part)
     out = pd.concat(parts).sort_values(["AppointmentDay", "ScheduledDay"])
     out.to_csv(DATA / "risks_all_days.csv", index=False)
-    print(f"All-days out-of-sample risks: {len(out)} appointments, {len(days)} days, AUC "
-          + ", ".join(f"{n} {roc_auc_score(out['y'], out[c]):.3f}" for n, c in (("RF", "p"), ("LR", "p_lr"), ("R4", "p_r4"))))
+    print(
+        f"All-days out-of-sample risks: {len(out)} appointments, {len(days)} days, AUC "
+        + ", ".join(
+            f"{n} {roc_auc_score(out['y'], out[c]):.3f}"
+            for n, c in (("RF", "p"), ("LR", "p_lr"), ("R4", "p_r4"))
+        )
+    )
     return out
 
 
@@ -318,7 +441,9 @@ def main():
         print(k, {a: round(b, 4) for a, b in metrics(y, p).items()})
     comparison_report(train, test, cut, preds, info)
     # model risks and outcomes for the simulation (simulation/clinic_sim.py --risks ...)
-    out = test[["AppointmentID", "ScheduledDay", "AppointmentDay", "Age", "LeadDays", "PriorApptCount"]].copy()
+    out = test[
+        ["AppointmentID", "ScheduledDay", "AppointmentDay", "Age", "LeadDays", "PriorApptCount"]
+    ].copy()
     out["p"], out["y"] = p_rf, y.to_numpy()
     out["p_lr"], out["p_r4"] = p_lr, p_r4  # other risk sources, for comparison (p = random forest)
     out.to_csv(DATA / "risks_random_forest.csv", index=False)
