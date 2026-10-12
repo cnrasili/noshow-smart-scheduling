@@ -133,6 +133,14 @@ Settings in `config.yaml`:
 | `dispatch_interval_seconds` | 60 | How often due messages are sent |
 | `max_attempts` | 3 | Send attempts before a message is marked `failed` |
 
+The web backend does not retry a failed event. If a booked event is lost, for example while the service is stopped, a second job of the background sender schedules the messages and the A/B group by the same rules: at startup and then every `interval_seconds`, each future appointment booked within the last `lookback_hours` that has no message is handled as if its event had arrived. The patient's email and the appointment time are read from the booking database. A booked event and the job never create a second message or A/B group for the same appointment. After the database is reset, the job also schedules messages for the upcoming appointments of the demo data, which are stored without events.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `message_recovery.enabled` | true | Run the recovery job |
+| `message_recovery.interval_seconds` | 300 | How often the job runs after its first run at startup |
+| `message_recovery.lookback_hours` | 48 | Only appointments booked within this many hours are handled |
+
 Messages are sent by email when `SMTP_HOST` is set; otherwise they are written to the service log. With Docker Compose, emails go to Mailpit at http://localhost:8025.
 
 ## Reminder A/B Test

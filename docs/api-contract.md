@@ -37,6 +37,7 @@ Booking never depends on the overbooking service being available:
 
 - The web backend waits at most 3 seconds for `POST /booking-decision`. Without an answer (timeout, connection error, error status or unexpected body), an empty slot is still booked, but a booked slot is never overbooked.
 - Booking events are sent after the response to the patient. A failed event does not undo the booking change; the service ignores repeated events.
+- A lost booked event is recovered. At startup and every 5 minutes, the overbooking service schedules the confirmation, the reminder and the A/B group for each future appointment booked within the last 48 hours that has no message, by the same rules as `POST /events/appointment-booked` (`message_recovery` in `overbooking-service/config.yaml`). An event that arrives later returns these messages instead of creating new ones. A lost cancelled event is not recovered.
 
 ## `POST /predict`
 

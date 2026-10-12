@@ -50,6 +50,54 @@ def _existing(session: Session, appointment_id: int) -> list[Message]:
     )
 
 
+def schedule_messages(
+    session: Session,
+    booking: AppointmentBooked,
+    now: datetime,
+    reminders: ReminderSettings,
+    ab_test: AbTestSettings,
+) -> tuple[list[Message], str | None]:
+    """Add the messages and the A/B group of a booking to the session, without committing."""
+    start = booking.appointment_start.astimezone(UTC)
+    send_times = {Kind.CONFIRMATION: now}
+    reminder_at = start - timedelta(hours=reminders.hours_before)
+    group = None
+    if reminder_at > now:
+        # Only appointments that can get a reminder take part in the A/B test
+        if ab_test.enabled:
+            group = assign_group(booking.patient_id, ab_test.salt)
+            session.add(
+                AbAssignment(
+                    appointment_id=booking.appointment_id,
+                    patient_id=booking.patient_id,
+                    group=group,
+                )
+            )
+        if group != Group.CONTROL:
+            send_times[Kind.REMINDER] = reminder_at
+
+    messages = []
+    for kind, send_at in send_times.items():
+        # Texts use the appointment time as sent by the booking application
+        subject, text = render(kind, booking.appointment_start)
+        messages.append(
+            Message(
+                appointment_id=booking.appointment_id,
+                patient_id=booking.patient_id,
+                kind=kind,
+                email=booking.email,
+                subject=subject,
+                body=text,
+                appointment_start=start,
+                send_at=send_at,
+                status=Status.PENDING,
+                attempts=0,
+            )
+        )
+    session.add_all(messages)
+    return messages, group
+
+
 @router.post("/appointment-booked")
 def appointment_booked(
     body: AppointmentBooked,
@@ -66,41 +114,7 @@ def appointment_booked(
     if existing:
         return _scheduled(existing, _existing_group(session, body.appointment_id))
 
-    start = body.appointment_start.astimezone(UTC)
-    send_times = {Kind.CONFIRMATION: now}
-    reminder_at = start - timedelta(hours=reminders.hours_before)
-    group = None
-    if reminder_at > now:
-        # Only appointments that can get a reminder take part in the A/B test
-        if ab_test.enabled:
-            group = assign_group(body.patient_id, ab_test.salt)
-            session.add(
-                AbAssignment(
-                    appointment_id=body.appointment_id, patient_id=body.patient_id, group=group
-                )
-            )
-        if group != Group.CONTROL:
-            send_times[Kind.REMINDER] = reminder_at
-
-    messages = []
-    for kind, send_at in send_times.items():
-        # Texts use the appointment time as sent by the booking application
-        subject, text = render(kind, body.appointment_start)
-        messages.append(
-            Message(
-                appointment_id=body.appointment_id,
-                patient_id=body.patient_id,
-                kind=kind,
-                email=body.email,
-                subject=subject,
-                body=text,
-                appointment_start=start,
-                send_at=send_at,
-                status=Status.PENDING,
-                attempts=0,
-            )
-        )
-    session.add_all(messages)
+    messages, group = schedule_messages(session, body, now, reminders, ab_test)
     try:
         session.commit()
     except IntegrityError:
