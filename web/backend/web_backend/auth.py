@@ -1,10 +1,11 @@
+import os
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import case, delete, func, or_, select
 from sqlalchemy.orm import Session
 
 from noshow_db.models.core import AuthSession, Doctor, LoginFailure, Patient, UserAccount
@@ -14,9 +15,41 @@ from web_backend.national_id import is_valid_national_id
 from web_backend.security import hash_password, hash_token, new_token, verify_password
 
 SESSION_LIFETIME = timedelta(hours=12)
-# Failed logins of one login name or from one client address allowed within the window
-MAX_FAILED_LOGINS = 5
 LOCKOUT_WINDOW = timedelta(minutes=15)
+# Defaults of the failed-login limits within the window. The name limit stops guessing one
+# account's password; the much higher address limit stops one client trying many names,
+# without letting a few typos lock everyone who shares an address (a gateway or Docker host)
+DEFAULT_MAX_FAILURES_PER_NAME = 5
+DEFAULT_MAX_FAILURES_PER_ADDRESS = 50
+MAX_FAILURES_LIMIT = 10_000
+
+
+def read_login_limit(variable: str, value: str | None, default: int) -> int:
+    """A failed-login limit from an environment value; the default when it is unset."""
+    if value is None or not value.strip():
+        return default
+    try:
+        limit = int(value)
+    except ValueError:
+        limit = None
+    if limit is None or not 1 <= limit <= MAX_FAILURES_LIMIT:
+        raise ValueError(
+            f"{variable} must be a whole number from 1 to {MAX_FAILURES_LIMIT}, got {value!r}"
+        )
+    return limit
+
+
+# Read once, so an invalid value stops the startup
+MAX_FAILURES_PER_NAME = read_login_limit(
+    "LOGIN_MAX_FAILURES_PER_NAME",
+    os.getenv("LOGIN_MAX_FAILURES_PER_NAME"),
+    DEFAULT_MAX_FAILURES_PER_NAME,
+)
+MAX_FAILURES_PER_ADDRESS = read_login_limit(
+    "LOGIN_MAX_FAILURES_PER_ADDRESS",
+    os.getenv("LOGIN_MAX_FAILURES_PER_ADDRESS"),
+    DEFAULT_MAX_FAILURES_PER_ADDRESS,
+)
 
 # Compared against when the login name is unknown so both failure paths take similar time
 _DUMMY_HASH = hash_password("unused-password")
@@ -131,15 +164,17 @@ def _login_hash(body: PatientLogin | DoctorLogin) -> str:
 
 
 def _is_locked(db: Session, login_hash: str, client_ip: str, now: datetime) -> bool:
-    failures = db.scalar(
-        select(func.count())
-        .select_from(LoginFailure)
-        .where(
+    """True if the login name or the client address reached its limit within the window."""
+    name_failures, address_failures = db.execute(
+        select(
+            func.coalesce(func.sum(case((LoginFailure.login_hash == login_hash, 1), else_=0)), 0),
+            func.coalesce(func.sum(case((LoginFailure.client_ip == client_ip, 1), else_=0)), 0),
+        ).where(
             LoginFailure.created_at >= now - LOCKOUT_WINDOW,
             or_(LoginFailure.login_hash == login_hash, LoginFailure.client_ip == client_ip),
         )
-    )
-    return failures >= MAX_FAILED_LOGINS
+    ).one()
+    return name_failures >= MAX_FAILURES_PER_NAME or address_failures >= MAX_FAILURES_PER_ADDRESS
 
 
 def _record_failure(db: Session, login_hash: str, client_ip: str, now: datetime) -> None:
