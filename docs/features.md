@@ -20,13 +20,21 @@ The model may only use features that are known at booking time. The overbooking 
 | `SMS_received` | — | **No** | Sent after booking; excluded |
 | `Neighbourhood` | — | — | No equivalent in the application; proposed to exclude |
 
+## Dataset Rules
+
+Agreed on 15 October 2026. The public Medical Appointment No Shows dataset is the project's single data source.
+
+- Patients, their attributes and their appointment history come from the dataset. No patient or record is invented.
+- Patients are identified by the dataset's `PatientId`. National ID numbers (T.C. kimlik numarası) are not used, not even fictional ones, under the Turkish data protection law (KVKK).
+- A column added to fit the project, such as department or doctor, holds the same value in every row and never changes the existing values. All appointments in the dataset belong to one department and one doctor.
+
 ## Required Booking Data
 
 To compute the features, the booking application stores the following data. The exact columns follow the agreed feature list.
 
 | Record | Fields |
 |---|---|
-| Patient | Age (or date of birth), gender, scholarship, hipertension, diabetes, alcoholism, handcap |
+| Patient | Dataset `PatientId`, age (or date of birth), gender, scholarship, hipertension, diabetes, alcoholism, handcap |
 | Appointment | Patient, appointment date, booking date, attended / no-show |
 
 ## Model Delivery
