@@ -5,6 +5,9 @@
 *.sh text eol=lf
 Dockerfile text eol=lf
 
+# The public dataset is kept byte for byte
+ml/data/raw/*.csv -text
+
 # Binary files that cannot be merged
 *.joblib binary
 *.pkl binary
