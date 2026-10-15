@@ -79,7 +79,7 @@ def patients_page(
         # Wildcards in the search text match only themselves
         query = query.where(
             or_(
-                Patient.national_id.startswith(q, autoescape=True),
+                Patient.patient_number.startswith(q, autoescape=True),
                 func.lower(Patient.full_name).contains(q.lower(), autoescape=True),
             )
         )
