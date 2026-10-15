@@ -13,13 +13,14 @@ The web frontend calls only the web backend; it never calls the overbooking serv
 
 ## Shared Database
 
-All services use one PostgreSQL database with a single Alembic history in [`db/`](../db/). Each table is written by its owner; the other services only read it. The only exception is the overbooking service's demo data generator (`overbooking_service.demo`), which adds demo patients and appointments to the web backend's tables.
+All services use one PostgreSQL database with a single Alembic history in [`db/`](../db/). Each table is written by its owner; the other services only read it. The only exception is the overbooking service's demo data generator (`overbooking_service.demo`), which adds demo patients and appointments to the web backend's tables. The dataset loading command in `db/` (`python -m noshow_db.load_dataset`) adds the dataset patients to `patients` and their appointments to `dataset_appointments`.
 
 | Tables | Written by | Read by |
 |---|---|---|
 | `patients`, `doctors`, `doctor_schedules`, `slots`, `appointments`, `user_accounts`, `auth_sessions` | Web backend | Overbooking service (`patients`, `doctors`, `doctor_schedules`, `slots`, `appointments`); admin service (`patients`, `doctors`, `doctor_schedules`, `user_accounts`) |
 | `predictions`, `booking_decisions`, `messages`, `ab_assignments` | Overbooking service | — |
 | `admin_users`, `admin_sessions`, `admin_audit_log` | Admin service | — |
+| `dataset_appointments` | Dataset loading command | — |
 
 ### Attendance
 

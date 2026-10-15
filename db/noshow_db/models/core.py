@@ -26,9 +26,11 @@ class Patient(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    # Turkish national ID number; one patient record per citizen and the patient's login name.
+    # PatientId of the public dataset; NULL for patients created in the application
+    patient_number: Mapped[str | None] = mapped_column(String(20), unique=True, index=True)
+    # Turkish national ID number and the patient's login name; dataset patients have none.
     # The check digits are validated by the web backend.
-    national_id: Mapped[str] = mapped_column(String(11), unique=True, index=True)
+    national_id: Mapped[str | None] = mapped_column(String(11), unique=True, index=True)
     full_name: Mapped[str] = mapped_column(String(255))
     # Contact address for messages
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
