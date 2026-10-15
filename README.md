@@ -238,7 +238,7 @@ Components depend on each other through the files below. Changes to them are agr
 - Commit messages are one line in the form `type: Imperative short message`, for example `feat: Add prediction endpoint` or `fix: Correct lead time calculation`.
 - Database changes go through Alembic migrations in [`db/`](db/).
 - New Python packages are added to [`constraints.txt`](constraints.txt) with their exact version (see [Pinned Versions](#pinned-versions)).
-- Never commit secrets or the dataset. Copy `.env.example` to `.env` and fill in local values.
+- Never commit secrets. Copy `.env.example` to `.env` and fill in local values. The public no-show dataset may be committed, once, under `ml/data/raw/`.
 
 ## Project Status
 

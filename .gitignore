@@ -3,10 +3,10 @@
 .env.*
 !.env.example
 
-# Dataset
-ml/data/raw/
+# Derived data; the public dataset in ml/data/raw/ is committed
 ml/data/processed/
 *.csv
+!ml/data/raw/*.csv
 
 # Python
 __pycache__/
