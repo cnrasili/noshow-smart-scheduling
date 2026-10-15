@@ -256,29 +256,18 @@ Errors of every endpoint:
 
 ### `POST /internal/accounts/patients`
 
-Creates a patient record with its login account. The patient logs in with the national ID number and the password.
+Opens a login account for a patient of the public dataset; it never creates a patient. The patient logs in with the patient number and the password. The account uses the e-mail address of the patient record. Agreed on 15 October 2026 with the dataset rules; the web backend implements it in #59.
 
 Request:
 
 ```json
 {
-  "national_id": "99999000184",
-  "full_name": "Ayşe Kaya",
-  "email": "ayse@example.com",
-  "age": 34,
-  "gender": "F",
-  "scholarship": false,
-  "hipertension": false,
-  "diabetes": false,
-  "alcoholism": false,
-  "handcap": 0,
+  "patient_number": "29872499824296",
   "password": "initial-password"
 }
 ```
 
-- `national_id`: Turkish national ID number, 11 digits, first digit not 0, official check digits.
-- `email`: contact address for messages; stored in lower case.
-- `gender`: `F` or `M`. `age`: 0–130. `handcap`: 0–4. The four flags default to `false` and `handcap` to 0.
+- `patient_number`: the dataset's `PatientId` as stored in `patients.patient_number`.
 - `password`: initial password, 8–128 characters. Only its hash is stored.
 
 Response (`201`):
@@ -287,9 +276,9 @@ Response (`201`):
 {
   "account_id": 12,
   "patient_id": 9,
-  "national_id": "99999000184",
-  "full_name": "Ayşe Kaya",
-  "email": "ayse@example.com"
+  "patient_number": "29872499824296",
+  "full_name": "Hasta 29872499824296",
+  "email": "29872499824296@hasta.sehirhastanesi.example"
 }
 ```
 
@@ -297,8 +286,9 @@ Errors:
 
 | Status | Reason |
 |---|---|
-| 409 | `National ID number already registered`, or `Email already in use` (by a patient or a doctor) |
-| 422 | Invalid request, for example an invalid national ID number or e-mail address |
+| 404 | `Patient not found`: no patient has this patient number |
+| 409 | `Patient already has an account`, or `Email already in use` (by another account) |
+| 422 | Invalid request, for example a password shorter than 8 characters |
 
 ### `POST /internal/accounts/doctors`
 
