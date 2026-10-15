@@ -41,7 +41,6 @@ def make_clinic(session: Session) -> None:
     session.add_all(
         Patient(
             id=patient_id,
-            national_id=f"9999900{patient_id:04d}",
             full_name=f"Patient {patient_id}",
             email=f"patient{patient_id}@demo.local",
             age=40,

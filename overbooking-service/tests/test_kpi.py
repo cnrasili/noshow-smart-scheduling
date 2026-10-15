@@ -10,7 +10,6 @@ from overbooking_service.config import KpiSettings, SessionDefinition
 from overbooking_service.dependencies import get_kpi_settings
 from overbooking_service.kpi import SlotLoad, compute_kpis, load_day, working_hours
 from overbooking_service.main import app
-from overbooking_service.national_id import fictional_national_id
 
 CLINIC = ZoneInfo("Europe/Istanbul")
 START = datetime(2026, 11, 10, 6, 0, tzinfo=UTC)
@@ -124,7 +123,6 @@ def clinic(session_factory: sessionmaker[Session]) -> None:
             + [
                 Patient(
                     id=i,
-                    national_id=fictional_national_id(i),
                     full_name=f"P{i}",
                     email=f"p{i}@example.com",
                     age=40,

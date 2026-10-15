@@ -13,20 +13,20 @@ The web frontend calls only the web backend; it never calls the overbooking serv
 
 ## Shared Database
 
-All services use one PostgreSQL database with a single Alembic history in [`db/`](../db/). Each table is written by its owner; the other services only read it. The only exception is the overbooking service's demo data generator (`overbooking_service.demo`), which adds demo patients and appointments to the web backend's tables. The dataset loading command in `db/` (`python -m noshow_db.load_dataset`) adds the dataset patients to `patients` and their appointments to `dataset_appointments`.
+All services use one PostgreSQL database with a single Alembic history in [`db/`](../db/). Each table is written by its owner; the other services only read it. The only exception is the dataset loading command in `db/` (`python -m noshow_db.load_dataset`), which adds the dataset patients to the web backend's `patients` table and their appointments to `dataset_appointments`.
 
 | Tables | Written by | Read by |
 |---|---|---|
 | `patients`, `doctors`, `doctor_schedules`, `slots`, `appointments`, `user_accounts`, `auth_sessions` | Web backend | Overbooking service (`patients`, `doctors`, `doctor_schedules`, `slots`, `appointments`); admin service (`patients`, `doctors`, `doctor_schedules`, `user_accounts`) |
 | `predictions`, `booking_decisions`, `messages`, `ab_assignments` | Overbooking service | — |
 | `admin_users`, `admin_sessions`, `admin_audit_log` | Admin service | — |
-| `dataset_appointments` | Dataset loading command | — |
+| `dataset_appointments` | Dataset loading command | Overbooking service |
 
 ### Attendance
 
 Attendance is not reported by an event. The doctor marks an appointment as attended or missed in the web application, and the web backend stores it in `appointments.attended` (`NULL` until marked). The overbooking service reads this column directly:
 
-- patient history for the model features (`prior_appt_count`, `prior_noshow_count`), counting only appointments with a recorded outcome before the booking date,
+- patient history for the model features (`prior_appt_count`, `prior_noshow_count`), counting the appointments with a recorded outcome and the patient's past appointments in `dataset_appointments`, both only before the booking date,
 - the no-show rates of `GET /ab/summary`,
 - the patients seen in `GET /kpi`.
 

@@ -3,11 +3,12 @@ from datetime import UTC, date, datetime, time, timedelta
 from typing import Protocol
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, union_all
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from noshow_db.models.core import Appointment, Patient, Slot
+from noshow_db.models.dataset import DatasetAppointment
 from overbooking_service.features import PastAppointment, PatientRecord
 
 
@@ -49,7 +50,7 @@ class SlotDataSource(Protocol):
 
 
 class DbPatientSource:
-    """Patient records and history from the booking application tables."""
+    """Patient records and history from the booking application and dataset tables."""
 
     def __init__(self, session: Session) -> None:
         self.session = session
@@ -73,17 +74,21 @@ class DbPatientSource:
         )
 
     def get_history(self, patient_id: int) -> list[PastAppointment]:
-        # Only appointments with a recorded outcome
-        query = (
-            select(Appointment.appointment_date, Appointment.attended)
-            .where(Appointment.patient_id == patient_id, Appointment.attended.is_not(None))
-            .order_by(Appointment.appointment_date)
+        # Dataset appointments and application bookings with a recorded outcome
+        query = union_all(
+            select(DatasetAppointment.appointment_date, DatasetAppointment.attended).where(
+                DatasetAppointment.patient_id == patient_id
+            ),
+            select(Appointment.appointment_date, Appointment.attended).where(
+                Appointment.patient_id == patient_id, Appointment.attended.is_not(None)
+            ),
         )
         try:
             rows = self.session.execute(query).all()
         except SQLAlchemyError as exc:
             raise DataSourceUnavailable("Appointment history cannot be read") from exc
-        return [PastAppointment(row.appointment_date, row.attended) for row in rows]
+        history = [PastAppointment(day, bool(attended)) for day, attended in rows]
+        return sorted(history, key=lambda past: past.appointment_date)
 
 
 class DbSlotSource:

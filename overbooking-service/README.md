@@ -80,7 +80,7 @@ The previously installed model stays available in the Git history.
 
 ## Patient Data
 
-Features are computed from the patient record and appointment history in the `patients` and `appointments` tables. Only appointments with a recorded `attended` value count as history. Access goes through the `PatientDataSource` interface in `overbooking_service/data_source.py`; `/predict` returns `503` when the tables cannot be read.
+Features are computed from the patient record in `patients` and the patient's appointment history: the past appointments of the public dataset in `dataset_appointments` and the bookings in `appointments` with a recorded `attended` value. Access goes through the `PatientDataSource` interface in `overbooking_service/data_source.py`; `/predict` returns `503` when the tables cannot be read.
 
 ## Overbooking Rule
 
@@ -171,40 +171,11 @@ The default consultation length is the simulation's mean service time.
 | `kpi.service_minutes` | 12 | Consultation length in minutes |
 | `kpi.session` | `slots` | Session definition: `slots` or `schedule`; the final choice belongs to the session parameters decided with the simulation side |
 
-## Demo Data
+## Demo Scenario
 
-`python -m overbooking_service.demo` adds simulated booking history to the clinic created by the web backend seed (`python -m web_backend.seed`):
+The service generates no demo data. It works on the dataset patients and on the bookings made in the web application, so the decisions page, the KPI screen and the reminder A/B test fill as bookings are made and attendance is marked.
 
-- 200 patients without login accounts, with attributes drawn at rates similar to the public dataset. The seeded patients with accounts also take part.
-- The generated patients get fictional national ID numbers of the web backend's demo pattern (prefix `99999`, a four-digit number from 1000 up, check digits); numbers already in use are skipped. They are made up and belong to no real person.
-- Booking requests for the seeded doctors' slots from three weeks before the demo date to one week after it, processed with the same overbooking rule as `/booking-decision`: the first empty slot, otherwise the first slot the rule allows to overbook.
-- Every request is logged in `booking_decisions` like a live booking: the granted decision, or the refusal for the first slot the request asked for. The admin service shows the log on its decisions page.
-- Past appointments get an outcome drawn from the model's `p_noshow` and, when a reminder was possible, an A/B group. Future appointments have no outcome, so free slots remain for live bookings.
-- Doctor-days the seed already booked are left unchanged, so the doctor can mark attendance in the web application. Their past bookings get an A/B group, so marking attendance changes `/ab/summary`.
-- No messages are created for the generated appointments; only appointments reported to `POST /events/appointment-booked` get a confirmation and a reminder.
-- Slot length and working hours come from the web backend seed.
-
-| Option | Default | Meaning |
-|---|---|---|
-| `--today` | today | Demo date in the clinic time zone |
-| `--seed` | 42 | Random seed; the same seed gives the same data |
-| `--reminder-effect` | 0 | Relative no-show reduction in the reminder group; 0 means reminders have no simulated effect |
-
-The command refuses to run before the web backend seed and when the demo history already exists. To start from an empty database, remove the Docker volume with `docker compose down -v`; this deletes all local data.
-
-### Demo Scenario
-
-1. Start the stack and load the demo data:
-
-   ```bash
-   docker compose up --build -d
-   docker compose exec web-backend python -m web_backend.seed
-   docker compose exec overbooking-service python -m overbooking_service.demo
-   ```
-
-   The last command prints an empty and a booked slot of the first doctor with slots after the demo date.
-
-2. Create an administrator (see the [admin service](../admin-service/README.md#setup)) and open the KPI screen at http://localhost:8002. The past days show utilization, idle time, overtime, waiting time and overbooked slots, and the reminder A/B test.
-3. Open http://localhost:8001/ab/summary to compare the no-show rates of the reminder and control groups, and http://localhost:8001/ab/summary?unit=patient for one observation per patient.
-4. In the API docs at http://localhost:8001/docs, call `POST /booking-decision` for the empty slot (normal booking) and for the booked slot (overbook or reject, with the reason).
-5. Call `POST /events/appointment-booked` for a new appointment id. The response shows the A/B group and the scheduled messages; the confirmation appears in Mailpit at http://localhost:8025 within a minute.
+1. Start the stack, load the demo data and create an administrator (see [Getting Started](../README.md#getting-started)).
+2. Book an appointment in the web application with a demo patient account. The decision and the patient's predicted no-show risk appear on the decisions page of the admin service at http://localhost:8002/decisions; the risk counts the patient's past appointments in the dataset. The confirmation appears in Mailpit at http://localhost:8025 within a minute.
+3. Book the same time with another demo patient. The rule adds the patient as an overbook when the first patient's risk reaches the threshold, and otherwise rejects the booking; the decisions page shows the reason.
+4. Log in as the doctor and mark the appointments as attended or missed. The KPI screen of the admin service and http://localhost:8001/ab/summary count them.

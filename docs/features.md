@@ -15,8 +15,8 @@ The model may only use features that are known at booking time. The overbooking 
 | `diabetes` | Patient record | Yes | 0 / 1 |
 | `alcoholism` | Patient record | Yes | 0 / 1 |
 | `handcap` | Patient record | Yes | 0–4 |
-| `prior_appt_count` | Patient's earlier appointments | Yes | Only appointments before the booking date |
-| `prior_noshow_count` | Patient's earlier appointments | Yes | Only appointments before the booking date |
+| `prior_appt_count` | Patient's earlier appointments: dataset history and bookings in the application | Yes | Only appointments before the booking date |
+| `prior_noshow_count` | Patient's earlier appointments: dataset history and bookings in the application | Yes | Only appointments before the booking date |
 | `SMS_received` | — | **No** | Sent after booking; excluded |
 | `Neighbourhood` | — | — | No equivalent in the application; proposed to exclude |
 

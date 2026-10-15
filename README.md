@@ -103,10 +103,9 @@ Requirements: Docker Desktop (Windows, macOS) or Docker Engine with Compose (Lin
 
    ```bash
    docker compose exec web-backend python -m web_backend.seed
-   docker compose exec overbooking-service python -m overbooking_service.demo
    ```
 
-   The seed creates a fictional clinic with doctors, patients, login accounts and slots. The overbooking service demo adds three weeks of booking history with outcomes and A/B groups for the KPI screen; see the [demo scenario](overbooking-service/README.md#demo-scenario).
+   The seed creates a fictional clinic with doctors, patients, login accounts and slots. The KPI screen and the model decisions fill with the bookings made in the web application; see the [demo scenario](overbooking-service/README.md#demo-scenario).
 
 3. Create an administrator for the admin service; the command asks for a password twice:
 
