@@ -27,6 +27,8 @@ Agreed on 15 October 2026. The public Medical Appointment No Shows dataset is th
 - Patients, their attributes and their appointment history come from the dataset. No patient or record is invented.
 - Patients are identified by the dataset's `PatientId`. National ID numbers (T.C. kimlik numarası) are not used, not even fictional ones, under the Turkish data protection law (KVKK).
 - A column added to fit the project, such as department or doctor, holds the same value in every row and never changes the existing values. All appointments in the dataset belong to one department and one doctor.
+- Rows that cannot be stored as they are, as in the prediction model's cleaning step, are left out: 5 rows whose appointment day is before the booking day and 1 row with age −1. The project uses the remaining 110,521 appointments of 62,298 patients.
+- A patient's gender, scholarship, health attributes and neighbourhood are the same in all of their rows; the age differs by at most one year. The patient record takes the age of the patient's latest appointment.
 
 ## Required Booking Data
 
