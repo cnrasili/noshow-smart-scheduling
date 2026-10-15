@@ -30,14 +30,9 @@ from noshow_db.models.core import Doctor, DoctorSchedule, Patient, UserAccount
 router = APIRouter()
 
 LIST_LIMIT = 50
-PATIENT_FLAGS = {
-    "scholarship": "Sosyal yardım alıyor",
-    "hipertension": "Hipertansiyon",
-    "diabetes": "Diyabet",
-    "alcoholism": "Alkol bağımlılığı",
-}
 DISABLED = "Hesap yönetimi kapalı: INTERNAL_API_TOKEN ayarlanmamış ya da kabul edilmiyor."
-NATIONAL_ID = "T.C. kimlik numarası"
+NOT_IN_DATASET = "Bu hasta veri setinde yok; giriş hesabı yalnızca veri setindeki hastalara açılır."
+PATIENT_NUMBER = "Hasta numarası"
 EMAIL = "E-posta"
 
 PATIENT_CREATED = "patient_created"
@@ -115,43 +110,24 @@ def doctors_page(
     )
 
 
-def patient_form(request: Request, admin: AdminUser, values: dict, error: str | None = None):
-    return render(
-        request,
-        "patient_new.html",
-        {"admin": admin, "values": values, "flags": PATIENT_FLAGS, "error": error},
-        status_code=400 if error else 200,
-    )
-
-
-@router.get("/patients/new", response_class=HTMLResponse)
-def new_patient_page(request: Request, admin: CurrentAdmin, accounts: Accounts) -> Response:
-    return patient_form(request, admin, {}, None if accounts.enabled else DISABLED)
-
-
-@router.post("/patients/new", dependencies=[Depends(verify_csrf)])
-def create_patient(
+@router.post("/patients/{patient_id}/account", dependencies=[Depends(verify_csrf)])
+def open_patient_account(
     request: Request,
+    patient_id: int,
     admin: CurrentAdmin,
     session: DbSession,
     accounts: Accounts,
     now: Now,
-    form: Form,
 ) -> Response:
-    values = {name: text(form, name) for name in ["national_id", "full_name", "email", "age"]}
-    values |= {"gender": text(form, "gender"), "handcap": text(form, "handcap") or "0"}
-    values |= {flag: form.get(flag) == "on" for flag in PATIENT_FLAGS}
-    try:
-        age, handcap = int(values["age"]), int(values["handcap"])
-    except ValueError:
-        return patient_form(request, admin, values, "Yaş ve engellilik düzeyi tam sayı olmalıdır.")
+    patient = session.get(Patient, patient_id)
+    if patient is None or patient.patient_number is None:
+        return render(request, "message.html", {"admin": admin, "error": NOT_IN_DATASET}, 404)
 
     password = generate_password()
-    patient = {**values, "age": age, "handcap": handcap, "password": password}
     try:
-        created = accounts.create_patient(patient)
+        opened = accounts.open_patient_account(patient.patient_number, password)
     except AccountsUnavailable:
-        return patient_form(request, admin, values, DISABLED)
+        return render(request, "message.html", {"admin": admin, "error": DISABLED}, 400)
     except AccountRejected as exc:
         audit.record(
             session,
@@ -163,9 +139,9 @@ def create_patient(
             str(exc)[:255],
         )
         session.commit()
-        return patient_form(request, admin, values, str(exc))
+        return render(request, "message.html", {"admin": admin, "error": str(exc)}, 400)
 
-    detail = f"hesap {created['account_id']}, hasta {created['patient_id']}"
+    detail = f"hesap {opened['account_id']}, hasta {opened['patient_id']}"
     audit.record(session, PATIENT_CREATED, admin.email, client_ip(request), now, admin.id, detail)
     session.commit()
     return render(
@@ -173,10 +149,10 @@ def create_patient(
         "credentials.html",
         {
             "admin": admin,
-            "title": "Hasta hesabı açıldı",
-            "name": created["full_name"],
-            "login": created["national_id"],
-            "login_label": NATIONAL_ID,
+            "title": "Giriş hesabı açıldı",
+            "name": opened["full_name"],
+            "login": opened["patient_number"],
+            "login_label": PATIENT_NUMBER,
             "password": password,
         },
     )
@@ -320,8 +296,8 @@ def reset_password(
             "title": "Şifre sıfırlandı",
             "password_label": "Yeni şifre",
             "name": patient.full_name if patient else doctor.full_name,
-            "login": patient.national_id if patient else account.email,
-            "login_label": NATIONAL_ID if patient else EMAIL,
+            "login": (patient.patient_number or "—") if patient else account.email,
+            "login_label": PATIENT_NUMBER if patient else EMAIL,
             "password": password,
             "note": "Hesabın açık oturumları kapatıldı.",
         },

@@ -86,18 +86,16 @@ def percent(ratio: float) -> str:
 
 # Account API errors from the web backend, by message
 API_ERRORS = {
-    "National ID number already registered": "Bu T.C. kimlik numarası zaten kayıtlı.",
+    "Patient not found": "Bu hasta numarasıyla kayıtlı hasta yok.",
+    "Patient already has an account": "Bu hastanın zaten giriş hesabı var.",
     "Email already in use": "Bu e-posta adresi zaten kullanılıyor.",
     "Account already exists": "Bu hesap zaten var.",
     "Account not found": "Hesap bulunamadı.",
 }
 FIELDS = {
-    "national_id": "T.C. kimlik numarası",
+    "patient_number": "Hasta numarası",
     "full_name": "Ad soyad",
     "email": "E-posta",
-    "age": "Yaş",
-    "gender": "Cinsiyet",
-    "handcap": "Engellilik düzeyi",
     "password": "Şifre",
     "specialty": "Bölüm",
     "working_hours": "Çalışma saatleri",
@@ -105,7 +103,6 @@ FIELDS = {
     "end_time": "Bitiş saati",
 }
 VALIDATION_ERRORS = {
-    "Invalid national ID number": "T.C. kimlik numarası geçerli değil.",
     "Invalid email address": "E-posta adresi geçerli değil.",
     "end_time must be after start_time": "Bitiş saati başlangıç saatinden sonra olmalı.",
     "At most one working interval per weekday": (

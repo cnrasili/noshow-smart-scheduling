@@ -10,19 +10,13 @@ from admin_service.security import csrf_token, generate_password, hash_password
 from noshow_db.models.admin import AdminAuditLog
 from noshow_db.models.core import DoctorSchedule, Patient, UserAccount
 
-# Fictional national ID numbers of the web backend demo pattern
-AYSE = "99999000184"
-MEHMET = "99999000252"
+# Patients of the public dataset, identified by the dataset's patient number
+WITH_ACCOUNT = "29872499824296"
+WITHOUT_ACCOUNT = "93779.52927"
+# A patient created before the dataset was loaded; not in the dataset
+OUTSIDE = "Mehmet Demir"
+NAMES = [f"Hasta {WITH_ACCOUNT}", f"Hasta {WITHOUT_ACCOUNT}", OUTSIDE]
 
-PATIENT_FORM = {
-    "national_id": "99999000320",
-    "full_name": "Zeynep Çelik",
-    "email": "zeynep@demo.local",
-    "age": "22",
-    "gender": "F",
-    "handcap": "0",
-    "scholarship": "on",
-}
 DOCTOR_FORM = {
     "full_name": "Dr. Ece Tan",
     "specialty": "Dahiliye",
@@ -34,33 +28,31 @@ DOCTOR_FORM = {
 }
 
 
+def dataset_patient(number: str, age: int) -> Patient:
+    return Patient(
+        patient_number=number,
+        full_name=f"Hasta {number}",
+        email=f"{number}@hasta.sehirhastanesi.example",
+        age=age,
+        gender="F",
+    )
+
+
 @pytest.fixture(autouse=True)
 def clinic(session_factory: sessionmaker[Session]) -> None:
     with session_factory() as session:
-        ayse = Patient(
-            national_id=AYSE, full_name="Ayşe Kaya", email="ayse@demo.local", age=34, gender="F"
-        )
-        mehmet = Patient(
-            national_id=MEHMET, full_name="Mehmet Demir", email="m@demo.local", age=58, gender="M"
-        )
-        # A patient of the public dataset, identified by the dataset's patient number
-        dataset_patient = Patient(
-            patient_number="93779.52927",
-            full_name="Hasta 93779.52927",
-            email="93779.52927@hasta.sehirhastanesi.example",
-            age=33,
-            gender="F",
-        )
-        session.add_all([ayse, mehmet, dataset_patient])
+        with_account = dataset_patient(WITH_ACCOUNT, 62)
+        outside = Patient(full_name=OUTSIDE, email="m@demo.local", age=58, gender="M")
+        session.add_all([with_account, dataset_patient(WITHOUT_ACCOUNT, 33), outside])
         session.flush()
         session.add_all(
             [
                 UserAccount(
                     id=7,
-                    email="ayse@demo.local",
+                    email=with_account.email,
                     password_hash=hash_password("demo1234"),
                     role="patient",
-                    patient_id=ayse.id,
+                    patient_id=with_account.id,
                 ),
                 UserAccount(
                     id=8,
@@ -73,6 +65,12 @@ def clinic(session_factory: sessionmaker[Session]) -> None:
             ]
         )
         session.commit()
+
+
+def account_path(session_factory: sessionmaker[Session], name: str) -> str:
+    with session_factory() as session:
+        patient_id = session.scalars(select(Patient.id).where(Patient.full_name == name)).one()
+    return f"/patients/{patient_id}/account"
 
 
 def form_token(client: TestClient) -> str:
@@ -95,7 +93,7 @@ def initial_password(html: str) -> str:
     return re.findall(r"<code>([^<]+)</code>", html)[-1]
 
 
-@pytest.mark.parametrize("path", ["/patients", "/doctors", "/patients/new", "/doctors/new"])
+@pytest.mark.parametrize("path", ["/patients", "/doctors", "/doctors/new"])
 def test_pages_need_login(client: TestClient, path: str):
     assert client.get(path, follow_redirects=False).headers["location"] == "/login"
 
@@ -103,22 +101,23 @@ def test_pages_need_login(client: TestClient, path: str):
 def test_patient_list_and_search(client: TestClient, log_in):
     log_in()
     html = client.get("/patients").text
-    assert "Ayşe Kaya" in html and "Mehmet Demir" in html
-    # Ayşe has a login account, Mehmet does not
+    assert all(name in html for name in NAMES)
+    assert f"<td>{WITHOUT_ACCOUNT}</td>" in html
+    # One patient has an account, one dataset patient can get one, Mehmet is not in the dataset
     assert html.count("Şifreyi sıfırla") == 1
+    assert html.count("Giriş hesabı aç") == 1
     assert "Giriş hesabı yok" in html
-    by_name = client.get("/patients", params={"q": "ayşe"}).text
-    assert "Ayşe Kaya" in by_name and "Mehmet Demir" not in by_name
-    assert "<td>93779.52927</td>" in html
+    by_name = client.get("/patients", params={"q": "mehmet"}).text
+    assert OUTSIDE in by_name and f"Hasta {WITH_ACCOUNT}" not in by_name
     by_number = client.get("/patients", params={"q": "93779.5"}).text
-    assert "Hasta 93779.52927" in by_number and "Ayşe Kaya" not in by_number
+    assert f"Hasta {WITHOUT_ACCOUNT}" in by_number and OUTSIDE not in by_number
 
 
 @pytest.mark.parametrize("q", ["%", "_", "\\", "9999%", "Ay_e", "%ehmet"])
 def test_patient_search_has_no_wildcards(client: TestClient, log_in, q: str):
     log_in()
     html = client.get("/patients", params={"q": q}).text
-    assert "Ayşe Kaya" not in html and "Mehmet Demir" not in html
+    assert not any(name in html for name in NAMES)
 
 
 WILDCARD_NAMES = ["Yüzde%Bir", "Alt_Çizgi", "Ters\\Bölü"]
@@ -141,7 +140,7 @@ def test_patient_search_finds_names_with_wildcard_characters(
         session.commit()
     log_in()
     html = client.get("/patients", params={"q": q}).text
-    shown = [n for n in [*WILDCARD_NAMES, "Ayşe Kaya", "Mehmet Demir"] if n in html]
+    shown = [n for n in [*WILDCARD_NAMES, *NAMES] if n in html]
     assert shown == [name]
 
 
@@ -154,57 +153,45 @@ def test_doctor_list_shows_department_hours_and_account(client: TestClient, log_
     assert html.count("Şifreyi sıfırla") == 1
 
 
-def test_create_patient(client: TestClient, log_in, accounts, session_factory):
+def test_open_account_for_a_dataset_patient(client: TestClient, log_in, accounts, session_factory):
     log_in()
-    response = post(client, "/patients/new", PATIENT_FORM)
+    response = post(client, account_path(session_factory, f"Hasta {WITHOUT_ACCOUNT}"))
     assert response.status_code == 200
-    kind, sent = accounts.requests[0]
+    [(kind, sent)] = accounts.requests
     assert kind == "patient"
-    assert sent | {"password": "x"} == {
-        "national_id": "99999000320",
-        "full_name": "Zeynep Çelik",
-        "email": "zeynep@demo.local",
-        "age": 22,
-        "gender": "F",
-        "handcap": 0,
-        "scholarship": True,
-        "hipertension": False,
-        "diabetes": False,
-        "alcoholism": False,
-        "password": "x",
-    }
+    assert sent == {"patient_number": WITHOUT_ACCOUNT, "password": sent["password"]}
     # The generated password is shown once and never written to the audit log
     assert initial_password(response.text) == sent["password"]
-    assert "99999000320" in response.text
+    assert WITHOUT_ACCOUNT in response.text
     assert audit(session_factory)[-1] == ("patient_created", "hesap 101, hasta 1101")
     assert sent["password"] not in str(audit(session_factory))
 
 
-def test_create_patient_needs_the_form_token(client: TestClient, log_in, accounts):
+def test_open_account_needs_the_form_token(client: TestClient, log_in, accounts, session_factory):
     log_in()
-    assert client.post("/patients/new", data=PATIENT_FORM).status_code == 403
+    path = account_path(session_factory, f"Hasta {WITHOUT_ACCOUNT}")
+    assert client.post(path).status_code == 403
     assert accounts.requests == []
 
 
-def test_rejected_patient_keeps_the_form(client: TestClient, log_in, accounts, session_factory):
-    accounts.reject = "Bu T.C. kimlik numarası zaten kayıtlı."
+def test_accounts_only_for_dataset_patients(client: TestClient, log_in, accounts, session_factory):
     log_in()
-    response = post(client, "/patients/new", PATIENT_FORM)
-    assert response.status_code == 400
-    assert "Bu T.C. kimlik numarası zaten kayıtlı." in response.text
-    assert 'value="Zeynep Çelik"' in response.text
-    assert audit(session_factory)[-1] == (
-        "account_rejected",
-        "Bu T.C. kimlik numarası zaten kayıtlı.",
-    )
-
-
-def test_invalid_age_is_not_sent(client: TestClient, log_in, accounts):
-    log_in()
-    response = post(client, "/patients/new", {**PATIENT_FORM, "age": "old"})
-    assert response.status_code == 400
-    assert "tam sayı olmalıdır" in response.text
+    outside = post(client, account_path(session_factory, OUTSIDE))
+    unknown = post(client, "/patients/999/account")
+    assert (outside.status_code, unknown.status_code) == (404, 404)
+    assert "yalnızca veri setindeki hastalara" in outside.text
     assert accounts.requests == []
+
+
+def test_rejected_account_is_shown_and_logged(
+    client: TestClient, log_in, accounts, session_factory
+):
+    accounts.reject = "Bu hastanın zaten giriş hesabı var."
+    log_in()
+    response = post(client, account_path(session_factory, f"Hasta {WITH_ACCOUNT}"))
+    assert response.status_code == 400
+    assert "Bu hastanın zaten giriş hesabı var." in response.text
+    assert audit(session_factory)[-1] == ("account_rejected", "Bu hastanın zaten giriş hesabı var.")
 
 
 def test_create_doctor(client: TestClient, log_in, accounts, session_factory):
@@ -244,7 +231,7 @@ def test_reset_password(client: TestClient, log_in, accounts, session_factory):
     assert (kind, sent["account_id"]) == ("reset", 7)
     assert len(sent["password"]) == 14
     assert initial_password(response.text) == sent["password"]
-    assert AYSE in response.text
+    assert WITH_ACCOUNT in response.text and "Hasta numarası" in response.text
     assert audit(session_factory)[-1] == ("password_reset", "hesap 7")
 
 
@@ -254,13 +241,13 @@ def test_reset_password_of_unknown_account(client: TestClient, log_in, accounts)
     assert accounts.requests == []
 
 
-def test_disabled_account_management(client: TestClient, log_in, accounts):
+def test_disabled_account_management(client: TestClient, log_in, accounts, session_factory):
     accounts.enabled = False
     log_in()
     listing = client.get("/patients").text
     assert "Hesap yönetimi kapalı" in listing
-    assert "Hasta hesabı aç" not in listing
-    response = post(client, "/patients/new", PATIENT_FORM)
+    assert "Giriş hesabı aç" not in listing
+    response = post(client, account_path(session_factory, f"Hasta {WITHOUT_ACCOUNT}"))
     assert response.status_code == 400
     assert "Hesap yönetimi kapalı" in response.text
 

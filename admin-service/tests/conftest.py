@@ -75,14 +75,14 @@ class FakeAccounts:
             raise AccountRejected(self.reject)
         self.next_id += 1
 
-    def create_patient(self, patient: dict) -> dict:
-        self._answer("patient", patient)
+    def open_patient_account(self, patient_number: str, password: str) -> dict:
+        self._answer("patient", {"patient_number": patient_number, "password": password})
         return {
             "account_id": self.next_id,
             "patient_id": self.next_id + 1000,
-            "national_id": patient["national_id"],
-            "full_name": patient["full_name"],
-            "email": patient["email"],
+            "patient_number": patient_number,
+            "full_name": f"Hasta {patient_number}",
+            "email": f"{patient_number}@hasta.sehirhastanesi.example",
         }
 
     def create_doctor(self, doctor: dict) -> dict:

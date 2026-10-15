@@ -56,8 +56,10 @@ class AccountsClient:
         except (URLError, TimeoutError, ValueError) as exc:
             raise AccountsUnavailable(f"Internal account API failed: {exc}") from exc
 
-    def create_patient(self, patient: dict[str, Any]) -> dict[str, Any]:
-        return self._send("POST", "/patients", patient)
+    def open_patient_account(self, patient_number: str, password: str) -> dict[str, Any]:
+        """Login account for an existing dataset patient; no patient is created."""
+        body = {"patient_number": patient_number, "password": password}
+        return self._send("POST", "/patients", body)
 
     def create_doctor(self, doctor: dict[str, Any]) -> dict[str, Any]:
         return self._send("POST", "/doctors", doctor)
