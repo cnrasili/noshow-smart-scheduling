@@ -7,14 +7,14 @@ Bu dosya projedeki kararların **tek kaydıdır**. Makine tarafı: `docs/decisio
 <!-- KARARLAR:BASLA -->
 | Karar | Seçim | Kim |
 |---|---|---|
-| 1. Model (#7) | **Bekliyor** (iki dal: IEN-RandomForest, IEN-DecisionTree) | Ekip |
+| 1. Model (#7) | Rastgele orman (geçici seçim, ekip onayı bekliyor); aday: Karar ağacı (`ml/models/candidates/`) | Ekip |
 | 2. En uzun ortalama bekleme | 15 dk (poliklinik) | Ekip |
 | 3. Kural ayarı (#8) | Eşik %30, günlük ek randevu sınırı 4, slot başına en çok 2 hasta | Ekip |
 | 4. Muayene süresi (#9) | Ortalama 7.5 dk (aralık 5–10 dk); slot 10 dk x 24 (türetilmiş) | Ekip |
 | 5. Tek doktor kuralı (#61) | Uygulanmayacak | Ekip |
 | 6. Hatırlatma | Canlı A/B testi + varsayımsal senaryo | Ekip |
 | 7. Teslim edilen kural | Yalnızca eşik kuralı | Ekip |
-| 8. Modelin teslimi | `ml/models/` altında, seçilen dalda; CEN o dalı çeker | IEN + CEN |
+| 8. Modelin teslimi | `ml/models/` altında (seçili model); CEN `IEN` dalını çeker | IEN + CEN |
 | 9. Canlıda güncel kalma | CEN2 modele API ile bağlanır | CEN2 |
 | 10. Son tarih | 2026-12-16 | Ekip |
 <!-- KARARLAR:BITIS -->
@@ -24,17 +24,18 @@ Yorumlar ve türetilen değerler:
 - **"15k" bekleme** ifadesi **15 dakika** olarak okundu. Yanlışsa 2. satır ve `wait_limit_min` düzeltilmeli.
 - **Slot 10 dk x 24 slot (4 saat)** karar listesinde yoktu; "hasta başına 5–10 dk" kararından **türetildi**. Muayene ortalaması 7,5 dk alındı (aralığın ortası). 15 dk'lık slotla sonuç, duyarlılık tablosunda ("15 dk slot, 16 slot") yer alır. Ekip farklı slot isterse `docs/decisions.json` içindeki `slot_min` ve `n_slots` değişir.
 - **Hatırlatma** için seçim benim önerimdir; ekip onayı gerekir.
-- **Model seçimi bekliyor:** iki dal hazır, ekip seçince diğeri silinebilir (bölüm 2).
+- **Model seçimi geçici:** rastgele orman şimdilik seçili model; ekip onaylayana kadar değişebilir. Karar ağacı aday olarak hazır tutuluyor (bölüm 2).
 
-## 2. Dallar (model seçimine göre)
+## 2. Model dosyaları (tek dal)
 
-| Dal | `docs/decisions.json` → `model` | Ne içerir |
-|---|---|---|
-| `IEN` | boş (`null`) | Ortak kod, belgeler ve kararlar; model dosyası yok |
-| `IEN-RandomForest` | `random_forest` | Rastgele orman: `ml/models/` altında model, bu modelin risk tahminleriyle üretilmiş sonuçlar |
-| `IEN-DecisionTree` | `decision_tree` | Karar ağacı: aynı yapı, karar ağacıyla |
+Depoda her kişinin yalnızca en son güncellenen dalı kalır (`.github/workflows/branch-cleanup.yml`; diğerleri arşiv etiketine alınıp silinir). Bu yüzden ayrı model dalları açılmadı; iki model `IEN` dalında durur:
 
-Kod iki dalda aynıdır; yalnızca `model` değeri, `ml/models/` dosyaları ve üretilen sonuç belgeleri farklıdır. Karar verilince seçilen dal `IEN`'e birleştirilir, diğeri silinir.
+| Yer | İçerik |
+|---|---|
+| `ml/models/model.joblib`, `ml/models/feature_schema.json` | **Seçili model** (şimdilik rastgele orman). Servis bunu kurar (`python -m overbooking_service.install_model`) |
+| `ml/models/candidates/decision_tree/` | Karar ağacı adayı; seçilirse `docs/decisions.json` içinde `model` değiştirilip `python ml/apply_decisions.py` çalıştırılır, seçilen model `ml/models/` altına geçer |
+
+Karar kesinleşince `decisions.json` içinde `model_status` `final` yapılır ve gereksiz aday klasörü silinir.
 
 ## 3. Bir karar değişirse
 
@@ -50,7 +51,7 @@ Bu komut: seçilen modelin 27 günlük tahminlerini üretir, modeli servisin kab
 
 ## 4. Karar kaydı (soru, karar, gerekçe)
 
-**1. Hangi model? (#7)** *Bekliyor.* Rastgele orman test AUC 0,729; karar ağacı (4 seviye) 0,720; lojistik regresyon 0,658 (`docs/MODEL_KARSILASTIRMA.md`). Lojistik elendi. İkisi de servisin kabul kontrollerinden geçti. Seçim için iki dal açıldı; hangisinin çekileceği CEN'e iletilecek.
+**1. Hangi model? (#7)** *Geçici karar: rastgele orman.* Rastgele orman test AUC 0,729; karar ağacı (4 seviye) 0,720; lojistik regresyon 0,658 (`docs/MODEL_KARSILASTIRMA.md`). Lojistik elendi. İkisi de servisin kabul kontrollerinden geçti. Ekip onaylayana kadar geçici; karar ağacı aday olarak `ml/models/candidates/decision_tree/` altında hazır.
 
 **2. Hastalar en fazla ne kadar bekleyebilir?** *Karar: 15 dk.* Gerekçe: Türkiye'de poliklinik koşulları. Karar ayarının ortalama beklemesi bu sınırın içinde mi, `SONUC_OZETI.md` "Bekleme sınırı kontrolü" satırında yazar. Ortalama sınırın içinde olsa da bazı hastalar daha uzun bekler; tek tek hasta bekleme dağılımı ayrıca raporlanmadı.
 
@@ -64,7 +65,7 @@ Bu komut: seçilen modelin 27 günlük tahminlerini üretir, modeli servisin kab
 
 **7. Hangi kural teslim edilecek?** *Karar: yalnızca eşik kuralı.* Maliyet bazlı ve havayolu kuralı raporda karşılaştırma olarak kalır.
 
-**8. Modelin servise teslimi?** *Karar:* kararlar bittikten sonra model üretilir; hangi dalın çekileceği CEN'e iletilir. Model `ml/models/` altındadır; servis `python -m overbooking_service.install_model` ile kurar.
+**8. Modelin servise teslimi?** *Karar:* model `IEN` dalında `ml/models/` altındadır; CEN o dalı (birleştirildikten sonra `main`'i) çeker; servis `python -m overbooking_service.install_model` ile kurar.
 
 **9. Canlıda modelin güncel kalması?** *Karar:* CEN2 modele API ile bağlanarak çözer; IEN tarafında ek iş yok.
 
@@ -72,7 +73,7 @@ Bu komut: seçilen modelin 27 günlük tahminlerini üretir, modeli servisin kab
 
 ## 5. CEN tarafına iletilecekler
 
-1. **Hangi dalı çekecekler:** seçim yapılana kadar `IEN-RandomForest` ya da `IEN-DecisionTree` (ikisi de `ml/models/` altında hazır model içerir).
+1. **Hangi dalı çekecekler:** `IEN` (seçili model `ml/models/` altında; aday `ml/models/candidates/` altında).
 2. **Servis ayarları** (`overbooking-service/config.yaml`), IEN dokunmadı:
    - `overbooking.daily_overbook_limit`: 2 → **4**
    - `kpi.service_minutes`: 12 → **7,5**

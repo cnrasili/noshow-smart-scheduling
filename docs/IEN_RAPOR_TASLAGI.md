@@ -100,7 +100,7 @@ Ek hasta, yalnızca ilk hasta gelmezse "bedava" olur. İlk hastanın riski yüks
 
 ## 7. Sonuç ve öneri `[ONAY]`
 
-- Model: rastgele orman ile karar ağacı klinik sonuçta aynı; ağaç yorumlanabilir ve çok küçüktür (birkaç KB, ormanın yaklaşık 15 MB'ına karşı). Seçim ekibe aittir (#7); iki dal hazırdır.
+- Model: rastgele orman ile karar ağacı klinik sonuçta aynı; ağaç yorumlanabilir ve çok küçüktür (birkaç KB, ormanın yaklaşık 15 MB'ına karşı). Seçim ekibe aittir (#7); şimdilik rastgele orman seçili, karar ağacı aday olarak hazırdır.
 - Kural: eşik %30 ve günlük sınır 4 hasta kazancının neredeyse tamamını verir ve 15 dk sınırının çok altında kalır. Serviste günlük sınır 2 ve muayene süresi 12 dk'dır; bu iki değer karar listesine göre güncellenmelidir (CEN).
 - Hatırlatma: etkisi canlı A/B testiyle ölçülmelidir.
 
