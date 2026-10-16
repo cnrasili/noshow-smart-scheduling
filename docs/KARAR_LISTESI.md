@@ -7,7 +7,7 @@ Bu dosya projedeki kararların **tek kaydıdır**. Makine tarafı: `docs/decisio
 <!-- KARARLAR:BASLA -->
 | Karar | Seçim | Kim |
 |---|---|---|
-| 1. Model (#7) | **Bekliyor** (iki dal: IEN-RandomForest, IEN-DecisionTree) | Ekip |
+| 1. Model (#7) | Karar ağacı | Ekip |
 | 2. En uzun ortalama bekleme | 15 dk (poliklinik) | Ekip |
 | 3. Kural ayarı (#8) | Eşik %30, günlük ek randevu sınırı 4, slot başına en çok 2 hasta | Ekip |
 | 4. Muayene süresi (#9) | Ortalama 7.5 dk (aralık 5–10 dk); slot 10 dk x 24 (türetilmiş) | Ekip |
