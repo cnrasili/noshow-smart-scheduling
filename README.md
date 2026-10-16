@@ -250,9 +250,9 @@ Components depend on each other through the files below. Changes to them are agr
 | Booking application | Working: login, booking, cancellation, doctor views, attendance |
 | Overbooking service | Working: prediction, overbooking decision, messages, A/B test, KPIs |
 | Admin service | Working: administrator login, internal network restriction, KPI screen, account management, audit log |
-| Prediction model | Trained; the service still uses a placeholder model until the trained model is delivered |
+| Prediction model | Delivered: random forest (`random_forest-v1`), installed in the overbooking service |
 | Overbooking rule | Default threshold; the final rule and threshold come from the simulation study |
-| Simulation | Single session, appointment templates and real appointment days; extension to several physicians and departments planned |
+| Simulation | Single session, appointment templates and real appointment days; moving to one department without physicians (#61) |
 
 ## Course
 

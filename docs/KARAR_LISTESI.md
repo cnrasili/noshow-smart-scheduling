@@ -86,8 +86,8 @@ Bu komut: seçilen modelin 27 günlük tahminlerini üretir, modeli servisin kab
 
 ## 5. CEN tarafına iletilecekler
 
-1. **Model:** rastgele orman, `IEN` dalında `ml/models/` altında (scikit-learn 1.9.1, servis kabul kontrollerinden geçti). Kurulum: `python -m overbooking_service.install_model --source ../ml/models`.
+1. **Model:** rastgele orman `main`'de kurulu (PR #65 ve `94f9c93`: `ml/models/` ve `overbooking-service/models/`, scikit-learn 1.9.1, `random_forest-v1`); servisteki `dummy-v0` kaldırıldı.
 2. **Servis ayarları:** `IEN-service-settings` dalında hazır (`config.yaml`: günlük sınır 4, `service_minutes` 7,5; README ve ilgili testler güncellendi, servis testleri 150/150 geçiyor). `main`'e ayrı PR olarak alınır.
-3. **Model kurulunca güncellenecek 2 test:** `tests/test_predict_api.py` içindeki iki test `model_version == "dummy-v0"` bekliyor; yeni modelin sürümü `random_forest-v1` olacak (`docs/SERVIS_UYUM_RAPORU.md`).
+3. **`dummy-v0` bekleyen 2 test** (`tests/test_predict_api.py`) maintainer tarafından `94f9c93` ile güncellendi.
 4. **Kural kodu:** servisin `rules.decide` fonksiyonu ile simülasyonun kuralı aynı kararı veriyor (20.000 rastgele slotta fark yok); kod değişikliği gerekmez.
 5. **Modele API ile bağlanma (CEN2):** özellik adları `ml/models/feature_schema.json` içindedir.
