@@ -13,19 +13,20 @@ The web frontend calls only the web backend; it never calls the overbooking serv
 
 ## Shared Database
 
-All services use one PostgreSQL database with a single Alembic history in [`db/`](../db/). Each table is written by its owner; the other services only read it. The only exception is the overbooking service's demo data generator (`overbooking_service.demo`), which adds demo patients and appointments to the web backend's tables.
+All services use one PostgreSQL database with a single Alembic history in [`db/`](../db/). Each table is written by its owner; the other services only read it. The only exception is the dataset loading command in `db/` (`python -m noshow_db.load_dataset`), which adds the dataset patients to the web backend's `patients` table and their appointments to `dataset_appointments`.
 
 | Tables | Written by | Read by |
 |---|---|---|
 | `patients`, `doctors`, `doctor_schedules`, `slots`, `appointments`, `user_accounts`, `auth_sessions` | Web backend | Overbooking service (`patients`, `doctors`, `doctor_schedules`, `slots`, `appointments`); admin service (`patients`, `doctors`, `doctor_schedules`, `user_accounts`) |
 | `predictions`, `booking_decisions`, `messages`, `ab_assignments` | Overbooking service | — |
 | `admin_users`, `admin_sessions`, `admin_audit_log` | Admin service | — |
+| `dataset_appointments` | Dataset loading command | Overbooking service |
 
 ### Attendance
 
 Attendance is not reported by an event. The doctor marks an appointment as attended or missed in the web application, and the web backend stores it in `appointments.attended` (`NULL` until marked). The overbooking service reads this column directly:
 
-- patient history for the model features (`prior_appt_count`, `prior_noshow_count`), counting only appointments with a recorded outcome before the booking date,
+- patient history for the model features (`prior_appt_count`, `prior_noshow_count`), counting the appointments with a recorded outcome and the patient's past appointments in `dataset_appointments`, both only before the booking date,
 - the no-show rates of `GET /ab/summary`,
 - the patients seen in `GET /kpi`.
 
@@ -37,6 +38,7 @@ Booking never depends on the overbooking service being available:
 
 - The web backend waits at most 3 seconds for `POST /booking-decision`. Without an answer (timeout, connection error, error status or unexpected body), an empty slot is still booked, but a booked slot is never overbooked.
 - Booking events are sent after the response to the patient. A failed event does not undo the booking change; the service ignores repeated events.
+- A lost booked event is recovered. At startup and every 5 minutes, the overbooking service schedules the confirmation, the reminder and the A/B group for each future appointment booked within the last 48 hours that has no message, by the same rules as `POST /events/appointment-booked` (`message_recovery` in `overbooking-service/config.yaml`). An event that arrives later returns these messages instead of creating new ones. A lost cancelled event is not recovered.
 
 ## `POST /predict`
 
@@ -254,29 +256,18 @@ Errors of every endpoint:
 
 ### `POST /internal/accounts/patients`
 
-Creates a patient record with its login account. The patient logs in with the national ID number and the password.
+Opens a login account for a patient of the public dataset; it never creates a patient. The patient logs in with the patient number and the password. The account uses the e-mail address of the patient record. Agreed on 15 October 2026 with the dataset rules; the web backend implements it in #59.
 
 Request:
 
 ```json
 {
-  "national_id": "99999000184",
-  "full_name": "Ayşe Kaya",
-  "email": "ayse@example.com",
-  "age": 34,
-  "gender": "F",
-  "scholarship": false,
-  "hipertension": false,
-  "diabetes": false,
-  "alcoholism": false,
-  "handcap": 0,
+  "patient_number": "29872499824296",
   "password": "initial-password"
 }
 ```
 
-- `national_id`: Turkish national ID number, 11 digits, first digit not 0, official check digits.
-- `email`: contact address for messages; stored in lower case.
-- `gender`: `F` or `M`. `age`: 0–130. `handcap`: 0–4. The four flags default to `false` and `handcap` to 0.
+- `patient_number`: the dataset's `PatientId` as stored in `patients.patient_number`.
 - `password`: initial password, 8–128 characters. Only its hash is stored.
 
 Response (`201`):
@@ -285,9 +276,9 @@ Response (`201`):
 {
   "account_id": 12,
   "patient_id": 9,
-  "national_id": "99999000184",
-  "full_name": "Ayşe Kaya",
-  "email": "ayse@example.com"
+  "patient_number": "29872499824296",
+  "full_name": "Hasta 29872499824296",
+  "email": "29872499824296@hasta.sehirhastanesi.example"
 }
 ```
 
@@ -295,8 +286,9 @@ Errors:
 
 | Status | Reason |
 |---|---|
-| 409 | `National ID number already registered`, or `Email already in use` (by a patient or a doctor) |
-| 422 | Invalid request, for example an invalid national ID number or e-mail address |
+| 404 | `Patient not found`: no patient has this patient number |
+| 409 | `Patient already has an account`, or `Email already in use` (by another account) |
+| 422 | Invalid request, for example a password shorter than 8 characters |
 
 ### `POST /internal/accounts/doctors`
 

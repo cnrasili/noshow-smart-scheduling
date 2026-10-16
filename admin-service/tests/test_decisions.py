@@ -45,7 +45,6 @@ def clinic(session_factory: sessionmaker[Session]) -> None:
         names = ["Ayşe Kaya", "Mehmet Demir", "Zeynep Çelik", "Ali Şahin"]
         ayse, mehmet, zeynep, ali = patients = [
             Patient(
-                national_id=f"9999900{i:04d}",
                 full_name=name,
                 email=f"p{i}@example.com",
                 age=40,

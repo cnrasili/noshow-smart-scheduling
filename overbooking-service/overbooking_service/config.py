@@ -24,6 +24,15 @@ class ReminderSettings(BaseModel):
     max_attempts: int = Field(ge=1)
 
 
+class RecoverySettings(BaseModel):
+    """Job that schedules messages for bookings whose booked event was lost."""
+
+    enabled: bool = True
+    interval_seconds: int = Field(default=300, ge=1)
+    # Only appointments booked within this many hours are recovered
+    lookback_hours: float = Field(default=48, gt=0)
+
+
 class AbTestSettings(BaseModel):
     """Reminder A/B test settings."""
 
@@ -60,6 +69,8 @@ class Settings(BaseSettings):
     clinic_timezone: ZoneInfo
     overbooking: OverbookingRule
     reminders: ReminderSettings
+    # Defaults keep a service whose config.yaml predates the job starting
+    message_recovery: RecoverySettings = RecoverySettings()
     ab_test: AbTestSettings
     kpi: KpiSettings
     smtp_host: str | None = None

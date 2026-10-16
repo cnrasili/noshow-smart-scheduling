@@ -43,7 +43,15 @@ def clinic(session_factory: sessionmaker[Session]) -> None:
         mehmet = Patient(
             national_id=MEHMET, full_name="Mehmet Demir", email="m@demo.local", age=58, gender="M"
         )
-        session.add_all([ayse, mehmet])
+        # A patient of the public dataset, identified by the dataset's patient number
+        dataset_patient = Patient(
+            patient_number="93779.52927",
+            full_name="Hasta 93779.52927",
+            email="93779.52927@hasta.sehirhastanesi.example",
+            age=33,
+            gender="F",
+        )
+        session.add_all([ayse, mehmet, dataset_patient])
         session.flush()
         session.add_all(
             [
@@ -101,8 +109,40 @@ def test_patient_list_and_search(client: TestClient, log_in):
     assert "Giriş hesabı yok" in html
     by_name = client.get("/patients", params={"q": "ayşe"}).text
     assert "Ayşe Kaya" in by_name and "Mehmet Demir" not in by_name
-    by_id = client.get("/patients", params={"q": "999990002"}).text
-    assert "Mehmet Demir" in by_id and "Ayşe Kaya" not in by_id
+    assert "<td>93779.52927</td>" in html
+    by_number = client.get("/patients", params={"q": "93779.5"}).text
+    assert "Hasta 93779.52927" in by_number and "Ayşe Kaya" not in by_number
+
+
+@pytest.mark.parametrize("q", ["%", "_", "\\", "9999%", "Ay_e", "%ehmet"])
+def test_patient_search_has_no_wildcards(client: TestClient, log_in, q: str):
+    log_in()
+    html = client.get("/patients", params={"q": q}).text
+    assert "Ayşe Kaya" not in html and "Mehmet Demir" not in html
+
+
+WILDCARD_NAMES = ["Yüzde%Bir", "Alt_Çizgi", "Ters\\Bölü"]
+
+
+@pytest.mark.parametrize(("q", "name"), list(zip(["%", "_", "\\"], WILDCARD_NAMES, strict=True)))
+def test_patient_search_finds_names_with_wildcard_characters(
+    client: TestClient, log_in, session_factory: sessionmaker[Session], q: str, name: str
+):
+    with session_factory() as session:
+        session.add_all(
+            Patient(
+                full_name=full_name,
+                email=f"wildcard{n}@demo.local",
+                age=40,
+                gender="F",
+            )
+            for n, full_name in enumerate(WILDCARD_NAMES)
+        )
+        session.commit()
+    log_in()
+    html = client.get("/patients", params={"q": q}).text
+    shown = [n for n in [*WILDCARD_NAMES, "Ayşe Kaya", "Mehmet Demir"] if n in html]
+    assert shown == [name]
 
 
 def test_doctor_list_shows_department_hours_and_account(client: TestClient, log_in):

@@ -97,14 +97,15 @@ Requirements: Docker Desktop (Windows, macOS) or Docker Engine with Compose (Lin
    docker compose up --build -d
    ```
 
+   The first start also loads the public dataset into the database (see [Dataset](#dataset)).
+
 2. Load the demo data, once on a new database:
 
    ```bash
    docker compose exec web-backend python -m web_backend.seed
-   docker compose exec overbooking-service python -m overbooking_service.demo
    ```
 
-   The seed creates a fictional clinic with doctors, patients, login accounts and slots. The overbooking service demo adds three weeks of booking history with outcomes and A/B groups for the KPI screen; see the [demo scenario](overbooking-service/README.md#demo-scenario).
+   The seed creates a fictional clinic with doctors, patients, login accounts and slots. The KPI screen and the model decisions fill with the bookings made in the web application; see the [demo scenario](overbooking-service/README.md#demo-scenario).
 
 3. Create an administrator for the admin service; the command asks for a password twice:
 
@@ -133,7 +134,7 @@ Requirements: Docker Desktop (Windows, macOS) or Docker Engine with Compose (Lin
    docker compose up -d
    ```
 
-After every `git pull`, run `docker compose up --build -d` again; it rebuilds the services and updates the database schema. The demo data steps are needed only once per database.
+After every `git pull`, run `docker compose up --build -d` again; it rebuilds the services, updates the database schema and adds dataset records the database does not have yet. The demo data steps are needed only once per database.
 
 | Service | URL |
 |---|---|
@@ -211,10 +212,13 @@ When a pull request adds or upgrades a Python package, it also adds the exact ve
 
 The prediction model is trained on the public [Medical Appointment No Shows](https://www.kaggle.com/datasets/joniarroba/noshowappointments) dataset (Hoppen, 2016), which contains about 110,000 appointments from public clinics in Vitória, Brazil.
 
-The dataset is **not** stored in this repository. To use it:
+The dataset is the project's single data source; the rules for using it are in the [model features](docs/features.md#dataset-rules). It is stored once at [`ml/data/raw/KaggleV2-May-2016.csv`](ml/data/raw/KaggleV2-May-2016.csv). The `migrate` service of Docker Compose loads it into the database on every start and adds only the records that are missing. Without Docker, load it from the repository root:
 
-1. Download the dataset from Kaggle.
-2. Place the CSV file in `ml/data/raw/`.
+```bash
+python -m noshow_db.load_dataset
+```
+
+The database then holds the dataset's 62,298 patients and their 110,521 appointments; the 6 rows the dataset rules leave out are skipped. A patient is shown as `Hasta <PatientId>` and gets a technical e-mail address derived from the number, `<PatientId>@hasta.sehirhastanesi.example`, which only reaches Mailpit.
 
 The dataset is licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) by its author and is used for non-commercial academic purposes only.
 
@@ -238,7 +242,7 @@ Components depend on each other through the files below. Changes to them are agr
 - Commit messages are one line in the form `type: Imperative short message`, for example `feat: Add prediction endpoint` or `fix: Correct lead time calculation`.
 - Database changes go through Alembic migrations in [`db/`](db/).
 - New Python packages are added to [`constraints.txt`](constraints.txt) with their exact version (see [Pinned Versions](#pinned-versions)).
-- Never commit secrets or the dataset. Copy `.env.example` to `.env` and fill in local values.
+- Never commit secrets. Copy `.env.example` to `.env` and fill in local values. The public no-show dataset may be committed, once, under `ml/data/raw/`.
 
 ## Project Status
 

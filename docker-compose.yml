@@ -20,8 +20,12 @@ services:
     build:
       context: .
       dockerfile: db/Dockerfile
+    # Schema migrations, then the public dataset; loading again adds only missing records
+    command: sh -c "alembic upgrade head && python -m noshow_db.load_dataset --csv /app/dataset/KaggleV2-May-2016.csv"
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-noshow}:${POSTGRES_PASSWORD:-noshow}@db:5432/${POSTGRES_DB:-noshow}
+    volumes:
+      - ./ml/data/raw:/app/dataset:ro
     depends_on:
       db:
         condition: service_healthy
