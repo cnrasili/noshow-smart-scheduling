@@ -21,6 +21,7 @@
   "lateness_sd_min": 4,
   "reminder": "ab_test_plus_scenario",
   "single_doctor_rule": false,
+  "department": "General Practice",
   "assumptions_approval": {
     "status": "provisional",
     "by": "IEN sorumlusu",

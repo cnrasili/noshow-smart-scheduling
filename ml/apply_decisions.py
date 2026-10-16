@@ -98,6 +98,12 @@ def decision_rows(d: dict) -> list[tuple[str, str, str]]:
             ),
             "Ekip",
         ),
+        (
+            "5b. Birim",
+            f"Departman bazlı: `Department` = {d['department']} "
+            "(temizlenmiş veride her satırda); hekim yok",
+            "Ekip",
+        ),
         ("6. Hatırlatma", "Canlı A/B testi + varsayımsal senaryo", "Ekip"),
         ("7. Teslim edilen kural", "Yalnızca eşik kuralı", "Ekip"),
         (
