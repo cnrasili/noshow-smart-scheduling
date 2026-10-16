@@ -39,10 +39,10 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:8px;text-
 .wc{border:1px solid var(--line);background:var(--card);border-radius:8px;min-height:30px;font:inherit;font-size:12px;color:var(--mute);cursor:default}
 .wc.open{background:var(--grbg);border-color:#9bd3b6;color:var(--green);cursor:pointer;font-weight:700}.wc.full{background:repeating-linear-gradient(45deg,var(--soft),var(--soft) 6px,transparent 6px,transparent 12px)}.wc.mine{background:var(--acc);color:#fff;border-color:var(--acc)}.wc.sel{outline:3px solid var(--acc);outline-offset:1px}.wc.closed{background:transparent;border-style:dashed;opacity:.5}
 .wnav{display:flex;align-items:center;gap:10px;margin-bottom:10px}.wnav b{flex:1}.wnav button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:9px;padding:6px 12px;font:inherit;cursor:pointer}.wnav button:disabled{opacity:.35}
-/* doctor board */
+/* staff board */
 .board{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}@media(max-width:900px){.board{grid-template-columns:1fr}}.col{background:var(--soft);border-radius:14px;padding:10px;min-height:200px}.col h3{margin:0 0 8px;font-size:13px;color:var(--acc2);display:flex;justify-content:space-between}
 .strip{flex:1;display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.dy{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:4px;font:inherit;cursor:pointer;text-align:center;line-height:1.2}.dy b{display:block;font-size:16px}.dy small{display:block;font-size:10px;color:var(--mute)}.dy.rec{background:var(--soft)}.dy.on{background:var(--acc);color:#fff;border-color:var(--acc)}.dy.on small{color:#fff}.board.c2{grid-template-columns:repeat(2,1fr)}.cb{max-height:calc(100vh - 330px);overflow:auto;padding-right:4px}.tk{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-bottom:8px}.tk b{font-size:15px}.tk small{color:var(--mute);display:block}.tk .a{margin-top:6px;display:flex;gap:6px}.tk .a button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:3px 10px;font:inherit;font-size:12px;cursor:pointer}
-</style></head><body data-role="hekim">
+</style></head><body data-role="personel">
 <div class="ribbon">Örnek tasarım 2 / 2 · demo: soldan giriş türünü seçin</div>
 <div class="shell">
 <aside class="rail"><div class="brand"><span id="hn"></span><small id="portal"></small></div>
@@ -54,10 +54,10 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:8px;text-
 const DATA=/*__DATA__*/null;
 /*__COMMON__*/
 const st={role:'hasta',v:'hafta',thr:30,lim:LIM,sel:null,week:'2016-06-06',day:null,slot:null,confirmed:null,dday:TODAY,dshow:150};
-const NAV={hasta:[['hafta','Randevu al'],['benim','Randevularım']],hekim:[['pano','Bugünkü program']],yonetim:[['cal','Takvim ve kararlar'],['log','Karar günlüğü'],['adm','KPI ve model'],['msg','Mesajlar ve A/B']]};
-const PORTAL={hasta:'Hasta portalı',hekim:'Hekim paneli',yonetim:'Yönetim paneli'};
+const NAV={hasta:[['hafta','Randevu al'],['benim','Randevularım']],personel:[['pano','Bugünkü program']],yonetim:[['cal','Takvim ve kararlar'],['log','Karar günlüğü'],['adm','KPI ve model'],['msg','Mesajlar ve A/B']]};
+const PORTAL={hasta:'Hasta portalı',personel:'Poliklinik paneli',yonetim:'Yönetim paneli'};
 $('#hn').textContent=D.hospital;
-$('#who').innerHTML=[['hasta','Hasta'],['hekim','Hekim'],['yonetim','Yönetim']].map(([k,l])=>`<button data-w="${k}">${l}</button>`).join('');
+$('#who').innerHTML=[['hasta','Hasta'],['personel','Personel'],['yonetim','Yönetim']].map(([k,l])=>`<button data-w="${k}">${l}</button>`).join('');
 document.querySelectorAll('#who button').forEach(b=>b.onclick=()=>{st.role=b.dataset.w;st.v=NAV[st.role][0][0];st.day=null;st.slot=null;st.confirmed=null;draw();});
 const col=r=>r>=30?'var(--red)':r>=15?'var(--amber)':'var(--green)';
 
@@ -66,7 +66,7 @@ function hafta(){const days=[0,1,2,3,4].map(i=>addDays(st.week,i)),all=days.map(
   const head=days.map((d,i)=>`<div class="h">${DOW[i]}<small>${+d.slice(8)} ${MONTHS[+d.slice(5,7)-1].slice(0,3)}</small></div>`).join('');
   const cells=S.slots.map((sl,k)=>`<div class="t">${sl.time}</div>`+days.map((d,i)=>{const s=all[i][k],open=isOpenDay(d),sel=st.day===d&&st.slot===k;
     return `<button class="wc ${!open?'closed':s.mine?'mine':s.open?'open':'full'} ${sel?'sel':''}" ${s.open?`data-c="${d}|${k}"`:'disabled'}>${s.mine?'Randevum':s.open?'Müsait':''}</button>`}).join('')).join('');
-  return `<div class="top"><div><h1>Randevu al</h1><p>Poliklinik · Hekim ${S.doctor}. Haftalık takvimden yeşil bir saati seçin.</p></div></div>
+  return `<div class="top"><div><h1>Randevu al</h1><p>${D.department} (Genel Poliklinik). Haftalık takvimden yeşil bir saati seçin.</p></div></div>
   <div class="wnav"><button data-wk="-7" ${st.week<='2016-06-06'?'disabled':''}>‹ Önceki hafta</button><b>${+days[0].slice(8)} ${MONTHS[+days[0].slice(5,7)-1]} – ${+days[4].slice(8)} ${MONTHS[+days[4].slice(5,7)-1]} 2016</b><button data-wk="7" ${st.week>='2016-07-04'?'disabled':''}>Sonraki hafta ›</button></div>
   <div class="wk"><div></div>${head}${cells}</div>
   <div class="legend"><span><i style="background:var(--grbg);border:1px solid #9bd3b6"></i>Müsait</span><span><i style="background:var(--soft)"></i>Dolu</span><span><i style="background:var(--acc)"></i>Randevum</span><span><i style="border:1px dashed var(--mute)"></i>Kapalı</span></div>`;}
@@ -76,21 +76,21 @@ function benim(){return `<div class="top"><div><h1>Randevularım</h1><p>Alınan 
 function sideHasta(){
   if(st.confirmed)return `<h2>Randevunuz alındı ✓</h2><p style="margin:0">${longDate(st.confirmed.iso)}<br>Saat <b>${st.confirmed.time}</b> · Randevu no <b>${st.confirmed.no}</b></p><p class="note">Onay mesajı e-posta adresinize gönderildi.</p><p><button class="btn ghost" id="again">Yeni randevu</button></p>`;
   if(st.day===null)return `<h2>Randevu özeti</h2><p style="color:var(--mute)">Takvimden bir saat seçin.</p>`;
-  return `<h2>Randevu özeti</h2><p style="margin:0"><b>${longDate(st.day)}</b><br>Saat <b>${S.slots[st.slot].time}</b> · Hekim ${S.doctor}</p><p><button class="btn" id="ok">Randevuyu onayla</button></p>`;}
+  return `<h2>Randevu özeti</h2><p style="margin:0"><b>${longDate(st.day)}</b><br>Saat <b>${S.slots[st.slot].time}</b> · ${D.department}</p><p><button class="btn" id="ok">Randevuyu onayla</button></p>`;}
 
 // ---------- HEKİM: pano ----------
-function pano(){const day=doctorDay(st.dday),L=day.list,live=day.mode==='today',rec=day.mode==='data',ws=addDays(st.dday,-dowOf(st.dday));
+function pano(){const day=staffDay(st.dday),L=day.list,live=day.mode==='today',rec=day.mode==='data',ws=addDays(st.dday,-dowOf(st.dday));
   const strip=[0,1,2,3,4,5,6].map(i=>{const d=addDays(ws,i),c=BK.filter(b=>b.iso===d).length,tag=DATA_DAYS.has(d)?'kayıt':d===TODAY?'bugün':c?c+' randevu':'';
     return `<button class="dy ${st.dday===d?'on':''} ${DATA_DAYS.has(d)?'rec':''}" data-dd="${d}"><small>${DOW[i]}</small><b>${+d.slice(8)}</b><small>${tag||'&nbsp;'}</small></button>`}).join('');
   const cols=live?[['Bekleyen',p=>!ATT[p.key]],['Geldi',p=>ATT[p.key]==='g'],['Gelmedi',p=>ATT[p.key]==='n']]:rec?[['Geldi (kayıt)',p=>p.outcome==='g'],['Gelmedi (kayıt)',p=>p.outcome==='n']]:[];
   const empty={none:'Bu gün için kayıt yok.',future:'Bu gün için henüz randevu alınmadı.',today:''}[day.mode]||'';
   const card=(p,t)=>`<div class="tk"><b>${p.time||'Randevu'}</b> · ${rec?p.id:'Hasta '+p.id}<small>${p.age?p.age+' yaşında':''}</small>${live?`<div class="a">${t!=='Geldi'?`<button data-a="g|${p.key}">Geldi</button>`:''}${t!=='Gelmedi'?`<button data-a="n|${p.key}">Gelmedi</button>`:''}${t!=='Bekleyen'?`<button data-a="x|${p.key}">Geri al</button>`:''}</div>`:''}</div>`;
   const future=day.mode==='future'&&L.length,miss=L.filter(p=>p.outcome==='n').length;
-  return `<div class="top"><div><h1>${longDate(st.dday)}</h1><p>Hekim ${S.doctor}${rec?' · veri seti günü: günün tüm gerçek randevuları, sonuçlar kayıttır ve değiştirilemez':live?' · bugün':''}</p></div><div class="stats"><div class="st"><small>Randevu</small><b>${fmt(L.length)}</b></div>${rec?`<div class="st"><small>Gelmeme oranı</small><b>${pcs(miss/L.length)}</b></div>`:''}</div></div>
+  return `<div class="top"><div><h1>${longDate(st.dday)}</h1><p>${D.department}${rec?' · veri seti günü: günün tüm gerçek randevuları, sonuçlar kayıttır ve değiştirilemez':live?' · bugün':''}</p></div><div class="stats"><div class="st"><small>Randevu</small><b>${fmt(L.length)}</b></div>${rec?`<div class="st"><small>Gelmeme oranı</small><b>${pcs(miss/L.length)}</b></div>`:''}</div></div>
   <div class="wnav"><button data-dw="-7">‹ Önceki hafta</button><div class="strip">${strip}</div><button data-dw="7">Sonraki hafta ›</button><button data-dw="0">Bugün</button></div>
   ${cols.length&&(L.length||live)?`<div class="board c${cols.length}">${cols.map(([t,f])=>{const items=L.filter(f);return `<div class="col"><h3>${t}<span>${fmt(items.length)}</span></h3><div class="cb">${items.slice(0,st.dshow).map(p=>card(p,t.split(' ')[0])).join('')||(live&&t==='Bekleyen'&&!L.length?'<p class="note" style="margin:6px">Bugün için randevu yok. Hasta panelinden randevu alındığında burada görünür.</p>':'')}${items.length>st.dshow?`<button class="btn ghost" data-more="1" style="width:100%">Daha fazla göster (${fmt(items.length-st.dshow)})</button>`:''}</div></div>`}).join('')}</div>`
    :future?`<div class="col"><h3>Randevular<span>${L.length}</span></h3><div class="cb">${L.map(p=>card(p,'')).join('')}</div></div>`:`<div class="card"><p style="margin:0;color:var(--mute)">${empty}</p></div>`}`;}
-function sideHekim(){const live=st.dday===TODAY,L=doctorDay(TODAY).list,next=L.find(p=>!ATT[p.key]);return `<h2>Sıradaki hasta</h2>${live&&next?`<p style="font-size:20px;margin:0"><b>${next.time}</b> · Hasta ${next.id}</p><p style="color:var(--mute);margin:4px 0 0">${next.age} yaşında</p>`:`<p style="color:var(--mute)">${live?'Bekleyen hasta yok.':'Yalnızca bugün için gösterilir.'}</p>`}<p class="note">Hastalar yalnızca numarayla gösterilir. “Geldi / Gelmedi” yalnızca bugün işaretlenir; veri setindeki günlerin sonuçları kayıttan gelir ve değiştirilemez.</p>`;}
+function sidePersonel(){const live=st.dday===TODAY,L=staffDay(TODAY).list,next=L.find(p=>!ATT[p.key]);return `<h2>Sıradaki hasta</h2>${live&&next?`<p style="font-size:20px;margin:0"><b>${next.time}</b> · Hasta ${next.id}</p><p style="color:var(--mute);margin:4px 0 0">${next.age} yaşında</p>`:`<p style="color:var(--mute)">${live?'Bekleyen hasta yok.':'Yalnızca bugün için gösterilir.'}</p>`}<p class="note">Hastalar yalnızca numarayla gösterilir. “Geldi / Gelmedi” yalnızca bugün işaretlenir; veri setindeki günlerin sonuçları kayıttan gelir ve değiştirilemez.</p>`;}
 
 // ---------- YÖNETİM ----------
 function decisions(){let used=0;return AS.slots.map(sl=>{const n=sl.patients.length;if(n===0)return{k:'empty'};
@@ -98,7 +98,7 @@ function decisions(){let used=0;return AS.slots.map(sl=>{const n=sl.patients.len
   const p=sl.patients[0];if(p.risk<st.thr)return{k:'below',min:p.risk};if(used>=st.lim)return{k:'limit',min:p.risk};used++;return{k:'open',min:p.risk,no:used};});}
 function cal(){const dc=decisions(),all=AS.slots.flatMap(s=>s.patients),open=dc.filter(d=>d.k==='open').length;
   const lab={empty:'<span class="below">Boş</span>',made:'<span class="done">Ek randevu verildi</span>',below:'<span class="below">Eşiğin altında</span>',limit:'<span class="limit">Günlük sınır doldu</span>',open:'<span class="open">Ek randevu açık</span>'};
-  return `<div class="top"><div><h1>Hekim ${AS.doctor} · ${longDate(ADAY)}</h1><p>Günün bir hekim oturumu (gerçek kayıtlardan), slotlar 15 dakika · yalnızca yönetim görür</p></div><div class="stats"><div class="st"><small>Randevu</small><b>${all.length}</b></div><div class="st"><small>Beklenen gelmeme oranı</small><b>${pcs(all.reduce((a,p)=>a+p.risk/100,0)/all.length)}</b></div><div class="st"><small>Ek randevu açık slot</small><b>${open}</b></div></div></div>
+  return `<div class="top"><div><h1>Oturum ${AS.session_no} · ${longDate(ADAY)}</h1><p>Günün bir muayene odası oturumu (gerçek kayıtlardan), slotlar ${D.assumptions.slot_min} dakika · yalnızca yönetim görür</p></div><div class="stats"><div class="st"><small>Randevu</small><b>${all.length}</b></div><div class="st"><small>Beklenen gelmeme oranı</small><b>${pcs(all.reduce((a,p)=>a+p.risk/100,0)/all.length)}</b></div><div class="st"><small>Ek randevu açık slot</small><b>${open}</b></div></div></div>
   <div class="cal">${AS.slots.map((sl,i)=>`<div class="row"><div class="tm">${sl.time}</div><div class="pl">${sl.patients.map(p=>`<button class="pill ${st.sel&&st.sel.n===p.n?'sel':''}" data-p="${p.n}"><span class="dot" style="background:${col(p.risk)}"></span><b>${p.id}</b><small>${p.age} yaş · %${p.risk}</small>${p.extra?'<span class="tag">ek</span>':''}</button>`).join('')||'<span style="color:var(--mute)">—</span>'}</div><div class="st2">${lab[dc[i].k]}</div></div>`).join('')}</div>
   <div class="legend"><span><i style="background:var(--green)"></i>risk &lt; %15</span><span><i style="background:var(--amber)"></i>%15–29</span><span><i style="background:var(--red)"></i>≥ %30</span><span>Bir randevuya tıklayın: kararın nedeni sağda açıklanır.</span></div>`;}
 function explain(){const p=st.sel;if(!p)return `<h2>Karar açıklaması</h2><p style="color:var(--mute)">Soldaki takvimden bir randevu seçin. Sistem her ek randevu kararının nedenini kaydeder ve burada gösterir.</p>`;
@@ -122,20 +122,20 @@ function adm(){const b=R.none,r=R[({10:'thr15',15:'thr15',20:'thr20',25:'thr25',
   const k=(l,key,good,dec)=>{const v=r[key],w=b[key],d=v-w,p=100*d/w,cls=Math.abs(p)<.05?'':d*good>0?'good':'bad',sh=dec?f1:fmt;return `<div class="kc"><small>${l}</small><b>${sh(v)}</b><small>kural yok: ${sh(w)}</small><div class="d ${cls}">${d>=0?'+':''}${sh(d)} (${p>=0?'+':''}${f1(p)}%)</div></div>`};
   return `<div class="top"><div><h1>KPI ve model</h1><p>Soldaki eşiği değiştirin; sonuçlar ${D.model.days} günün tüm gerçek randevuları üzerinden hesaplanmış simülasyondan gelir (en yakın %5'lik eşik).</p></div></div>
   <div class="kgrid">${k('Görülen hasta','seen',1,0)}${k('Ortalama bekleme (dk)','wait',-1,1)}${k('Doluluk (%)','util',1,1)}${k('Boşta kalma (saat)','idle_h',-1,0)}${k('Mesai aşımı (saat)','ot_h',-1,0)}</div>
-  <div class="card"><h2>Veri günleri: gerçek randevular ve risk</h2><div style="max-height:320px;overflow:auto">${dayStatsTable(REAL)}</div><p class="note">Risk, modelin o güne hiç görmeden yaptığı tahmindir. Hekim ekranında bu günlerin kayıtları salt okunurdur.</p></div>
+  <div class="card"><h2>Veri günleri: gerçek randevular ve risk</h2><div style="max-height:320px;overflow:auto">${dayStatsTable(REAL)}</div><p class="note">Risk, modelin o güne hiç görmeden yaptığı tahmindir. Personel ekranında bu günlerin kayıtları salt okunurdur.</p></div>
   <div class="card"><h2>Model</h2><p style="margin:0;color:var(--mute)">AUC <b style="color:var(--ink)">${String(D.model.auc).replace('.',',')}</b> · gerçek gelmeme oranı %${String(D.model.no_show_rate).replace('.',',')} · ortalama tahmin %${String(D.model.mean_risk).replace('.',',')} (kalibre) · en yüksek tahmin %${D.model.max_risk}. Eşik %50 ve üstü hiçbir hastayı kapsamaz: kural yalnızca düşük eşiklerde işe yarar.</p></div>`;}
 function msg(){const last=BK[BK.length-1];return `<div class="top"><div><h1>Mesajlar ve A/B</h1><p>Onay ve hatırlatma planı; hatırlatmanın gelmeme oranına etkisi</p></div></div>
   <div class="card"><h2>Mesaj planı · ${last?last.no:'örnek'}</h2>${msgTable(last?last.iso:REAL,last?last.time:'09:00')}</div><div class="card"><h2>Hatırlatma A/B testi</h2>${abTable()}</div>`;}
 
-const MAIN={hasta:{hafta,benim},hekim:{pano},yonetim:{cal,log,adm,msg}};
+const MAIN={hasta:{hafta,benim},personel:{pano},yonetim:{cal,log,adm,msg}};
 const who=()=>`<p style="margin:0 0 12px;font-size:12px;color:var(--mute)">Giriş yapan hasta (demo)<br><select id="cur">${PATIENTS.map(p=>`<option value="${p.id}" ${p.id===CUR?'selected':''}>${p.id}</option>`).join('')}</select></p>`;
-function side(){if(st.role==='hasta')return who()+(st.v==='hafta'?sideHasta():'<h2>Mesajlar</h2>'+inboxHtml());if(st.role==='hekim')return sideHekim();return st.v==='cal'?explain():'';}
+function side(){if(st.role==='hasta')return who()+(st.v==='hafta'?sideHasta():'<h2>Mesajlar</h2>'+inboxHtml());if(st.role==='personel')return sidePersonel();return st.v==='cal'?explain():'';}
 function draw(){document.body.dataset.role=st.role;$('#portal').textContent=PORTAL[st.role];
   document.querySelectorAll('#who button').forEach(b=>b.classList.toggle('on',b.dataset.w===st.role));
   $('#nav').innerHTML=NAV[st.role].map(([k,l])=>`<button class="nv ${st.v===k?'on':''}" data-v="${k}">${l}</button>`).join('');
   if($('#rules').dataset.role!==st.role){$('#rules').dataset.role=st.role;$('#rules').innerHTML=st.role==='yonetim'?`<div class="box"><b>Overbooking eşiği</b><div class="big" id="thv"></div><input type="range" id="thr" min="10" max="60" step="1" value="${st.thr}"><div class="note" style="margin-top:6px">Bir slota ikinci hasta, o slottaki hastaların gelmeme riski eşiğin üstündeyse yazılabilir. Yalnızca yönetim görür.</div></div>
-   <div class="box"><b>Gün</b>${adayPicker()}<div class="note" style="margin-top:6px">Takvim ve karar ekranları seçilen günün bir hekim oturumunu gösterir.</div></div>
-   <div class="box"><b>Günlük sınır</b><div class="big" id="limv"></div><input type="range" id="lim" min="0" max="8" step="1" value="${st.lim}"><div class="note" style="margin-top:6px">Bir doktorun bir günde açabileceği en çok ek randevu.</div></div>`:'';
+   <div class="box"><b>Gün</b>${adayPicker()}<div class="note" style="margin-top:6px">Takvim ve karar ekranları seçilen günün bir personel oturumunu gösterir.</div></div>
+   <div class="box"><b>Günlük sınır</b><div class="big" id="limv"></div><input type="range" id="lim" min="0" max="8" step="1" value="${st.lim}"><div class="note" style="margin-top:6px">Departmanın bir günde açabileceği en çok ek randevu.</div></div>`:'';
    const ad=$('#aday');if(ad)ad.onchange=()=>{setAday(ad.value);st.sel=firstExtra();draw();};const th=$('#thr');if(th)th.oninput=e=>{st.thr=+e.target.value;draw();};const li=$('#lim');if(li)li.oninput=e=>{st.lim=+e.target.value;draw();};}
   if($('#thv')){$('#thv').textContent='%'+st.thr;$('#limv').textContent=st.lim;}
   $('#main').innerHTML=MAIN[st.role][st.v]();$('#side').innerHTML=side();
