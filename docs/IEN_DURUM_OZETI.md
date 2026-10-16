@@ -77,9 +77,9 @@ Tahmin modelinin katkısı: Fazladan her hasta için yaşanan bekleme, rastgele 
 
 1. **Simülasyonun sayıları varsayım.** Slot süresi (15 dk), muayene süresi (ortalama 12 dk) ve hastaların ne kadar geç kaldığı bizim tahminimiz. Gerçek değerler lazım. En çok **muayene süresinin ne kadar değiştiği** önemli: değişkenlik artarsa sabit randevuda bekleme 2 dakikadan 8 dakikaya çıkıyor.
 2. **Başarı ölçütünü belirlemek lazım.** "Bekleme ve mesai aşımı en fazla 5 dakika olsun" dedik ama bunu biz seçtik. Hoca ya da proje yöneticisiyle konuşulmalı. Kazanan şablon bu sınıra göre değişiyor.
-3. **Kısa slot + overbooking birlikte denenmedi.** Muhtemelen hocanın ilk soracağı soru: "Overbooking yerine slotu kısaltsak olmaz mı?"
-4. **Modeli servise bağlamak.** Hazır model dosyası henüz `overbooking-service`'e verilmedi. Servisteki kural (`rules.py`) ile bizim yazdığımız kural da aynı değil, birine karar verilmeli.
-5. **Hatırlatmanın etkisi simülasyonda yok.** Hatırlatma mesajı gelmeme oranını düşürür. Bunu simülasyona eklemek lazım. Kaggle'daki SMS verisinden etkiyi çıkarmayın, yanıltıcı (SMS zaten riskli hastalara gönderilmiş).
+3. **Kısa slot + overbooking birlikte denenmedi.** *(16 Ekim: denendi, bkz. bölüm 9.)* Muhtemelen hocanın ilk soracağı soru: "Overbooking yerine slotu kısaltsak olmaz mı?"
+4. **Modeli servise bağlamak.** *(16 Ekim: kurallar aynı karar veriyor, aday model servis kontrollerinden geçti; bkz. bölüm 9.)* Hazır model dosyası henüz `overbooking-service`'e verilmedi. Servisteki kural (`rules.py`) ile bizim yazdığımız kural da aynı değil, birine karar verilmeli.
+5. **Hatırlatmanın etkisi simülasyonda yok.** *(16 Ekim: varsayımsal senaryo eklendi, bkz. bölüm 9.)* Hatırlatma mesajı gelmeme oranını düşürür. Bunu simülasyona eklemek lazım. Kaggle'daki SMS verisinden etkiyi çıkarmayın, yanıltıcı (SMS zaten riskli hastalara gönderilmiş).
 6. **Gelmeme oranı kayıyor.** Eğitimde %20,6, son haftada %18,5. Model bu yüzden hafif fazla risk veriyor. Canlıda düzenli izleme ve yeniden kalibrasyon gerekecek (`quality-control.md`).
 7. **Küçük modelleme işleri:** Lojistik regresyonda randevu süresini aralıklara bölmek; Winters formülünü ders slaytlarından kontrol etmek; kalite kontrol çarpan tabloları PDF'te resim olduğu için okunamadı, elle girilmeli.
 8. **Excel formülleri açılıp bakılmadı.** Raporlardaki ROC ve kalibrasyon tabloları Excel formülü, ama bu bilgisayarda Excel olmadığı için açıp çalıştıramadık. Python ile aynı sonucu verdiğini ayrıca kontrol ettik. Excel'de bir kez açıp bakın.
@@ -147,3 +147,24 @@ simulation/templates/     3 randevu şablonu, karşılaştırma, kazanan
 - Sonuçlar **bu veriyle ve bu varsayımlarla** geçerli. Veri tek şehirden ve 6 haftalık. Raporda bunu söylemeyi unutmayın.
 - Simülasyondaki rakamları "kesin sonuç" diye sunmayın. Gerçek muayene süresi gelince yeniden çalıştırmak gerekir.
 - Hastanın cinsiyetine göre farklı muamele etmek hem adil değil hem de veride işe yaramıyor. Kurallarda kullanmadık.
+
+## 9. 16 Ekim güncellemesi: yeni deneyler ve belgeler
+
+Mevcut kod ve sonuçlar değiştirilmeden eklendi. Hepsi komutla yeniden üretilir.
+
+| Konu | Ne yapıldı | Nerede |
+|---|---|---|
+| Model karşılaştırması | Zamana göre ayrım, sızıntısız protokol, üç model (lojistik, orman, ağaç), zamana duyarlı hiperparametre taraması, precision/recall/F1, kalibrasyon, yeni/tekrar gelen hasta alt grupları | `ml/evaluate_models.py` → `docs/MODEL_KARSILASTIRMA.md` |
+| Tekrarlı, eşleştirilmiş simülasyon | 2.000 oturum, güven aralığı ve etki büyüklüğü, eşik x günlük sınır ızgarası, kısa slot + overbooking, duyarlılık analizi, varsayımsal hatırlatma senaryosu | `simulation/experiments.py` → `docs/IEN_DENEY_SONUCLARI.md` |
+| Servis uyumu | Servisin `rules.decide`'ı ile simülasyonun eşik kuralı 20.000 rastgele slotta aynı kararı veriyor; ayar farkı: günlük sınır serviste 2, simülasyonda 4 | `simulation/parity_check.py` |
+| Aday model kontrolü | Rastgele orman ve karar ağacı adayı servisin kabul kontrollerinden geçiyor; yalnızca `--out` verilirse dosya yazar (`apply_decisions.py` seçilen modeli `ml/models/` altına yazar) | `ml/export_candidate.py` |
+| KPI ve varsayımlar | Simülasyon ve uygulama KPI hesabı farkı, ölçülen/varsayım ayrımı, duyarlılık | `docs/KPI_VE_VARSAYIM_KARSILASTIRMASI.md` |
+| Rapor ve demo | Metodoloji ve sonuç raporu taslağı, demo akışı ve jüri soruları | `docs/IEN_RAPOR_TASLAGI.md`, `docs/DEMO_VE_JURI_HAZIRLIGI.md` |
+| Kararlar | Karar listesi (`docs/KARAR_LISTESI.md`) ve makine tarafı (`docs/decisions.json`) tek kaynaktır. Karar değişince `python ml/apply_decisions.py` modeli (`ml/models/`), deneyleri ve sonuç özetini yeniden üretir | `ml/apply_decisions.py`, `docs/SONUC_OZETI.md` |
+| Dallar | `IEN-RandomForest` ve `IEN-DecisionTree`: aynı kod, farklı model; seçilen dal `IEN`'e birleştirilir | `docs/KARAR_LISTESI.md` bölüm 2 |
+
+```bash
+python ml/evaluate_models.py
+python ml/apply_decisions.py          # karar listesine göre model + deneyler
+python simulation/parity_check.py
+```

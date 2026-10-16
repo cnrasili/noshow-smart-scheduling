@@ -11,3 +11,6 @@ select = ["E", "F", "I", "B", "UP"]
 "simulation/templates/**/*.py" = ["E501"]
 # Console reports and long explanatory docstrings of the replication script
 "ml/paper_replication.py" = ["E501"]
+# Generated Turkish report texts
+"ml/evaluate_models.py" = ["E501"]
+"simulation/experiments.py" = ["E501"]
