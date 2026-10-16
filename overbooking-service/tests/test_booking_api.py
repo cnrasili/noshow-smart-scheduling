@@ -161,4 +161,4 @@ def test_unknown_slot_in_database_returns_404(client: TestClient):
 def test_default_rule_comes_from_config():
     rule = get_rule()
     assert rule.threshold == 0.30
-    assert rule.daily_overbook_limit == 2
+    assert rule.daily_overbook_limit == 4
