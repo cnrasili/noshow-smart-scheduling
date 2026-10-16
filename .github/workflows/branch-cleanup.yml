@@ -1,6 +1,6 @@
 name: Branch cleanup
 
-# Each person keeps only their most recently updated branch
+# Each person keeps only their most recently updated branch, or as many as LIMITS in the script allows
 on:
   create:
   schedule:

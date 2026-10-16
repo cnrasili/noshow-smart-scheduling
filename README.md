@@ -32,9 +32,8 @@ The project is developed as an interdisciplinary study combining industrial engi
 
 ## Scope
 
-- The analysis starts with one outpatient clinic session of one physician with fixed-length appointment slots. Later stages extend it to several physicians and departments, including several physicians of the same department.
-- The demo application contains several physicians in several departments.
-- The prediction model is trained on the public Medical Appointment No Shows dataset; the application and the simulation use simulated data. The dataset has no physician or department information, so physicians and departments in the simulation are assumed.
+- The project's single data source is the public Medical Appointment No Shows dataset (see [Dataset](#dataset)). The prediction model, the simulation and the application all use it; the application has only the dataset's patients and nothing the dataset does not have.
+- The whole system has one department with fixed-length appointment slots. The dataset names no physician, so neither the simulation nor the application names or assigns one; capacity and results belong to the department.
 - Selective overbooking is compared with fixed-interval booking.
 - Real patient data and integration with hospital information systems are outside the scope.
 
@@ -236,7 +235,7 @@ Components depend on each other through the files below. Changes to them are agr
 ## Workflow
 
 - `main` always contains working code and only the maintainer updates it: teammates' changes come through reviewed pull requests; the maintainer's own changes are pushed directly after the checks pass locally.
-- Each contributor works on one branch and keeps it up to date with `main` (`git merge origin/main`). Older branches of the same contributor are removed automatically by the `Branch cleanup` workflow; unmerged work is kept as an `archive/...` tag.
+- Each contributor works on one branch and keeps it up to date with `main` (`git merge origin/main`); `hazarikizler` may keep three (`LIMITS` in [`.github/scripts/cleanup_branches.py`](.github/scripts/cleanup_branches.py)). Older branches beyond that number are removed automatically by the `Branch cleanup` workflow; unmerged work is kept as an `archive/...` tag.
 - Pull requests reference the issue they solve (`Closes #<number>`); open work is tracked in [GitHub Issues](https://github.com/cnrasili/noshow-smart-scheduling/issues).
 - Each issue has one assignee and covers one component; its Scope section lists the files it may change. Work needed in another component is requested in a comment, not made in the same pull request.
 - Commit messages are one line in the form `type: Imperative short message`, for example `feat: Add prediction endpoint` or `fix: Correct lead time calculation`.
