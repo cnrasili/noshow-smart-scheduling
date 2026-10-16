@@ -1,6 +1,6 @@
 # Zamansal sızıntı kontrolü (otomatik üretilir)
 
-Bu dosya `ml/leakage_check.py` tarafından üretilir; elle düzenlemeyin. Model: **random_forest** (`docs/decisions.json`).
+Bu dosya `ml/leakage_check.py` tarafından üretilir; elle düzenlemeyin. Model: **decision_tree** (`docs/decisions.json`).
 
 ## Soru
 
@@ -14,17 +14,17 @@ Simülasyonun kullandığı 27 günlük riskler, günleri 5 kata dönüşümlü 
 
 | Risk üretimi | AUC | Brier | Ortalama tahmin | Gerçek oran | Kalibrasyon kesişimi | Kalibrasyon eğimi |
 |---|---|---|---|---|---|---|
-| Dönüşümlü katlar (şu an) | 0.731 | 0.143 | 0.203 | 0.200 | -0.018 | 1.077 |
-| Yalnızca geçmiş günlerle | 0.729 | 0.144 | 0.210 | 0.200 | -0.068 | 1.127 |
+| Dönüşümlü katlar (şu an) | 0.719 | 0.144 | 0.205 | 0.200 | -0.033 | 0.995 |
+| Yalnızca geçmiş günlerle | 0.719 | 0.145 | 0.213 | 0.200 | -0.082 | 1.029 |
 
-AUC farkı çok küçük: dönüşümlü katlar sonuçları belirgin biçimde şişirmiyor. (Fark +0.002.)
+AUC farkı çok küçük: dönüşümlü katlar sonuçları belirgin biçimde şişirmiyor. (Fark -0.000.)
 
 ## Simülasyon sonucuna etkisi (karar ayarı, sabit aralığa göre, 600 eşleştirilmiş oturum)
 
 | Risk üretimi | Görülen (fark) | Bekleme dk (fark) | Boşta dk (fark) | Mesai aşımı dk (fark) |
 |---|---|---|---|---|
-| Dönüşümlü katlar (şu an) | +2.81 | +0.89 | -21.03 | +0.10 |
-| Yalnızca geçmiş günlerle | +2.88 | +0.91 | -21.60 | +0.09 |
+| Dönüşümlü katlar (şu an) | +2.71 | +0.88 | -20.33 | +0.17 |
+| Yalnızca geçmiş günlerle | +2.95 | +0.97 | -22.17 | +0.15 |
 
 ## Değerlendirme protokolü denetimi
 
@@ -38,4 +38,4 @@ AUC farkı çok küçük: dönüşümlü katlar sonuçları belirgin biçimde ş
 
 ## Sonuç
 
-AUC farkı çok küçük: dönüşümlü katlar sonuçları belirgin biçimde şişirmiyor. Karar ayarının hasta kazancı iki yöntemde +2.81 ve +2.88; bekleme farkı +0.89 ve +0.91 dk. Ayrıca iki sınırlılık sürer: (1) yalnızca 27 gün vardır, ilk günlerin tahmini için az eğitim verisi vardır; (2) her iki yöntem de hasta geçmişi özelliklerini randevu tarihinden önceki kayıtlarla hesaplar (`ml/data/clean_data.py`), bu yüzden özelliklerde sızıntı yoktur.
+AUC farkı çok küçük: dönüşümlü katlar sonuçları belirgin biçimde şişirmiyor. Karar ayarının hasta kazancı iki yöntemde +2.71 ve +2.95; bekleme farkı +0.88 ve +0.97 dk. Ayrıca iki sınırlılık sürer: (1) yalnızca 27 gün vardır, ilk günlerin tahmini için az eğitim verisi vardır; (2) her iki yöntem de hasta geçmişi özelliklerini randevu tarihinden önceki kayıtlarla hesaplar (`ml/data/clean_data.py`), bu yüzden özelliklerde sızıntı yoktur.
