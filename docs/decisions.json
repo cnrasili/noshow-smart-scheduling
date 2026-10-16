@@ -1,7 +1,7 @@
 {
   "_note": "Tek kaynak: bu dosya ve docs/KARAR_LISTESI.md birlikte güncellenir. Değişince `python ml/apply_decisions.py` modeli ve sonuçları yeniden üretir.",
-  "model": "random_forest",
-  "model_status": "final",
+  "model": "decision_tree",
+  "model_status": "alternative",
   "model_params": {
     "random_forest": {"n_estimators": 150, "min_samples_leaf": 20, "max_depth": 14, "random_state": 42},
     "decision_tree": {"max_depth": 4, "min_samples_leaf": 200, "random_state": 42}

@@ -1,5 +1,7 @@
 # Ekip karar listesi (IEN)
 
+> **Bu dal bir alternatiftir (karşılaştırma için).** Seçilen model rastgele orman ve `IEN` dalındadır. Bu dalda `ml/models/` altında karar ağacı, sonuç belgeleri karar ağacının riskleriyle üretilmiştir; rastgele orman `ml/models/candidates/random_forest/` altındadır. İki dalın kodu aynıdır; fark `docs/decisions.json` içindeki `model` değerinde ve üretilen dosyalardadır.
+
 Bu dosya projedeki kararların **tek kaydıdır**. Makine tarafı: `docs/decisions.json`. Bir karar değişirse ikisi birlikte güncellenir ve `python ml/apply_decisions.py` çalıştırılır; model ve sonuçlar yeniden üretilir (bölüm 3). Güncel sayılar: `docs/SONUC_OZETI.md`.
 
 ## 1. Güncel kararlar
@@ -7,7 +9,7 @@ Bu dosya projedeki kararların **tek kaydıdır**. Makine tarafı: `docs/decisio
 <!-- KARARLAR:BASLA -->
 | Karar | Seçim | Kim |
 |---|---|---|
-| 1. Model (#7) | Rastgele orman (kesin); karşılaştırma için Karar ağacı `ml/models/candidates/` altında | Ekip |
+| 1. Model (#7) | Karar ağacı (alternatif dal; seçili model rastgele orman, karşılaştırma için); karşılaştırma için Rastgele orman `ml/models/candidates/` altında | Ekip |
 | 2. En uzun ortalama bekleme | 15 dk (poliklinik) | Ekip |
 | 3. Kural ayarı (#8) | Eşik %30, günlük ek randevu sınırı 4, slot başına en çok 2 hasta | Ekip |
 | 4. Muayene süresi (#9) | Ortalama 7.5 dk (aralık 5–10 dk); slot 10 dk x 24 (türetilmiş) | Ekip |

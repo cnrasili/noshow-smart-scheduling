@@ -1,5 +1,5 @@
 {
-  "version": "random_forest-v1",
+  "version": "decision_tree-v1",
   "features": [
     "lead_days",
     "weekday",
