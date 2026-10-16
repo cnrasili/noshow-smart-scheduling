@@ -1,6 +1,6 @@
 # Model Features
 
-**Status:** Proposal. The feature list and encoding below are proposed by the overbooking service and are final only when the prediction model is trained on them. The overbooking service follows the agreed list.
+**Status:** Agreed. The delivered prediction model (`random_forest-v1` in `ml/models/`) is trained on exactly the features and encodings below, and the overbooking service computes the same ones.
 
 The model may only use features that are known at booking time. The overbooking service computes the same features when it calls the model.
 
@@ -18,7 +18,7 @@ The model may only use features that are known at booking time. The overbooking 
 | `prior_appt_count` | Patient's earlier appointments: dataset history and bookings in the application | Yes | Only appointments before the booking date |
 | `prior_noshow_count` | Patient's earlier appointments: dataset history and bookings in the application | Yes | Only appointments before the booking date |
 | `SMS_received` | — | **No** | Sent after booking; excluded |
-| `Neighbourhood` | — | — | No equivalent in the application; proposed to exclude |
+| `Neighbourhood` | — | — | No equivalent in the application; excluded |
 
 ## Dataset Rules
 
@@ -62,7 +62,3 @@ To compute the features, the booking application stores the following data. The 
 Train with the same scikit-learn minor version as the service (see `overbooking-service/pyproject.toml`); the service logs a warning otherwise.
 
 `ml/export_model.py` is a shared contract between the prediction model and the overbooking service; changes to it are agreed by both sides.
-
-## Open Questions
-
-- Final feature list and encoding
