@@ -1,6 +1,6 @@
 name: Branch cleanup
 
-# Each person keeps only their most recently updated branch
+# Each person keeps only their most recently updated branch, or as many as BRANCH_LIMITS allows
 on:
   create:
   schedule:
@@ -34,4 +34,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           EXEMPT_LOGINS: cnrasili
+          # Owners with more than one branch; everyone else keeps one
+          BRANCH_LIMITS: hazarikizler=3
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
