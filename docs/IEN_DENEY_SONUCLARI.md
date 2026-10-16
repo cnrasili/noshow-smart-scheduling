@@ -19,7 +19,7 @@ Bu dosya `simulation/experiments.py` tarafından üretilir; elle düzenlemeyin. 
 | Maliyet kuralı r=1,0 | +0.03 [+0.02; +0.03] (d=+0.17) | +0.01 [+0.00; +0.01] (d=+0.08) | -0.19 [-0.24; -0.14] (d=-0.16) | +0.02 [-0.01; +0.04] (d=+0.03) | +0.00 [+0.00; +0.00] (d=+0.15) |
 | Havayolu kuralı | +3.22 [+3.18; +3.25] (d=+4.02) | +2.89 [+2.77; +3.01] (d=+1.07) | -24.09 [-24.44; -23.73] (d=-2.98) | -0.09 [-0.30; +0.12] (d=-0.02) | +0.10 [+0.10; +0.10] (d=+2.69) |
 
-**Yorum.** Ek randevu hem hasta sayısını artırır hem doktorun boşta kalmasını azaltır, ancak aynı slota iki hasta gelince ortalama bekleme ve çoğu politikada mesai aşımı da artar. İyileşme ve bedeli birlikte raporlanmalıdır: kural "bedava" değildir.
+**Yorum.** Ek randevu hem hasta sayısını artırır hem muayene odasının boşta kalmasını azaltır, ancak aynı slota iki hasta gelince ortalama bekleme ve çoğu politikada mesai aşımı da artar. İyileşme ve bedeli birlikte raporlanmalıdır: kural "bedava" değildir.
 
 ## 2. Eşik x günlük limit ızgarası (500 oturum)
 

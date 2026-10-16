@@ -115,15 +115,15 @@ def write_index() -> Path:
                 (
                     "Live simulation",
                     "live_simulation.html",
-                    "<b>Choose this to understand how it works.</b> One doctor, one example day with 20 patients. You see every patient arrive, "
+                    "<b>Choose this to understand how it works.</b> One clinic room, one example day with 20 patients. You see every patient arrive, "
                     "wait and get seen, one by one, and you can pause and replay it. Fixed interval and overbooking run on the same patients, one above the other.",
-                    "Watch one doctor's day",
+                    "Watch one clinic room's day",
                 ),
                 (
                     "Whole days",
                     "whole_day.html",
-                    "<b>Choose this to see the full picture.</b> Every real appointment of a day (about 4,400 patients) spread over about 220 doctors. "
-                    "Each square is a doctor; counters and charts show the whole day. You also get the totals and a table of every record, "
+                    "<b>Choose this to see the full picture.</b> Every real appointment of a day (about 4,400 patients) spread over about 220 clinic rooms. "
+                    "Each square is a clinic room; counters and charts show the whole day. You also get the totals and a table of every record, "
                     "with the risk each rule and model gave.",
                     "See every record of a day",
                 ),
@@ -155,7 +155,7 @@ def write_index() -> Path:
     ]
     tpls = page(
         "Templates",
-        "A template is the way a doctor's session is cut into appointment slots. These are the three we designed and tested. "
+        "A template is the way a clinic room's session is cut into appointment slots. These are the three we designed and tested. "
         "Open one to see how the session is laid out and which rules it uses.",
         cards_html(
             [
@@ -174,10 +174,10 @@ def write_index() -> Path:
             "Idle time vs waiting time",
             "chart_tradeoff.html",
             "tradeoff.png",
-            "Shows the price of overbooking. The more aggressive the rule, the less the doctor is idle, but the longer patients wait.",
+            "Shows the price of overbooking. The more aggressive the rule, the less the clinic room is idle, but the longer patients wait.",
             [
                 "<b>Left chart:</b> each dot is one overbooking rule (the number is its risk threshold; &ldquo;fixed&rdquo; = no overbooking). "
-                "Further left = the doctor is idle less. Higher = patients wait longer. Moving along the line trades one for the other.",
+                "Further left = the clinic room is idle less. Higher = patients wait longer. Moving along the line trades one for the other.",
                 "<b>Right chart:</b> for the same rules, blue = patients seen per session, orange = overtime in minutes. Lower thresholds see more patients but create more overtime.",
                 "The small crosses are 95% confidence intervals: if they are tiny, the difference is real, not luck.",
             ],
@@ -186,12 +186,12 @@ def write_index() -> Path:
             "One session, side by side",
             "chart_timeline.html",
             "timeline.png",
-            "One doctor's morning with and without overbooking, drawn on a time line, so you can see where the extra patients go.",
+            "One clinic room's morning with and without overbooking, drawn on a time line, so you can see where the extra patients go.",
             [
                 "Each row is one patient. <b>Blue</b> bar: the consultation. <b>Yellow</b> bar before it: the time the patient waited. "
                 "<b>Orange</b>: a patient added by overbooking. The black tick is the appointment time; the red dashed line is the planned end of the session.",
                 "Top = fixed interval, bottom = overbooking, with the same patients. Look at the bottom chart: where the yellow bars appear, overbooking caused a wait; "
-                "where the top chart has gaps, the doctor was idle.",
+                "where the top chart has gaps, the clinic room was idle.",
             ],
         ),
         (
@@ -202,7 +202,7 @@ def write_index() -> Path:
             [
                 "The numbers 0 to 3 and * on the bars: <b>0</b> fixed interval (nothing applied), <b>1</b> blind overbooking (double-book without knowing who will miss), "
                 "<b>2</b> overbooking with the model's risk (threshold), <b>3</b> cost rule, <b>*</b> perfect knowledge (best any model could do).",
-                "Three panels: patients seen, doctor idle time, patient waiting time. Plain bars use made-up but well-calibrated risks; hatched bars use the real model.",
+                "Three panels: patients seen, clinic room idle time, patient waiting time. Plain bars use made-up but well-calibrated risks; hatched bars use the real model.",
                 "How to read it: bar 1 gains the most patients but also the longest waits; bars 2 and 3 keep most of the gain with much shorter waits; "
                 "bar * shows how much better a perfect model would be.",
             ],
@@ -232,13 +232,13 @@ def write_index() -> Path:
         (
             "Simulation",
             "simulation_hub.html",
-            "Watch the clinic run on real appointment records: one doctor's example day, or every record of a whole day.",
+            "Watch the clinic run on real appointment records: one clinic room's example day, or every record of a whole day.",
             "Choose a simulation",
         ),
         (
             "Templates",
             "templates_hub.html",
-            "The three ways we designed to cut a doctor's session into appointment slots. See how each one is built.",
+            "The three ways we designed to cut a clinic room's session into appointment slots. See how each one is built.",
             "Choose a template",
         ),
         (

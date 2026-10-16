@@ -4,7 +4,7 @@ Bu dosya, IEN tarafında şu ana kadar ne yaptığımızı, neyi çözdüğümü
 
 ## 1. Proje ne yapmaya çalışıyor?
 
-Hastaların bir kısmı randevuya gelmiyor. Gelmeyen hasta, doktorun boş durması demek. Bunu azaltmak için üç şey yapıyoruz:
+Hastaların bir kısmı randevuya gelmiyor. Gelmeyen hasta, muayene kapasitesinin boş kalması demek. Bunu azaltmak için üç şey yapıyoruz:
 
 1. Her hasta için **"gelmeme ihtimali"ni tahmin eden bir model** kuruyoruz.
 2. İhtimali yüksek olan randevulara **fazladan bir hasta yazıyoruz** (buna overbooking diyoruz).
@@ -22,7 +22,7 @@ Hastaların bir kısmı randevuya gelmiyor. Gelmeyen hasta, doktorun boş durmas
 | Simülasyon | Python SimPy ile bir klinik günü simüle ettik (Arena yerine, hoca izin verdi). | `simulation/clinic_sim.py` |
 | Grafikler ve dashboard | KPI kartlı bir sayfa ve üç grafik hazırladık. | `simulation/dashboard.py`, `simulation/plots.py`, `simulation/value_ladder.py` |
 | Tüm gün simülasyonu | Test haftasının her gününün **tüm gerçek randevu kayıtları** (günde 4.000+) yaklaşık 220 klinik oturumuna dağıtılıp simüle edilir. Gün toplamları, dakika dakika animasyon ve tüm kayıtların tablosu (her kayıt için model, lojistik regresyon ve R4 riski, gerçek sonuç, simülasyon sonucu). `python real_days.py --source r4` ile kararı R4 kuralının riskiyle de verdirebilirsiniz. | `simulation/real_days.py` |
-| **Etkileşimli simülasyon** | Türkçe, sade bir ekran: bir doktorun günü 15 dakikalık adımlarla izlenir (doktor odası, bekleme alanı, sayaçlar, olay günlüğü) ve kural yok ile karşılaştırılır; ikinci sekmede tüm doktorların sonuçları vardır. Bir gün (ya da 27 günün hepsi), riski kimin tahmin ettiği (random forest, lojistik regresyon, R1–R4 kuralları, makale sınıflandırıcısı), overbooking kuralı (eşik, maliyet bazlı, havayolu) ve randevu şablonu seçilip "Run" denir; SimPy gerçek randevularla çalışır ve "kural yok" ile karşılaştırır. Kuralları buradan test edersiniz. Başlatma: `python simulation/app.py`; Edge veya Chrome'u adres çubuğu ve sekme olmadan ayrı bir pencerede açar (masaüstü programı gibi), pencere kapanınca program da durur. Normal tarayıcıda açmak için `--browser`. | `simulation/app.py`, `simulation/ui/app.html` |
+| **Etkileşimli simülasyon** | Türkçe, sade bir ekran: bir muayene odasının günü 15 dakikalık adımlarla izlenir (muayene odası, bekleme alanı, sayaçlar, olay günlüğü) ve kural yok ile karşılaştırılır; ikinci sekmede tüm doktorların sonuçları vardır. Bir gün (ya da 27 günün hepsi), riski kimin tahmin ettiği (random forest, lojistik regresyon, R1–R4 kuralları, makale sınıflandırıcısı), overbooking kuralı (eşik, maliyet bazlı, havayolu) ve randevu şablonu seçilip "Run" denir; SimPy gerçek randevularla çalışır ve "kural yok" ile karşılaştırır. Kuralları buradan test edersiniz. Başlatma: `python simulation/app.py`; Edge veya Chrome'u adres çubuğu ve sekme olmadan ayrı bir pencerede açar (masaüstü programı gibi), pencere kapanınca program da durur. Normal tarayıcıda açmak için `--browser`. | `simulation/app.py`, `simulation/ui/app.html` |
 | Literatür incelemesi | Bir makale (Batool ve ark., 2020) okundu: rakamları kendi verimizde yeniden üretildi (makalenin %95'i ölçüm hatası, gerçek AUC ≈ 0,72), eksiklerimiz listelendi, makalenin overbooking politikası simülasyona karşılaştırma olarak eklendi. | `docs/LITERATUR_INCELEMESI.md`, `ml/paper_replication.py` |
 | Canlı simülasyon | Bir klinik gününü animasyonla izleyebileceğiniz sayfa ve terminalde SimPy olay kaydı. Tek komutla her şey: `python simulation/main.py`. | `simulation/live_day.py`, `simulation/main.py` |
 | Randevu şablonları | 3 farklı şablon tasarlayıp test ettik, kazananı ayrı klasöre kaydettik. Karşılaştırma artık verinin **27 gününün tüm gerçek randevuları** (110.521 kayıt) üzerinden yapılıyor. Sayfanın üstünde "Overall" kartları (kazanan şablon ve hiçbir kural yokken, sayı ve yüzde olarak), altında her gün için açılır tablolar var: görülen hasta, gelmeyen, boş slot bulamayan, bekleme, boş zaman, mesai aşımı. | `simulation/templates/` (`day_by_day.py`) |
@@ -50,9 +50,9 @@ Random forest en iyisi. Lojistik regresyon, randevu süresi arttıkça düz bir 
 | | Fark |
 |---|---|
 | Görülen hasta | **+2 hasta** |
-| Doktorun boş kaldığı süre | **−24 dakika** |
+| Muayene odasının boş kaldığı süre | **−24 dakika** |
 | Hastanın ortalama bekleme süresi | **+3 dakika** (kötü) |
-| Doktorun mesai aşımı | **+2 dakika** (kötü) |
+| Muayene odasının mesai aşımı | **+2 dakika** (kötü) |
 
 Yani overbooking hasta sayısını artırıyor ve boş zamanı azaltıyor, ama beklemeyi de artırıyor. **Projenin ilk iddiası olan "hem bekleme hem boş zaman iyileşir" bu varsayımlarla çıkmıyor.**
 
@@ -85,7 +85,7 @@ Tahmin modelinin katkısı: Fazladan her hasta için yaşanan bekleme, rastgele 
 8. **Excel formülleri açılıp bakılmadı.** Raporlardaki ROC ve kalibrasyon tabloları Excel formülü, ama bu bilgisayarda Excel olmadığı için açıp çalıştıramadık. Python ile aynı sonucu verdiğini ayrıca kontrol ettik. Excel'de bir kez açıp bakın.
 9. **Yapılan işin ne kadarının web/veritabanı/servis tarafıyla uyduğunu kontrol etmedik.** O tarafı CEN arkadaşlarımız yazdı, biz sadece okuduk.
 
-**Tüm gün simülasyonunda dikkat:** Kaggle'da doktor bilgisi yok. Bir günün randevuları doktorlara *rastgele* dağıtılıyor (oturum başına 20 randevu isteği, 16 slot). Oturum başına 4 fazla istek bizim varsayımımız ve "slotsuz kalan randevular" ile overbooking'in kazancını doğrudan etkiliyor. Gerçek doktor sayısı ve talep bilinmeden bu sayılar kesin sonuç değildir.
+**Tüm gün simülasyonunda dikkat:** Kaggle'da hekim bilgisi yok; sistem tek departmandır (General Practice) ve hekim adlandırılmaz. Departmanın kapasitesi muayene odalarıyla (oturumlarla) temsil edilir; bir günün randevuları odalara *rastgele* dağıtılıyor (oturum başına 20 randevu isteği, 16 slot). Oturum başına 4 fazla istek bizim varsayımımız ve "slotsuz kalan randevular" ile overbooking'in kazancını doğrudan etkiliyor. Gerçek doktor sayısı ve talep bilinmeden bu sayılar kesin sonuç değildir.
 
 ## 6. Nasıl çalıştırırım?
 
@@ -118,7 +118,7 @@ cd ../simulation
 python main.py
 ```
 
-Bu komut 5 adımı sırayla çalıştırır, son adımda SimPy'ın olay kaydını terminale yazar (kim ne zaman geldi, doktor ne zaman başladı) ve sonuçları toplayan `simulation/output/index.html` sayfasını tarayıcıda açar. Ana sayfada 6 kart var: **Simulation** (canlı simülasyon veya tüm günler), **Templates** (3 şablon), **Charts** (3 grafik), **Dashboard**, **Template comparison** ve **Winning template**. İlk üçü, ne işe yaradıklarının açıklandığı alt sayfalara açılır. Sayfadaki **Whole days** bağlantısı bir günün tüm kayıtlarını gösterir. **Live simulation** bağlantısı bir klinik gününü animasyonla oynatır: bekleme odası, doktor, gelmeyen hastalar; yanda sabit randevu ve overbooking aynı gün üzerinde karşılaştırılır. Animasyondaki hastalar **gerçek randevu kayıtları**: test haftasının (2–8 Haziran 2016) gerçek günlerinden, hastaların gerçek randevu alma sırasıyla, modelin verdiği riskle ve gerçekten gelip gelmediğiyle çalışır. Muayene süresi ve geç kalma Kaggle verisinde olmadığı için simüle edilir. Hızlı deneme için `python main.py --quick`. İsterseniz adımları tek tek de çalıştırabilirsiniz:
+Bu komut 5 adımı sırayla çalıştırır, son adımda SimPy'ın olay kaydını terminale yazar (kim ne zaman geldi, muayene ne zaman başladı) ve sonuçları toplayan `simulation/output/index.html` sayfasını tarayıcıda açar. Ana sayfada 6 kart var: **Simulation** (canlı simülasyon veya tüm günler), **Templates** (3 şablon), **Charts** (3 grafik), **Dashboard**, **Template comparison** ve **Winning template**. İlk üçü, ne işe yaradıklarının açıklandığı alt sayfalara açılır. Sayfadaki **Whole days** bağlantısı bir günün tüm kayıtlarını gösterir. **Live simulation** bağlantısı bir klinik gününü animasyonla oynatır: bekleme odası, doktor, gelmeyen hastalar; yanda sabit randevu ve overbooking aynı gün üzerinde karşılaştırılır. Animasyondaki hastalar **gerçek randevu kayıtları**: test haftasının (2–8 Haziran 2016) gerçek günlerinden, hastaların gerçek randevu alma sırasıyla, modelin verdiği riskle ve gerçekten gelip gelmediğiyle çalışır. Muayene süresi ve geç kalma Kaggle verisinde olmadığı için simüle edilir. Hızlı deneme için `python main.py --quick`. İsterseniz adımları tek tek de çalıştırabilirsiniz:
 
 ```bash
 python clinic_sim.py
@@ -163,6 +163,7 @@ Mevcut kod ve sonuçlar değiştirilmeden eklendi. Hepsi komutla yeniden üretil
 | Kararlar | Karar listesi (`docs/KARAR_LISTESI.md`) ve makine tarafı (`docs/decisions.json`) tek kaynaktır. Karar değişince `python ml/apply_decisions.py` modeli (`ml/models/`), deneyleri ve sonuç özetini yeniden üretir | `ml/apply_decisions.py`, `docs/SONUC_OZETI.md` |
 | Servis uyumu | Seçili model ve karar ayarları servisin kendi testlerinde ve HTTP API'sinde denendi (kopya üzerinde); CEN'in güncelleyeceği 6 test listelendi | `docs/SERVIS_UYUM_RAPORU.md` |
 | Zamansal sızıntı | Dönüşümlü katlarla üretilen riskler ileri doğru pencereyle karşılaştırıldı: fark çok küçük | `ml/leakage_check.py`, `docs/ZAMANSAL_SIZINTI_KONTROLU.md` |
+| Departman bazlı anlatım | `Department` = General Practice sütunu temizlenmiş veride (`ml/data/clean_data.py`). Simülasyon ve belgelerde "doktor" yerine "muayene odası (oturum)" kullanılır; KPI tanımlarında (`docs/kpi-definitions.md`) "Physician idle time" yerine "Idle time". Web taslakları henüz çevrilmedi | `docs/KARAR_LISTESI.md` |
 | Model dosyaları | Seçilen model rastgele orman `ml/models/` altında (kesin); karar ağacı karşılaştırma için `ml/models/candidates/` altında; ikisi de `IEN` dalında. Servis ayarları (limit 4, muayene 7,5 dk) `IEN-service-settings` dalında | `docs/KARAR_LISTESI.md` bölüm 2 |
 
 ```bash

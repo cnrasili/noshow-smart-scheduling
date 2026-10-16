@@ -5,7 +5,7 @@
     python real_days.py --source lr        # ... or logistic regression
     python real_days.py --threshold 0.25   # threshold of the overbooking rule shown in the animation
 
-The data has no doctor information, so the records of a date are dealt randomly to clinic sessions of up to 20
+The data names no physician (the system is one department), so the records of a date are dealt randomly to clinic sessions of up to 20
 booking requests each (16 slots of 15 minutes). Inside a session patients are in real booking order. Risk and
 attendance are real; consultation length and lateness are simulated (they are not in the data).
 """
@@ -159,7 +159,7 @@ th:first-child,td:first-child{text-align:left}th{color:var(--mute);position:stic
 <h2>Day totals</h2><div class="grid" id="kpis"></div>
 <div class="card" style="margin-top:12px"><div class="scroll" style="max-height:none"><table id="ptable"></table></div></div>
 <h2>The day, minute by minute</h2>
-<p>Each square is <b>one doctor</b> (one clinic session). <b style="color:#2a6f97">Blue</b>: seeing a patient. <b style="color:#e07a5f">Orange</b>: seeing an overbooked patient. <b style="color:#d98a97">Pink</b>: idle although the session is still running, which is wasted time. <b>Grey</b>: finished for the day. The small amber number is how many patients are waiting for that doctor. Hover a square for details; click it to list that doctor's patients below.</p>
+<p>Each square is <b>one clinic room</b> (one clinic session). <b style="color:#2a6f97">Blue</b>: seeing a patient. <b style="color:#e07a5f">Orange</b>: seeing an overbooked patient. <b style="color:#d98a97">Pink</b>: idle although the session is still running, which is wasted time. <b>Grey</b>: finished for the day. The small amber number is how many patients are waiting for that clinic room. Hover a square for details; click it to list that clinic room's patients below.</p>
 <div class="bar"><button class="primary" id="play">Pause</button><button id="restart">Restart</button>
 <label>Speed <select id="speed"><option value="10">x10</option><option value="20" selected>x20</option><option value="40">x40</option><option value="100">x100</option></select></label>
 <span class="clock" id="clock">08:00</span><input type="range" id="scrub" min="0" max="1000" value="0"></div>
@@ -193,7 +193,7 @@ function setDay(i){day=D.days[i];sessFilter=-1;const recs=day.records;let mx=T;f
   document.getElementById('daynote').textContent=day.sessions+' clinic sessions of up to '+META.n_requests+' booking requests; real records, real attendance';renderKpis();applyFilter();}
 function renderKpis(){const P=day.policies,F=P.fixed,O=P[META.animate];
   const cards=[['Patients seen',F.seen,O.seen,0,1],['Appointments without a slot',F.deferred,O.deferred,0,-1],['Mean wait (min)',F.mean_wait,O.mean_wait,1,-1],
-   ['Physician idle (hours, all sessions)',F.idle_h,O.idle_h,0,-1],['Overtime (hours, all sessions)',F.overtime_h,O.overtime_h,1,-1],['Utilization',F.utilization*100,O.utilization*100,1,1]];
+   ['Idle (hours, all sessions)',F.idle_h,O.idle_h,0,-1],['Overtime (hours, all sessions)',F.overtime_h,O.overtime_h,1,-1],['Utilization',F.utilization*100,O.utilization*100,1,1]];
   document.getElementById('kpis').innerHTML=cards.map(c=>{const d=c[2]-c[1];const g=Math.abs(d)<1e-9?'':((d*c[4])>0?'good':'bad');
    return `<div class="card k"><h3>${c[0]}</h3><div class="v">${c[2].toFixed(c[3])}${c[0]==='Utilization'?'%':''}</div><div class="s">fixed interval: ${c[1].toFixed(c[3])}</div><div class="s ${g}">${d>=0?'+':''}${d.toFixed(c[3])} with overbooking</div></div>`;}).join('');
   const names=Object.keys(P);document.getElementById('ptable').innerHTML='<tr><th>Policy</th><th>Seen</th><th>No slot</th><th>Mean wait</th><th>Idle (h)</th><th>Overtime (h)</th><th>Utilization</th><th>Overbooked slots</th></tr>'+
@@ -213,7 +213,7 @@ function tiles(cv,list,t){const g=cv.getContext('2d');g.clearRect(0,0,cv.width,c
     if(st.w>0){g.fillStyle=COL.amber;g.beginPath();g.arc(x+tileW-11,y+tileW-11,8,0,7);g.fill();g.fillStyle='#1d2433';g.font='600 11px system-ui,sans-serif';g.textAlign='center';g.fillText(st.w,x+tileW-11,y+tileW-7);g.textAlign='left';}}}
 function stats(el,cur,total,t){const m=Math.min(Math.floor(t),cur.b.length-1);let idle=0;for(let i=0;i<=m&&i<T;i++)idle+=day.sessions-cur.b[i];
   const idleNow=t<T?day.sessions-cur.b[m]:0;
-  el.innerHTML=`<div>Patients seen<b>${cur.dn[m]} / ${total}</b></div><div>Waiting now<b>${cur.w[m]}</b></div><div>Doctors idle now<b>${idleNow} of ${day.sessions}</b></div><div>Wasted idle time so far<b>${(idle/60).toFixed(0)} h</b></div>`;}
+  el.innerHTML=`<div>Patients seen<b>${cur.dn[m]} / ${total}</b></div><div>Waiting now<b>${cur.w[m]}</b></div><div>Rooms idle now<b>${idleNow} of ${day.sessions}</b></div><div>Wasted idle time so far<b>${(idle/60).toFixed(0)} h</b></div>`;}
 function line(cv,title,sf,so,ymax,note){const g=cv.getContext('2d'),W=cv.width,H=cv.height,x0=44,x1=W-12,y0=34,y1=H-28,sc=(x1-x0)/tEnd;g.clearRect(0,0,W,H);
   g.fillStyle=INK;g.font='600 13px system-ui,sans-serif';g.fillText(title,10,16);g.font='11px system-ui,sans-serif';g.fillStyle=MUTE;g.fillText(note,10,30);
   g.strokeStyle=dark?'#2a3445':'#e4e7ec';g.beginPath();for(let k=0;k<=4;k++){const y=y1-(y1-y0)*k/4;g.moveTo(x0,y);g.lineTo(x1,y);g.fillStyle=MUTE;g.fillText(Math.round(ymax*k/4),6,y+4);}g.stroke();
@@ -223,14 +223,14 @@ function line(cv,title,sf,so,ymax,note){const g=cv.getContext('2d'),W=cv.width,H
     for(let m=0;m<=Math.min(Math.floor(t),w.length-1);m++){const x=x0+m*sc,y=y1-(y1-y0)*w[m]/ymax;m?g.lineTo(x,y):g.moveTo(x,y);}g.stroke();
     g.fillStyle=c;g.fillRect(W-130,8+k*14,10,8);g.fillStyle=MUTE;g.fillText(l,W-116,16+k*14);});g.lineWidth=1;}
 function charts(){const S=day.sessions,idle=c=>c.b.map((b,m)=>m<T?S-b:0);
-  line(document.getElementById('cq'),'Patients waiting (all doctors)',arr.f.w,arr.o.w,day.qmax,'patients who have arrived and are waiting to be seen');
-  const iF=idle(arr.f),iO=idle(arr.o);line(document.getElementById('ci'),'Doctors idle although the session is running',iF,iO,S,'wasted capacity: fewer is better');}
+  line(document.getElementById('cq'),'Patients waiting (all clinic rooms)',arr.f.w,arr.o.w,day.qmax,'patients who have arrived and are waiting to be seen');
+  const iF=idle(arr.f),iO=idle(arr.o);line(document.getElementById('ci'),'Rooms idle although the session is running',iF,iO,S,'wasted capacity: fewer is better');}
 const tip=document.getElementById('tip');
 function hit(cv,list,e){const r=cv.getBoundingClientRect(),k=cv.width/r.width,x=(e.clientX-r.left)*k-4,y=(e.clientY-r.top)*k-3,c=Math.floor(x/tileW),rw=Math.floor(y/tileW),s=rw*tileCols+c;return (c>=0&&c<tileCols&&rw>=0&&s>=0&&s<list.length)?s:-1;}
 function wire(id,key){const cv=document.getElementById(id);
   cv.onmousemove=e=>{if(!day.S)return;const list=day.S[key],s=hit(cv,list,e);if(s<0){tip.style.display='none';return;}const st=sstate(list[s],t);
     const state=st.cur?(st.cur[3]?'seeing an overbooked patient':'seeing a patient'):(t<T?'idle (wasted time)':'finished');
-    tip.textContent=`Doctor ${s+1}: ${state}; ${st.w} waiting; ${st.dn} of ${list[s].length} patients done`;tip.style.display='block';tip.style.left=(e.clientX+12)+'px';tip.style.top=(e.clientY+12)+'px';};
+    tip.textContent=`Room ${s+1}: ${state}; ${st.w} waiting; ${st.dn} of ${list[s].length} patients done`;tip.style.display='block';tip.style.left=(e.clientX+12)+'px';tip.style.top=(e.clientY+12)+'px';};
   cv.onmouseleave=()=>tip.style.display='none';
   cv.onclick=e=>{const s=hit(cv,day.S[key],e);if(s>=0){sessFilter=s;applyFilter();document.getElementById('rtable').scrollIntoView({block:'center'});}};}
 
@@ -317,8 +317,8 @@ def main() -> None:
         )
     note = (
         "Every real appointment record of the day (test period of the Medical Appointment No Shows data) is dealt to clinic "
-        "sessions; risk and attendance are real, consultation length and lateness are simulated. The data has no doctor "
-        "information, so the split of patients over sessions is random."
+        "sessions; risk and attendance are real, consultation length and lateness are simulated. The data names no physician (one department), "
+        "so the split of patients over clinic-room sessions is random."
     )
     meta = {
         "session_min": cfg.session_min,

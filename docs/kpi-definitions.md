@@ -7,9 +7,9 @@ The simulation and the KPI screen of the admin service use the same definitions 
 | KPI | Definition | Unit |
 |---|---|---|
 | Patient waiting time | Consultation start time − max(appointment time, patient arrival time) | minutes |
-| Physician idle time | Time within the session during which the physician has no patient to see | minutes |
-| Overtime | Time the physician works after the planned session end | minutes |
-| Utilization | Physician busy time ÷ planned session length | ratio |
+| Idle time | Time within the session during which the clinic room has no patient to see | minutes |
+| Overtime | Time the clinic room is in use after the planned session end | minutes |
+| Utilization | Busy time of the clinic room ÷ planned session length | ratio |
 
 ## Open Questions
 
