@@ -85,18 +85,18 @@ No-show sınıfı için (pozitif = gelmeyecek):
 
 ## 5. Alt gruplar (eşik 0,30)
 
-| Model | Grup | n | Gerçek no-show | Ortalama tahmin | ROC-AUC | Brier | Kalibrasyon kesişimi | Kalibrasyon eğimi |
-|---|---|---|---|---|---|---|---|---|
-| Logistic Regression | Yeni hasta (geçmişi yok) | 11889 | 0.196 | 0.230 | 0.661 | 0.153 | -0.216 | 0.903 |
-| Logistic Regression | Tekrar gelen hasta | 10097 | 0.172 | 0.177 | 0.655 | 0.136 | -0.038 | 0.991 |
-| Random Forest | Yeni hasta (geçmişi yok) | 11889 | 0.196 | 0.223 | 0.721 | 0.143 | -0.181 | 1.121 |
-| Random Forest | Tekrar gelen hasta | 10097 | 0.172 | 0.183 | 0.737 | 0.128 | -0.083 | 1.122 |
-| Decision Tree | Yeni hasta (geçmişi yok) | 11889 | 0.196 | 0.222 | 0.713 | 0.144 | -0.171 | 1.089 |
-| Decision Tree | Tekrar gelen hasta | 10097 | 0.172 | 0.193 | 0.723 | 0.130 | -0.157 | 1.022 |
-| Kural R4 (referans) | Yeni hasta (geçmişi yok) | 11889 | 0.196 | 0.206 | 0.552 | 0.157 | -0.060 | 0.996 |
-| Kural R4 (referans) | Tekrar gelen hasta | 10097 | 0.172 | 0.200 | 0.600 | 0.142 | -0.196 | 0.645 |
+| Model | Grup | n | Gerçek no-show | Ortalama tahmin | ROC-AUC | Brier | Kalibrasyon kesişimi | Kalibrasyon eğimi | Precision (0,30) | Recall (0,30) | İşaretlenen pay (0,30) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Logistic Regression | Yeni hasta (geçmişi yok) | 11889 | 0.196 | 0.230 | 0.661 | 0.153 | -0.216 | 0.903 | 0.329 | 0.318 | 0.190 |
+| Logistic Regression | Tekrar gelen hasta | 10097 | 0.172 | 0.177 | 0.655 | 0.136 | -0.038 | 0.991 | 0.364 | 0.135 | 0.064 |
+| Random Forest | Yeni hasta (geçmişi yok) | 11889 | 0.196 | 0.223 | 0.721 | 0.143 | -0.181 | 1.121 | 0.324 | 0.569 | 0.344 |
+| Random Forest | Tekrar gelen hasta | 10097 | 0.172 | 0.183 | 0.737 | 0.128 | -0.083 | 1.122 | 0.346 | 0.351 | 0.175 |
+| Decision Tree | Yeni hasta (geçmişi yok) | 11889 | 0.196 | 0.222 | 0.713 | 0.144 | -0.171 | 1.089 | 0.332 | 0.474 | 0.280 |
+| Decision Tree | Tekrar gelen hasta | 10097 | 0.172 | 0.193 | 0.723 | 0.130 | -0.157 | 1.022 | 0.333 | 0.334 | 0.173 |
+| Kural R4 (referans) | Yeni hasta (geçmişi yok) | 11889 | 0.196 | 0.206 | 0.552 | 0.157 | -0.060 | 0.996 | 0.000 | 0.000 | 0.000 |
+| Kural R4 (referans) | Tekrar gelen hasta | 10097 | 0.172 | 0.200 | 0.600 | 0.142 | -0.196 | 0.645 | 0.264 | 0.263 | 0.171 |
 
-Geçmişi olmayan hastalarda hasta geçmişi özelliği bilgi taşımaz; bu grubun sonucu ayrı değerlendirilmelidir.
+**Yorum (Random Forest, seçili model).** Test kümesinde hastaların %54'i yeni (geçmişi yok), %46'i tekrar gelen hastadır. Ayırt etme gücü iki grupta da yakındır (ROC-AUC 0.721 ve 0.737); yani model yeni hastalarda da yaş, randevuya kalan gün ve benzeri özelliklerle anlamlı ayrım yapar, geçmişi olan hastalarda ise biraz daha iyidir. Gerçek gelmeme oranı yeni hastalarda %19.6, tekrar gelenlerde %17.2; model ortalamada her iki grupta biraz yüksek tahmin eder (%22.3 ve %18.3), fazlalık yeni hastalarda daha büyüktür (+2.7 ve +1.1 puan). Kalibrasyon eğimi iki grupta da 1'in üstündedir (1.12 ve 1.12): tahminler gerçek farkları olduğundan biraz az gösterir. 0,30 eşiğinde yeni hastaların %34'i, tekrar gelenlerin %17'i yüksek riskli sayılır; işaretlenenlerin isabet oranı (precision) 0.32 ve 0.35'dir. Sonuç: kural iki gruba da aynı eşikle uygulanabilir; yeni hastalar için tahmin biraz daha belirsizdir, bu yüzden hasta geçmişi biriktikçe model yeniden kalibre edilmelidir.
 
 ## 6. Kalibrasyon (onluk dilimler, test kümesi)
 

@@ -106,7 +106,7 @@ tr.clk{cursor:pointer}tr.clk:hover td{background:var(--soft)}tr.tot td{font-weig
   <div class="clock" id="clock">08:00</div></div>
  <div class="prog" style="margin-top:6px"><i id="progbar"></i></div>
  <div class="ctl sub"><span class="sum" id="sumLine"></span>
-  <label style="margin:0">Oda</label><select id="doctor" style="width:auto"></select><button id="rnd">Başka oda</button>
+  <label style="margin:0">Oda</label><select id="room" style="width:auto"></select><button id="rnd">Başka oda</button>
   <div class="viewsel">Gösterilen: <button id="vRule" class="on">Seçilen kural</button><button id="vBase">Kural yok</button></div></div>
 </div>
 <div class="counters">
@@ -181,7 +181,7 @@ async function run(){const cfg=config(),st=$('status');st.className='';st.innerH
 function tab(which){const d=which==='D';$('tabD').classList.toggle('on',d);$('tabO').classList.toggle('on',!d);$('viewD').hidden=!d||!R||R.cfg.day==='all';$('viewO').hidden=d&&R&&R.cfg.day!=='all'||!R;
   if(d&&R&&R.cfg.day==='all'){$('viewO').hidden=false;$('status').textContent='Oda görünümü için tek bir gün seçin. Aşağıda 27 günün toplamı var; bir güne tıklayın.';}}
 
-/* ---------- one doctor ---------- */
+/* ---------- one room ---------- */
 function build(sIdx,which){const o=which==='b'?13:18,tpl=R.cfg.template,slotMin=which==='b'?15:tpl.slot_min,nSlots=which==='b'?16:tpl.n_slots,T=R.session_min[which==='b'?'baseline':'rule'];
   const ri=RISKIDX[R.cfg.risk],recs=R.records.filter(r=>r[12]===sIdx);
   const ps=recs.map((r,i)=>{const p={n:i+1,id:r[0],age:r[2],lead:r[3],risk:r[ri],y:r[11],slot:r[o],ready:r[o+1],start:r[o+2],end:r[o+3],ob:!!r[o+4]};
@@ -193,10 +193,10 @@ function build(sIdx,which){const o=which==='b'?13:18,tpl=R.cfg.template,slotMin=
   const ev=[];for(const p of ps){if(p.st==='seen'){ev.push([p.ready,`Hasta ${p.n} geldi${p.ob?' (overbook ile eklenmişti)':''}`]);ev.push([p.start,`Hasta ${p.n} muayeneye alındı${p.start-p.ready>=1?` — ${n0(p.start-p.ready)} dk bekledi`:''}`]);ev.push([p.end,`Hasta ${p.n} muayeneden çıktı`]);}
     else if(p.st==='noshow')ev.push([p.appt,`Hasta ${p.n} gelmedi${p.ob?' (overbook ile eklenmişti)':''}`]);}
   ev.sort((a,b)=>a[0]-b[0]);return {ps,seen,noshow,noslot,m,ev,T,slotMin,nSlots,tEnd:Math.max(T,maxEnd)+6};}
-function pickDoctor(){let best=0,score=-1;const cnt={};for(const r of R.records){const s=r[12];cnt[s]=cnt[s]||0;if(r[22])cnt[s]+=10;if(r[20]==null&&r[18]>=0)cnt[s]+=1;}
+function pickRoom(){let best=0,score=-1;const cnt={};for(const r of R.records){const s=r[12];cnt[s]=cnt[s]||0;if(r[22])cnt[s]+=10;if(r[20]==null&&r[18]>=0)cnt[s]+=1;}
   for(const s in cnt)if(cnt[s]>score){score=cnt[s];best=Number(s);}return best;}
-function setupDoctor(){const Sn=R.baseline.sessions;$('doctor').innerHTML=Array.from({length:Sn},(_,i)=>`<option value="${i}">${i+1}. oda</option>`).join('');
-  if(sess>=Sn||R.cfg.day!==setupDoctor.lastDay){sess=pickDoctor();}setupDoctor.lastDay=R.cfg.day;$('doctor').value=sess;load();}
+function setupRoom(){const Sn=R.baseline.sessions;$('room').innerHTML=Array.from({length:Sn},(_,i)=>`<option value="${i}">${i+1}. oda</option>`).join('');
+  if(sess>=Sn||R.cfg.day!==setupRoom.lastDay){sess=pickRoom();}setupRoom.lastDay=R.cfg.day;$('room').value=sess;load();}
 function load(){$('dayLabel').textContent=dayName(R.cfg.day);$('sumLine').textContent=summaryLine();sd={b:build(sess,'b'),r:build(sess,'r')};const v=sd[ver];t=0;playing=false;lastMin=-1;last=null;$('play').textContent='Simülasyonu başlat';drawStrip();update(true);cmpTable();}
 function drawStrip(){const v=sd[ver],st=$('strip');st.style.gridTemplateColumns=`repeat(${v.nSlots},minmax(0,1fr))`;
   st.innerHTML=Array.from({length:v.nSlots},(_,s)=>`<div class="slot"><small>${fm(s*v.slotMin)}</small><div class="chips" id="sl${s}"></div></div>`).join('');
@@ -259,7 +259,7 @@ function ruleName(){const rl=R.cfg.rule;return {none:'Kural yok',threshold:`Eşi
 function summaryLine(){const tp=R.cfg.template;return `Kural: ${ruleName()} · Risk: ${SRC_TR[R.cfg.risk]} · ${tp.n_slots} slot x ${tp.slot_min} dk`+(tp.offset?' · kaydırmalı':'')+(tp.buffer?' · tamponlu':'');}
 function render(){const resume=playing&&sd;renderOverview();const single=R.cfg.day!=='all';$('status').className='';
   $('status').textContent=single?`Güncel: ${n0(R.baseline.appointments)} randevu ${n1(R.seconds)} saniyede simüle edildi. Bir odanın gününü başlatabilirsiniz.`:`Güncel: ${n0(R.baseline.appointments)} randevu ${n1(R.seconds)} saniyede simüle edildi.`;
-  if(single){$('viewD').hidden=false;$('viewO').hidden=true;$('tabD').classList.add('on');$('tabO').classList.remove('on');setupDoctor();if(resume){playing=true;last=null;$('play').textContent='Duraklat';update(true);}}
+  if(single){$('viewD').hidden=false;$('viewO').hidden=true;$('tabD').classList.add('on');$('tabO').classList.remove('on');setupRoom();if(resume){playing=true;last=null;$('play').textContent='Duraklat';update(true);}}
   else{$('viewD').hidden=true;$('viewO').hidden=false;$('tabO').classList.add('on');$('tabD').classList.remove('on');}}
 
 async function init(){META=await (await fetch('/api/meta')).json();
@@ -275,7 +275,7 @@ async function init(){META=await (await fetch('/api/meta')).json();
   $('play').onclick=()=>{const v=sd[ver];if(t>=v.tEnd){t=0;lastMin=-1;}playing=!playing;last=null;$('play').textContent=playing?'Duraklat':(t>0?'Devam et':'Simülasyonu başlat');update(true);};
   $('step').onclick=()=>{const v=sd[ver];playing=false;$('play').textContent='Devam et';t=Math.min(v.tEnd,(Math.floor(t/15)+1)*15);update(true);};
   $('reset').onclick=()=>{t=0;playing=false;lastMin=-1;$('play').textContent='Simülasyonu başlat';update(true);};
-  $('doctor').onchange=()=>{sess=Number($('doctor').value);load();};$('rnd').onclick=()=>{sess=Math.floor(Math.random()*R.baseline.sessions);$('doctor').value=sess;load();};
+  $('room').onchange=()=>{sess=Number($('room').value);load();};$('rnd').onclick=()=>{sess=Math.floor(Math.random()*R.baseline.sessions);$('room').value=sess;load();};
   $('vRule').onclick=()=>{ver='r';$('vRule').classList.add('on');$('vBase').classList.remove('on');load();};$('vBase').onclick=()=>{ver='b';$('vBase').classList.add('on');$('vRule').classList.remove('on');load();};
   $('fstatus').onchange=applyFilter;$('fsearch').oninput=applyFilter;$('prev').onclick=()=>{page=Math.max(0,page-1);renderRows();};$('next').onclick=()=>{page++;renderRows();};
   apply(PRESETS[1][1]);requestAnimationFrame(frame);run();}
