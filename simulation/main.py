@@ -86,9 +86,14 @@ def write_index() -> Path:
                        f"<small>Rule: {html.escape(w['rule'])}. Differences are against the current fixed 15-minute template.</small></div>")
 
     # ---- Simulation hub
-    sim = page("Simulation", "Watch the clinic run. Both pages replay real appointment records and compare fixed-interval booking "
-               "with overbooking on the same patients. They differ in how much you see.",
+    sim = page("Simulation", "Watch the clinic run on real appointment records and compare fixed-interval booking "
+               "with overbooking on the same patients. The first card lets you test the rules yourself; the other two replay prepared examples.",
                cards_html([
+                   ("Interactive simulation", "http://127.0.0.1:8770/",
+                    "<b>Choose this to test the rules yourself.</b> Pick a day, who predicts the risk (random forest, the rules R1 to R4, the paper's classifier), "
+                    "the booking rule and its settings, and the appointment template, then press Run. SimPy simulates the real appointments and compares "
+                    "your choice with no rule. <i>It needs a small local server: run <code>python simulation/app.py</code> first.</i>",
+                    "Open the interactive simulation", "New"),
                    ("Live simulation", "live_simulation.html",
                     "<b>Choose this to understand how it works.</b> One doctor, one example day with 20 patients. You see every patient arrive, "
                     "wait and get seen, one by one, and you can pause and replay it. Fixed interval and overbooking run on the same patients, one above the other.",

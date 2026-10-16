@@ -75,6 +75,14 @@ def cost_rule(r: float, max_per_slot: int = 2, daily_limit: int = 4, capacity: i
     return allow
 
 
+def expected_value_rule(max_per_slot: int = 2, daily_limit: int = 4, capacity: int = 1) -> Policy:
+    """Airline-style baseline R5-B (docs/formulas/overbooking.md): add a patient while the expected number of
+    arrivals of the slot stays below its capacity (sum of show-up probabilities < capacity)."""
+    def allow(booked: Sequence[float], overbooks: int) -> bool:
+        return len(booked) < max_per_slot and overbooks < daily_limit and sum(1 - p for p in booked) < capacity
+    return allow
+
+
 @dataclass(frozen=True)
 class Layout:
     """Appointment template details beyond slot count and length."""
