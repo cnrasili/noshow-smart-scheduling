@@ -387,7 +387,7 @@ Bu dosya `simulation/experiments.py` tarafından üretilir; elle düzenlemeyin. 
 
 {paired_md(parts["main"])}
 
-**Yorum.** Ek randevu hem hasta sayısını artırır hem doktorun boşta kalmasını azaltır, ancak aynı slota iki hasta gelince ortalama bekleme ve çoğu politikada mesai aşımı da artar. İyileşme ve bedeli birlikte raporlanmalıdır: kural "bedava" değildir.
+**Yorum.** Ek randevu hem hasta sayısını artırır hem muayene odasının boşta kalmasını azaltır, ancak aynı slota iki hasta gelince ortalama bekleme ve çoğu politikada mesai aşımı da artar. İyileşme ve bedeli birlikte raporlanmalıdır: kural "bedava" değildir.
 
 ## 2. Eşik x günlük limit ızgarası ({reps["grid"]} oturum)
 

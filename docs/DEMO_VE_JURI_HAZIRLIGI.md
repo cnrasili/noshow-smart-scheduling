@@ -4,7 +4,7 @@ Sayılar `docs/IEN_RAPOR_TASLAGI.md`, `docs/MODEL_KARSILASTIRMA.md` ve `docs/IEN
 
 ## 1. Önerilen demo akışı (yaklaşık 8 dakika)
 
-1. **Problem (1 dk):** hastaların yaklaşık %20'si gelmiyor; gelmeyen hasta doktorun boş kalması demek.
+1. **Problem (1 dk):** hastaların yaklaşık %20'si gelmiyor; gelmeyen hasta muayene kapasitesinin boş kalması demek.
 2. **Model (1 dk):** `docs/MODEL_KARSILASTIRMA.md` bölüm 3 tablosu. "Test kümesi zamana göre ayrıldı, dengeleme yok; AUC 0,73." Literatürdeki %95'in nedenini söyleyin (bölmeden önce dengeleme).
 3. **Kural (1 dk):** "Slottaki hasta riskliyse ikinci hasta yazılır." Servis ile simülasyonun aynı kararı verdiğini gösterin: `python simulation/parity_check.py` (20.000 slot, fark 0).
 4. **Simülasyon (2 dk):** `python simulation/app.py` penceresi. Bir gün seçin, "kural yok" ile eşik %30'u karşılaştırın; sayaçlarda görülen hasta ↑, boşta kalma ↓, bekleme ↑.
@@ -43,7 +43,7 @@ Hazırlık listesi:
 
 **Neden Arena değil SimPy?** Hocadan izin alındı `[ONAY]`; SimPy tekrarlanabilir ve sürüm kontrollü (koddan yeniden üretilebilir).
 
-**Veri 110 bin randevu ama tek doktor mu?** Hayır, doğrudan ölçemiyoruz: veri doktor kimliği içermiyor ve günde yaklaşık 4.100 randevu var. Ekip kararı: tek hekim kuralı uygulanmıyor (#61). Simülasyon günlük kayıtları doktor oturumlarına dağıtıyor; sonuçlar oturum başınadır, doktor sayısı varsayımdır.
+**Hekim yok mu, kapasite nasıl modelleniyor?** Sistem tek departmandır (General Practice); veri hekim kimliği içermiyor ve günde yaklaşık 4.100 randevu var. Departmanın kapasitesi muayene odası oturumlarıyla temsil ediliyor; sonuçlar oturum başınadır, oda sayısı varsayımdır. Tek hekim kuralı ekip kararıyla uygulanmıyor (#61).
 
 **Hasta bu kuralı görüyor mu? Adil mi?** Hasta yalnızca müsait/dolu saati görür; risk ve kural yalnızca yönetimdedir. Risk yalnızca randevu anında bilinen özelliklerden hesaplanır; SMS bilgisi ve mahalle kullanılmaz. Adillik analizi (yaş ve cinsiyet gruplarında kalibrasyon) yapılmadı; yapılabilir bir sonraki adımdır.
 

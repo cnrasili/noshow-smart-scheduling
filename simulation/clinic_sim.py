@@ -1,7 +1,7 @@
 """Discrete-event simulation of one outpatient clinic session (SimPy).
 
 Compares fixed-interval booking with no-show-aware overbooking on the KPIs in
-docs/kpi-definitions.md: patient waiting time, physician idle time, overtime, utilization.
+docs/kpi-definitions.md: patient waiting time, idle time, overtime, utilization.
 
 All policies see the same booking requests, show-ups, arrival offsets and service times
 (common random numbers), so differences between policies are not sampling noise.
@@ -170,7 +170,7 @@ def simulate_session(
 ) -> dict:
     slots, deferred = book(cfg, policy, d, layout)
     env = simpy.Environment()
-    doctor = simpy.Resource(env, capacity=1)
+    room = simpy.Resource(env, capacity=1)
     waits: list[float] = []
     busy: list[tuple[float, float]] = []
     log: list[dict] = []
@@ -179,7 +179,7 @@ def simulate_session(
         arrival = max(0.0, appt_time + d.arrival_offset[i])
         ready = max(appt_time, arrival)  # a consultation never starts before the appointment time
         yield env.timeout(ready)
-        with doctor.request() as req:
+        with room.request() as req:
             yield req
             start = env.now
             waits.append(start - ready)  # KPI: start - max(appointment time, arrival)

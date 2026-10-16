@@ -4,7 +4,7 @@
 
 Selection rule (stated up front, change it with --max-wait / --max-overtime):
   1. a template is feasible if mean waiting time <= MAX_WAIT and mean overtime <= MAX_OVERTIME minutes;
-  2. among feasible templates the winner sees the most patients per session (ties: less physician idle time);
+  2. among feasible templates the winner sees the most patients per session (ties: less idle time);
   3. the paired difference to the current fixed-interval template is reported with a 95 % confidence interval.
 """
 

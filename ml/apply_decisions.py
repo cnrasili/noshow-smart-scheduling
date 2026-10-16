@@ -58,9 +58,10 @@ def decision_rows(d: dict) -> list[tuple[str, str, str]]:
     chosen = d["model"]
     if chosen in NAMES:
         other = ", ".join(NAMES[k] for k in NAMES if k != chosen)
-        status = (
-            "geçici seçim, ekip onayı bekliyor" if d.get("model_status") != "final" else "kesin"
-        )
+        status = {
+            "final": "kesin",
+            "alternative": "alternatif dal; seçili model rastgele orman, karşılaştırma için",
+        }.get(d.get("model_status"), "geçici seçim, ekip onayı bekliyor")
         model = (
             f"{NAMES[chosen]} ({status}); karşılaştırma için {other} "
             "`ml/models/candidates/` altında"

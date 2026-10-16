@@ -80,7 +80,7 @@ Not: Makalenin "önceki çalışmalar %65–82 doğruluk verdi, biz %95 verdik" 
 
 Makalenin overbooking mantığını ("sınıflandırıcı gelmeyecek dediği her slotu fazla randevuya aç, üst sınır yok") simülasyona **karşılaştırma politikası** olarak ekledik (`simulation/templates/day_by_day.py`). İki hâli var; sonuçlar 27 günün tüm gerçek randevuları için:
 
-| | Görülen hasta | Ortalama bekleme | Doktor boş zamanı |
+| | Görülen hasta | Ortalama bekleme | Oda boş zamanı |
 |---|---|---|---|
 | Kural yok (sabit aralık) | 67.276 | 2,0 dk | 9.062 saat |
 | Makale politikası, **kalibre** modelimizle (p ≥ 0,5) | 67.281 (+%0,0) | 2,0 dk | 9.061 saat |

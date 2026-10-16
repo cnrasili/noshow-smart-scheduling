@@ -19,7 +19,7 @@ METRICS = [
     ("noslot", "No free slot", -1),
     ("wait", "Mean wait (min)", -1),
     ("wait_h", "Total waiting (hours)", -1),
-    ("idle_h", "Doctor idle (hours)", -1),
+    ("idle_h", "Idle (hours)", -1),
     ("ot_h", "Overtime (hours)", -1),
 ]
 ALL = "All days"
@@ -243,7 +243,7 @@ def section_html(labels: list[str], data: dict, winner_label: str, risk_name: st
 The first row is the <b>baseline with no rule or algorithm</b>: fixed 15-minute slots, one patient per slot, no overbooking. Each other row applies one rule or template
 to the same patients on the same day. Under each number: the change against the baseline as a count and a percentage.
 <span class="d g">Green</span> = better, <span class="d b">orange</span> = worse, grey = neutral. Open a day to see its table.</p>
-<p><small>The data has no doctor information: a day's patients are dealt randomly to clinic sessions of {REQUESTS} booking requests (16 slots), so about 4 requests per session find no free slot.
+<p><small>The data names no physician (the system is one department): a day's patients are dealt randomly to clinic sessions of {REQUESTS} booking requests (16 slots), so about 4 requests per session find no free slot.
 "No-shows" counts only patients who were booked into a slot and did not come; "No free slot" patients are booked for another day. Consultation length and lateness are simulated.</small></p>
 <p><button onclick="document.querySelectorAll('details').forEach(d=>d.open=true)">Open all days</button>
 <button onclick="document.querySelectorAll('details').forEach(d=>d.open=false)">Close all days</button></p>

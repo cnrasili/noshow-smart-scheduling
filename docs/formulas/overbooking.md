@@ -56,7 +56,7 @@ $$\text{Cost}(k) = c_I\, E\big[(C - S_k)^+\big] + c_W\, E\big[(S_k - C)^+\big]$$
 
 | Symbol | Meaning | Unit |
 |---|---|---|
-| $c_I$ | Cost of one unused unit of capacity (physician idle for one slot) | minutes (weight) |
+| $c_I$ | Cost of one unused unit of capacity (clinic room idle for one slot) | minutes (weight) |
 | $c_W$ | Cost of one patient above capacity (waiting and overtime caused by an extra patient) | minutes (weight) |
 | $r = c_W / c_I$ | Cost ratio, the only cost parameter the rule depends on | — |
 
@@ -129,7 +129,7 @@ $r$, $k_{\max}$ and $\rho$ are tuned in the discrete-event simulation: for a gri
 
 ## 4. KPIs (see `docs/kpi-definitions.md`)
 
-$$\text{Utilization} = \frac{\text{physician busy time}}{\text{planned session length}}$$
+$$\text{Utilization} = \frac{\text{clinic-room busy time}}{\text{planned session length}}$$
 
 Waiting time $=$ consultation start $-\max(\text{appointment time}, \text{arrival time})$. Idle time and overtime as defined there.
 

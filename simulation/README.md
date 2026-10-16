@@ -15,7 +15,7 @@ Appointment template, overbooking policy and discrete-event simulation of a clin
 - Appointment template design
 - No-show-aware overbooking policy
 - Simulation of fixed-interval booking and selective overbooking
-- Comparison of patient waiting time, physician idle time and overtime (see [KPI definitions](../docs/kpi-definitions.md))
+- Comparison of patient waiting time, idle time and overtime (see [KPI definitions](../docs/kpi-definitions.md))
 
 ## Development
 
@@ -26,7 +26,7 @@ pip install -r requirements.txt
 
 ## Clinic Session Simulation
 
-[`clinic_sim.py`](clinic_sim.py) simulates one physician session with SimPy and compares booking policies on the KPIs in [`docs/kpi-definitions.md`](../docs/kpi-definitions.md).
+[`clinic_sim.py`](clinic_sim.py) simulates one clinic room session with SimPy and compares booking policies on the KPIs in [`docs/kpi-definitions.md`](../docs/kpi-definitions.md).
 
 ```bash
 python app.py                           # INTERACTIVE simulation in its own window (no tabs, closes with the window): pick a day, risk source, rule and template, press Run

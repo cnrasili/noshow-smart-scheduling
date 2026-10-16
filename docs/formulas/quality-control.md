@@ -28,7 +28,7 @@ The standard deviation is estimated by $\hat\sigma=\bar{R}/d_2$. Factors $A_2$, 
 
 Worked example in the notes (wafer thickness, $n=5$, $m=25$): $\bar{\bar{x}}=1.5056$, $\bar{R}=0.32521$; $R$ chart $UCL=2.114\times0.32521=0.687$, $LCL=0$; $\bar{x}$ chart $UCL=1.5056+0.577\times0.32521=1.693$.
 
-*Use:* monitoring the session KPIs (mean waiting time, physician idle time, overtime) of the live system, with one session or one week as a sample.
+*Use:* monitoring the session KPIs (mean waiting time, idle time, overtime) of the live system, with one session or one week as a sample.
 
 ## 3. Control charts for attributes
 
