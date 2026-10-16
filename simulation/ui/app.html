@@ -35,7 +35,7 @@ th{color:var(--mute);position:sticky;top:0;background:var(--card)}.scroll{overfl
 details summary{cursor:pointer;color:var(--mute);font-size:12px}
 </style></head><body>
 <header>
-<a class="back" href="/output/simulation_hub.html">&larr; Back to Simulation</a>
+<a class="back" id="backlink" href="/output/simulation_hub.html">&larr; Back to Simulation</a>
 <h1>Interactive simulation</h1>
 <p>Choose the data, who predicts the risk, the booking rule and the appointment template, then press <b>Run</b>. SimPy simulates the real appointment records and compares your choice with <b>no rule</b> (fixed 15-minute slots, one patient per slot) on the same patients.</p>
 </header>
@@ -217,7 +217,7 @@ function renderRows(){const PS=50,np=Math.max(1,Math.ceil(rows.length/PS));page=
   $('rtable').innerHTML='<tr><th>Appt ID</th><th>Booked</th><th>Age</th><th>Lead</th><th>RF</th><th>LR</th><th>R1</th><th>R2</th><th>R3</th><th>R4</th><th>Paper</th><th>Attended</th><th>Doctor</th><th>Slot (no rule)</th><th>Wait</th><th>Slot (rule)</th><th>Wait</th><th>Overbooked</th><th>Status</th></tr>'+
    rows.slice(page*PS,(page+1)*PS).map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${pc(r[4])}</td><td>${pc(r[5])}</td><td>${pc(r[6])}</td><td>${pc(r[7])}</td><td>${pc(r[8])}</td><td>${pc(r[9])}</td><td>${pc(r[10])}</td><td>${r[11]?'no':'yes'}</td><td>${r[12]+1}</td><td>${r[13]<0?'-':r[13]+1}</td><td>${w(r[15],r[14])}</td><td>${r[18]<0?'-':r[18]+1}</td><td>${w(r[20],r[19])}</td><td>${r[22]?'yes':''}</td><td>${status(r)}</td></tr>`).join('');}
 
-async function init(){META=await (await fetch('/api/meta')).json();
+async function init(){if(new URLSearchParams(location.search).has('app'))$('backlink').style.display='none';META=await (await fetch('/api/meta')).json();
   $('day').innerHTML='<option value="all">All '+META.dates.length+' days (a few seconds)</option>'+META.dates.map(d=>`<option value="${d}">${new Date(d+'T00:00').toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short',year:'numeric'})}</option>`).join('');
   $('day').value=META.dates[META.dates.length-3];$('dataHint').textContent=`${META.records.toLocaleString('en-US')} real appointments of the Medical Appointment No Shows data; risks are out-of-sample (each day predicted by models that never saw it). Real no-show rate ${(META.no_show_rate*100).toFixed(1)}%.`;
   $('risk').innerHTML=Object.entries(META.sources).map(([k,s])=>`<option value="${k}">${s.label} (AUC ${s.auc.toFixed(2)})</option>`).join('');
