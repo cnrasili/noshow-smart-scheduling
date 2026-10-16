@@ -32,9 +32,8 @@ The project is developed as an interdisciplinary study combining industrial engi
 
 ## Scope
 
-- The analysis starts with one outpatient clinic session of one physician with fixed-length appointment slots. Later stages extend it to several physicians and departments, including several physicians of the same department.
-- The demo application contains several physicians in several departments.
-- The prediction model is trained on the public Medical Appointment No Shows dataset; the application and the simulation use simulated data. The dataset has no physician or department information, so physicians and departments in the simulation are assumed.
+- The project's single data source is the public Medical Appointment No Shows dataset (see [Dataset](#dataset)). The prediction model, the simulation and the application all use it; the application has only the dataset's patients and nothing the dataset does not have.
+- The whole system has one department with fixed-length appointment slots. The dataset names no physician, so neither the simulation nor the application names or assigns one; capacity and results belong to the department.
 - Selective overbooking is compared with fixed-interval booking.
 - Real patient data and integration with hospital information systems are outside the scope.
 
