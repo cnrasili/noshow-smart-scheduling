@@ -1,0 +1,18 @@
+{
+  "version": "decision_tree-v1",
+  "features": [
+    "lead_days",
+    "weekday",
+    "age",
+    "gender_male",
+    "scholarship",
+    "hipertension",
+    "diabetes",
+    "alcoholism",
+    "handcap",
+    "prior_appt_count",
+    "prior_noshow_count"
+  ],
+  "positive_class": 1,
+  "sklearn_version": "1.9.1"
+}
