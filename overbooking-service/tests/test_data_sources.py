@@ -1,13 +1,15 @@
 from collections.abc import Iterator
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from noshow_db.models.core import Appointment, Doctor, Patient, Slot
+from noshow_db.models.dataset import DatasetAppointment
+from noshow_db.models.service import Prediction
 from overbooking_service.data_source import (
     DataSourceUnavailable,
     DbPatientSource,
@@ -16,7 +18,6 @@ from overbooking_service.data_source import (
 )
 from overbooking_service.dependencies import get_data_source
 from overbooking_service.main import app
-from overbooking_service.national_id import fictional_national_id
 
 CLINIC = ZoneInfo("Europe/Istanbul")
 
@@ -29,7 +30,6 @@ def patient(patient_id: int, **fields) -> Patient:
     values = {"full_name": f"Patient {patient_id}", "age": 40, "gender": "F"} | fields
     return Patient(
         id=patient_id,
-        national_id=fictional_national_id(patient_id),
         email=f"p{patient_id}@example.com",
         **values,
     )
@@ -42,6 +42,17 @@ def appointment(patient_id: int, slot_id: int, day: int, **fields) -> Appointmen
         appointment_date=date(2026, 11, day),
         booking_date=fields.pop("booking_date", date(2026, 11, 1)),
         **fields,
+    )
+
+
+def dataset_appointment(number: int, patient_id: int, day: date, attended: bool):
+    return DatasetAppointment(
+        appointment_number=number,
+        patient_id=patient_id,
+        booked_at=datetime.combine(day - timedelta(days=7), time(9), UTC),
+        appointment_date=day,
+        attended=attended,
+        sms_received=False,
     )
 
 
@@ -75,7 +86,10 @@ def db(session_factory: sessionmaker[Session]) -> Iterator[Session]:
         session.flush()
         session.add_all(
             [
-                # Patient 1 history: attended, missed, no outcome yet
+                # Patient 1 dataset history, stored out of date order
+                dataset_appointment(5600002, 1, date(2016, 5, 20), attended=True),
+                dataset_appointment(5600001, 1, date(2016, 5, 2), attended=False),
+                # Patient 1 bookings: attended, missed, no outcome yet
                 appointment(1, 20, 3, attended=True),
                 appointment(1, 11, 10, attended=False),
                 appointment(1, 12, 10),
@@ -106,12 +120,18 @@ def test_unknown_patient_is_none(db: Session):
     assert DbPatientSource(db).get_patient(99) is None
 
 
-def test_history_has_only_recorded_outcomes(db: Session):
+def test_history_has_dataset_appointments_and_recorded_outcomes(db: Session):
     history = DbPatientSource(db).get_history(1)
     assert [(h.appointment_date, h.attended) for h in history] == [
+        (date(2016, 5, 2), False),
+        (date(2016, 5, 20), True),
         (date(2026, 11, 3), True),
         (date(2026, 11, 10), False),
     ]
+
+
+def test_history_is_empty_without_dataset_appointments_or_outcomes(db: Session):
+    assert DbPatientSource(db).get_history(2) == []
 
 
 def test_slot_state_is_read(db: Session):
@@ -169,3 +189,12 @@ def test_booking_decision_reads_slot_from_database(client: TestClient, db: Sessi
     response = client.post("/booking-decision", json=body)
     assert response.status_code == 200
     assert response.json()["reason"] == "Slot is full (3/3 patients)"
+
+
+def test_features_count_the_history_before_the_booking_date(client: TestClient, db: Session):
+    del app.dependency_overrides[get_data_source]
+    body = {"patient_id": 1, "appointment_date": "2026-11-20", "booking_date": "2026-11-05"}
+    assert client.post("/predict", json=body).status_code == 200
+    features = db.scalars(select(Prediction.features)).one()
+    # Both dataset appointments and the attended booking of 3 November; not 10 November
+    assert (features["prior_appt_count"], features["prior_noshow_count"]) == (3.0, 1.0)

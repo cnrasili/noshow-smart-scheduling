@@ -33,7 +33,7 @@ A real hospital would also place the admin service behind a VPN or on a separate
 | `/login` | Administrator login |
 | `/kpi` | Schedule KPIs per doctor and day, the last days as chart and table, and the reminder A/B test |
 | `/decisions` | The model's predicted no-show risks and the booking decisions: a doctor's slots on a day with each patient's risk, the decision and the outcome; for the last 30 days the decisions by kind, the actual no-show rate per predicted risk band, and the outcomes of slots with an extra appointment |
-| `/patients` | Patients with search by name or national ID number; password reset for patients with a login account |
+| `/patients` | Patients with their dataset patient number, searched by name or patient number; password reset for patients with a login account |
 | `/patients/new` | Create a patient account |
 | `/doctors` | Doctors with department, working hours and password reset |
 | `/doctors/new` | Create a doctor account with weekly working hours; slots are opened for the next two weeks |
