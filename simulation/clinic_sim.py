@@ -28,7 +28,7 @@ import simpy
 class SessionConfig:
     n_slots: int = 16  # slots in the session
     slot_min: float = 15.0  # slot length (minutes)
-    service_mean: float = 12.0  # mean consultation time (minutes)
+    service_mean: float = 7.5  # mean consultation time (minutes), decision of 17 October
     service_cv: float = 0.5  # coefficient of variation of consultation time
     punctuality_sd: float = 4.0  # sd of arrival offset around the slot start (minutes)
     extra_requests: int = 4  # booking requests beyond the number of slots (demand pressure)

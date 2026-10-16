@@ -87,7 +87,7 @@ def decision_rows(d: dict) -> list[tuple[str, str, str]]:
         (
             "4. Muayene süresi (#9)",
             f"Ortalama {d['service_mean_min']:g} dk (aralık {lo:g}–{hi:g} dk); "
-            f"slot {d['slot_min']:g} dk x {d['n_slots']} (türetilmiş)",
+            f"slot {d['slot_min']:g} dk x {d['n_slots']} (Türkiye'de yaygın; kaynak eklenecek)",
             "Ekip",
         ),
         (

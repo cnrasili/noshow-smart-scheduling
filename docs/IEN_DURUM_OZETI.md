@@ -75,7 +75,7 @@ Tahmin modelinin katkısı: Fazladan her hasta için yaşanan bekleme, rastgele 
 
 Önemliden önemsize doğru:
 
-1. **Simülasyonun sayıları varsayım.** Slot süresi (15 dk), muayene süresi (ortalama 12 dk) ve hastaların ne kadar geç kaldığı bizim tahminimiz. Gerçek değerler lazım. En çok **muayene süresinin ne kadar değiştiği** önemli: değişkenlik artarsa sabit randevuda bekleme 2 dakikadan 8 dakikaya çıkıyor.
+1. **Simülasyonun sayıları varsayım.** Slot süresi (15 dk, Türkiye'de yaygın), muayene süresi (karar: ortalama 7,5 dk; eski sayfalar 12 dk kullanıyordu) ve hastaların ne kadar geç kaldığı bizim tahminimiz. Gerçek değerler lazım. En çok **muayene süresinin ne kadar değiştiği** önemli: değişkenlik artarsa sabit randevuda bekleme 2 dakikadan 8 dakikaya çıkıyor.
 2. **Başarı ölçütünü belirlemek lazım.** "Bekleme ve mesai aşımı en fazla 5 dakika olsun" dedik ama bunu biz seçtik. Hoca ya da proje yöneticisiyle konuşulmalı. Kazanan şablon bu sınıra göre değişiyor.
 3. **Kısa slot + overbooking birlikte denenmedi.** *(16 Ekim: denendi, bkz. bölüm 9.)* Muhtemelen hocanın ilk soracağı soru: "Overbooking yerine slotu kısaltsak olmaz mı?"
 4. **Modeli servise bağlamak.** *(16 Ekim: kurallar aynı karar veriyor, aday model servis kontrollerinden geçti; bkz. bölüm 9.)* Hazır model dosyası henüz `overbooking-service`'e verilmedi. Servisteki kural (`rules.py`) ile bizim yazdığımız kural da aynı değil, birine karar verilmeli.

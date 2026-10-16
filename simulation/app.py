@@ -108,7 +108,7 @@ def session_config(cfg: dict) -> SessionConfig:
     return SessionConfig(
         n_slots=int(t.get("n_slots", 16)),
         slot_min=float(t.get("slot_min", 15)),
-        service_mean=float(s.get("service_mean", 12)),
+        service_mean=float(s.get("service_mean", 7.5)),
         service_cv=float(s.get("service_cv", 0.5)),
         punctuality_sd=float(s.get("lateness_sd", 4)),
         requests=int(s.get("requests", 20)),

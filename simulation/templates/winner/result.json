@@ -1,28 +1,28 @@
 {
-  "template": "Template 2 - Staggered overbooking (second patient +7.5 min)",
-  "key": "t2_staggered_overbooking",
-  "threshold": 0.4,
-  "slots": 16,
-  "slot_min": 15,
+  "template": "Template 1 - Short slots (12 min), no overbooking",
+  "key": "t1_short_slots",
+  "threshold": null,
+  "slots": 20,
+  "slot_min": 12,
   "blocked": [],
   "overbook_slots": null,
-  "offset": 0.5,
+  "offset": 0.0,
   "rule": "feasible = mean wait <= 5.0 and overtime <= 5.0; most patients seen",
   "sessions": 5536,
   "metrics": {
-    "seen": 12.482,
-    "mean_wait": 2.216,
-    "idle": 94.429,
-    "overtime": 3.854,
-    "utilization": 0.623,
-    "overbooked_slots": 0.35
+    "seen": 15.933,
+    "mean_wait": 0.624,
+    "idle": 121.514,
+    "overtime": 1.039,
+    "utilization": 0.498,
+    "overbooked_slots": 0.0
   },
   "vs_current_fixed": {
-    "seen": 0.329,
-    "mean_wait": 0.307,
-    "idle": -3.786,
-    "overtime": 0.206,
-    "utilization": 0.017,
-    "overbooked_slots": 0.35
+    "seen": 3.781,
+    "mean_wait": 0.418,
+    "idle": -27.686,
+    "overtime": 0.682,
+    "utilization": 0.118,
+    "overbooked_slots": 0.0
   }
 }
