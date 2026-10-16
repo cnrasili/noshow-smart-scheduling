@@ -63,3 +63,5 @@ Yani `dummy-v0` devreden çıkıyor (yanıttaki `model_version` yeni modelin ad�
 - Model dosyasının servisin kendi `install_model` komutuyla kurulumu: IEN tarafında kabul kontrolleri çalıştırıldı (`ml/apply_decisions.py`); kurulum adımı CEN'de yapılmalı.
 
 Bu yüzden uçtan uca doğrulama (tahmin → karar → randevu → KPI) CEN ile birlikte yapılacak iş olarak açık kalır.
+
+**Güncelleme (17 Ekim 2026, sonra).** Rastgele orman modeli `main`'e alındı ve serviste kuruldu (PR #65, `94f9c93`); `dummy-v0` ve `make_dummy_model.py` kaldırıldı, `test_predict_api.py` yeni sürümü bekleyecek biçimde güncellendi. Bu rapordaki 2 başarısız test bu yüzden artık geçerli değil. Servis ayarları (limit 4, 7,5 dk) PR #64'te bekliyor.
