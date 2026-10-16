@@ -59,7 +59,7 @@ Response:
 ```json
 {
   "p_noshow": 0.34,
-  "model_version": "dummy-v0"
+  "model_version": "random_forest-v1"
 }
 ```
 

@@ -54,7 +54,7 @@ Models trained on named columns receive a DataFrame; others receive an array in 
 
 `tests/test_model_acceptance.py` checks any model placed in `models/`. See [model features](../docs/features.md) for the delivery steps.
 
-The current model is a placeholder (`dummy-v0`) created by `scripts/make_dummy_model.py`.
+The installed model is the random forest `random_forest-v1` delivered by the prediction model side (#7).
 
 ### Installing a Delivered Model
 
