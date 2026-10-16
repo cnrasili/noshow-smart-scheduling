@@ -63,6 +63,22 @@ def r4_predict(train, test):
     return 1 - (shows + K_P * pi0) / (n + K_P), {"s_bar": s_bar, "gender": s_gender, "age": s_age}
 
 
+def single_rule_risks(train, test):
+    """Rules R1-R3 of docs/formulas/rules.md on their own (no-show probabilities, rates learned on `train`).
+    R1 patient history, R2 gender (the data has no department), R3 age band. R4 is the combination (r4_predict)."""
+    s_bar = train["ShowUp"].mean()
+
+    def smoothed(col):
+        g = train.groupby(col)["ShowUp"].agg(["sum", "count"])
+        return ((g["sum"] + K * s_bar) / (g["count"] + K)).to_dict()
+
+    n = test["PriorApptCount"].to_numpy()
+    shows = n - test["PriorNoShowCount"].to_numpy()
+    return {"p_r1": 1 - (shows + K_P * s_bar) / (n + K_P),
+            "p_r2": 1 - test["Gender"].map(smoothed("Gender")).fillna(s_bar).to_numpy(),
+            "p_r3": 1 - test["AgeBand"].astype(str).map(smoothed("AgeBand")).fillna(s_bar).to_numpy()}
+
+
 def metrics(y, p):
     return {"AUC": roc_auc_score(y, p), "Brier": brier_score_loss(y, p), "LogLoss": log_loss(y, p)}
 
@@ -310,6 +326,8 @@ def cv_risks(df, folds: int = 5) -> pd.DataFrame:
         part["p"], part["y"] = rf.predict_proba(te[FEATURES])[:, 1], te["NoShow"].to_numpy()
         part["p_lr"], part["p_r4"], part["fold"] = lr.predict_proba(sc.transform(te[FEATURES]))[:, 1], p_r4, k
         part["p_paper"] = p_paper
+        for col, values in single_rule_risks(tr, te).items():
+            part[col] = values
         parts.append(part)
     out = pd.concat(parts).sort_values(["AppointmentDay", "ScheduledDay"])
     out.to_csv(DATA / "risks_all_days.csv", index=False)
