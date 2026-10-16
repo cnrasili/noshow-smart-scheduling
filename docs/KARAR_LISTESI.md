@@ -12,7 +12,7 @@ Bu dosya projedeki kararların **tek kaydıdır**. Makine tarafı: `docs/decisio
 | 1. Model (#7) | Karar ağacı (alternatif dal; seçili model rastgele orman, karşılaştırma için); karşılaştırma için Rastgele orman `ml/models/candidates/` altında | Ekip |
 | 2. En uzun ortalama bekleme | 15 dk (poliklinik) | Ekip |
 | 3. Kural ayarı (#8) | Eşik %30, günlük ek randevu sınırı 4, slot başına en çok 2 hasta | Ekip |
-| 4. Muayene süresi (#9) | Ortalama 7.5 dk (aralık 5–10 dk); slot 10 dk x 24 (türetilmiş) | Ekip |
+| 4. Muayene süresi (#9) | Ortalama 7.5 dk (aralık 5–10 dk); slot 15 dk x 16 (Türkiye'de yaygın; kaynak eklenecek) | Ekip |
 | 5. Tek doktor kuralı (#61) | Uygulanmayacak; ana README kapsamı: tek bölüm, hekim adlandırılmaz ya da atanmaz | Ekip |
 | 5b. Birim | Departman bazlı: `Department` = General Practice (temizlenmiş veride her satırda); hekim yok | Ekip |
 | 6. Hatırlatma | Canlı A/B testi + varsayımsal senaryo | Ekip |
@@ -27,7 +27,7 @@ Bu dosya projedeki kararların **tek kaydıdır**. Makine tarafı: `docs/decisio
 Yorumlar ve türetilen değerler:
 
 - **"15k" bekleme** ifadesi **15 dakika** olarak okundu. Yanlışsa 2. satır ve `wait_limit_min` düzeltilmeli.
-- **Slot 10 dk x 24 slot (4 saat)** karar listesinde yoktu; "hasta başına 5–10 dk" kararından **türetildi**. Muayene ortalaması 7,5 dk alındı (aralığın ortası). 15 dk'lık slotla sonuç, duyarlılık tablosunda ("15 dk slot, 16 slot") yer alır. Ekip farklı slot isterse `docs/decisions.json` içindeki `slot_min` ve `n_slots` değişir.
+- **Slot 15 dk x 16 slot (4 saat):** ekip kararı (17 Ekim 2026): Türkiye'de randevu aralığı genel olarak 15 dakikadır; kaynak eklenecek. İlk taslakta 10 dk türetilmişti, geri alındı. Muayene ortalaması 7,5 dk (5–10 aralığının ortası). 10 dk'lık slot sonucu duyarlılık tablosunda ("10 dk slot, 24 slot") yer alır. Slot değişirse `docs/decisions.json` içindeki `slot_min` ve `n_slots` değişir. Web uygulaması (CEN-1) 20 dk slot kullanıyor; 15 dk ile eşitlenmesi gerekir.
 - **Hatırlatma** için seçim benim önerimdir; ekip onayı gerekir.
 - **Model: rastgele orman kesin** (17 Ekim 2026); CEN'e iletildi. Karar ağacı yalnızca karşılaştırma için tutuluyor (bölüm 2).
 - **Varsayımlar geçici onaylı (17 Ekim 2026).** Slot, muayene süresi, gecikme, talep ve 15 dk bekleme sınırı şimdilik onaylandı; **akademik gerekçe ve kaynak (hoca onayı) sonra eklenecek.** Onay verilene kadar raporlarda "varsayım" diye anılır. Kaynak gerekenler: muayene süresi 5–10 dk, değişkenlik 0,5, geç kalma 4 dk, talep (slot + 4 istek), 10 dk slot.

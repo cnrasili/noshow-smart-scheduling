@@ -238,6 +238,8 @@ def exp_sensitivity(cfg, pool, reps, d):
     tabs = []
     lo, hi = d["service_range_min"]
     extra = d["extra_requests"]
+    alt_slot = 10.0 if cfg.slot_min != 10.0 else 15.0  # the other usual slot length, same session
+    alt_n = round(cfg.n_slots * cfg.slot_min / alt_slot)
     variants = {
         f"Muayene süresi {lo:g} dk": replace(cfg, service_mean=float(lo)),
         f"Muayene süresi {hi:g} dk": replace(cfg, service_mean=float(hi)),
@@ -246,7 +248,9 @@ def exp_sensitivity(cfg, pool, reps, d):
         f"Talep {cfg.n_requests - 4} istek": replace(cfg, requests=cfg.n_requests - 4),
         f"Talep {cfg.n_requests + 4} istek": replace(cfg, requests=cfg.n_requests + 4),
         "Geç kalma sapması 8 dk": replace(cfg, punctuality_sd=8.0),
-        "15 dk slot, 16 slot": replace(cfg, slot_min=15.0, n_slots=16, requests=16 + extra),
+        f"{alt_slot:g} dk slot, {alt_n} slot": replace(
+            cfg, slot_min=alt_slot, n_slots=alt_n, requests=alt_n + extra
+        ),
     }
     rule = rule_of(d)
     for name, c in {"taban": cfg, **variants}.items():
