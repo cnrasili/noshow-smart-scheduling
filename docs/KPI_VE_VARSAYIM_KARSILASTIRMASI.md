@@ -69,3 +69,18 @@ Güncel tablo `docs/IEN_DENEY_SONUCLARI.md` bölüm 4'tedir (karar ayarının sa
 - **Varsayıma bağlı olan:** bedelin büyüklüğü. Muayene 5 dk iken bekleme artışı yalnızca +0,4 dk, 10 dk iken +2,2 dk'dır; mesai aşımı artışı 0,0 ile 1,1 dk arasında oynar. Muayene süresinin üst sınırı (10 dk) bekleme ve mesai aşımı için kritiktir.
 - **Kuralın değeri no-show oranına bağlıdır:** gelmeme oranı %30 düşerse kural neredeyse hiç tetiklenmez (+0,11 hasta); %30 artarsa kazanç büyür (+2,9). Veride gelmeme oranı yaklaşık %20'dir.
 - **Talep kapasiteyi aşmıyorsa** (16 istek, 16 slot) kural işe yaramaz: önce yeterli talep olmalıdır.
+
+## 5. Varsayım kayıt defteri: ölçülen, karar, varsayım ve nasıl ölçülür
+
+| Değer | Sınıf | Şu anki değer | Gerçek ölçümle nasıl yerine konur | Kaynak durumu |
+|---|---|---|---|---|
+| No-show riski, gelme/gelmeme | **Ölçülmüş** | 110.521 randevu | Uygulamanın `attended` kaydı (`GET /ab/summary`, `/kpi`) | Veri seti |
+| Muayene süresi | **Karar** | 5–10 dk, ortalama 7,5; değişkenlik 0,5 (varsayım) | Muayene başlangıç ve bitiş saatlerini kaydetmek (servis bugün kaydetmiyor); en az birkaç yüz muayene | Haber ve TBMM belgesi, dolaylı (`KAYNAK_ARASTIRMASI.md`) |
+| Slot | **Karar** | 15 dk x 16 | Departmanın gerçek takvim ayarı (CEN-1 uygulamasında 20 dk) | **Doğrulanamadı**; devlet hastanesinde 5–10 dk bildiriliyor |
+| Hasta gecikmesi | **Varsayım** | Sapma 4 dk | Hastanın giriş (check-in) saatini kaydetmek | Kaynak yok; veri setinde geliş saati yok |
+| Talep (istek sayısı) | **Varsayım** | Slot + 4 | Günlük randevu isteği kayıtları (kabul edilen ve edilemeyen) | Kaynak yok; veri setinde yalnızca kabul edilenler var |
+| Oda (oturum) sayısı | **Varsayım** | Günün randevularından türetilir (yaklaşık 220) | Departmanın gerçek kapasitesi | Karar: hekim adlandırılmaz |
+| 15 dk bekleme sınırı | **Karar** | Ortalama bekleme | Hasta başına sınır tanımlanabilir (ör. %95'inci yüzdelik) | Kaynak yok; seçilen ayar bağlayıcı değil (`BEKLEME_DAGILIMI.md`) |
+| Hatırlatma etkisi | **Ölçülmemiş** | Senaryo %0–30 | Canlı A/B testi | `SMS_received` deney değil |
+
+Duyarlılık: slot ve muayene süresi sonuçların büyüklüğünü en çok etkileyen değerlerdir (bölüm 4 ve `docs/IEN_DENEY_SONUCLARI.md`).

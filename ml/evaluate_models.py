@@ -192,6 +192,38 @@ def main() -> None:
     print("Saved:", REPORT)
 
 
+def subgroup_text(sub: pd.DataFrame) -> str:
+    """Plain-language reading of the new / returning patient results of the selected model."""
+    import json
+
+    dec = json.loads((ROOT / "docs" / "decisions.json").read_text(encoding="utf-8"))
+    name = {"random_forest": "Random Forest", "decision_tree": "Decision Tree"}.get(dec["model"])
+    g = sub[sub["Model"] == name].set_index("Grup")
+    new, old = g.loc["Yeni hasta (geçmişi yok)"], g.loc["Tekrar gelen hasta"]
+    return (
+        f"**Yorum ({name}, seçili model).** Test kümesinde hastaların "
+        f"%{100 * new['n'] / (new['n'] + old['n']):.0f}'i yeni (geçmişi yok), "
+        f"%{100 * old['n'] / (new['n'] + old['n']):.0f}'i tekrar gelen hastadır. "
+        f"Ayırt etme gücü iki grupta da yakındır (ROC-AUC {new['ROC_AUC']:.3f} ve "
+        f"{old['ROC_AUC']:.3f}); yani model yeni hastalarda da yaş, randevuya kalan gün ve "
+        f"benzeri özelliklerle anlamlı ayrım yapar, geçmişi olan hastalarda ise biraz daha "
+        f"iyidir. Gerçek gelmeme oranı yeni hastalarda %{100 * new['no_show_rate']:.1f}, "
+        f"tekrar gelenlerde %{100 * old['no_show_rate']:.1f}; model ortalamada her iki grupta "
+        f"biraz yüksek tahmin eder (%{100 * new['mean_risk']:.1f} ve "
+        f"%{100 * old['mean_risk']:.1f}), fazlalık yeni hastalarda daha büyüktür "
+        f"({100 * (new['mean_risk'] - new['no_show_rate']):+.1f} ve "
+        f"{100 * (old['mean_risk'] - old['no_show_rate']):+.1f} puan). "
+        f"Kalibrasyon eğimi iki grupta da 1'in üstündedir ({new['cal_slope']:.2f} ve "
+        f"{old['cal_slope']:.2f}): tahminler gerçek farkları olduğundan biraz az gösterir. "
+        f"0,30 eşiğinde yeni hastaların %{100 * new['flagged@0.30']:.0f}'i, tekrar gelenlerin "
+        f"%{100 * old['flagged@0.30']:.0f}'i yüksek riskli sayılır; işaretlenenlerin isabet "
+        f"oranı (precision) {new['precision@0.30']:.2f} ve {old['precision@0.30']:.2f}'dir. "
+        "Sonuç: kural iki gruba da aynı eşikle uygulanabilir; yeni hastalar için tahmin "
+        "biraz daha belirsizdir, bu yüzden hasta geçmişi biriktikçe model yeniden "
+        "kalibre edilmelidir."
+    )
+
+
 def write_report(res, sub, cv, chosen, train, test, cut, blocks, preds, y_te):
     main_cols = [
         "Model",
@@ -241,6 +273,9 @@ def write_report(res, sub, cv, chosen, train, test, cut, blocks, preds, y_te):
         "Brier",
         "cal_intercept",
         "cal_slope",
+        "precision@0.30",
+        "recall@0.30",
+        "flagged@0.30",
     ]
     s = sub[sub_cols].copy()
     s.columns = [
@@ -253,8 +288,12 @@ def write_report(res, sub, cv, chosen, train, test, cut, blocks, preds, y_te):
         "Brier",
         "Kalibrasyon kesişimi",
         "Kalibrasyon eğimi",
+        "Precision (0,30)",
+        "Recall (0,30)",
+        "İşaretlenen pay (0,30)",
     ]
     s["n"] = s["n"].astype(int)
+    sub_text = subgroup_text(sub)
     best_ll = res[~res["Model"].str.contains("referans")].sort_values("LogLoss").iloc[0]["Model"]
     ml_models = [m for m in preds if "referans" not in m]
     cal_tables = []
@@ -305,7 +344,7 @@ No-show sınıfı için (pozitif = gelmeyecek):
 
 {md(s)}
 
-Geçmişi olmayan hastalarda hasta geçmişi özelliği bilgi taşımaz; bu grubun sonucu ayrı değerlendirilmelidir.
+{sub_text}
 
 ## 6. Kalibrasyon (onluk dilimler, test kümesi)
 

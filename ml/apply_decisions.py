@@ -183,6 +183,15 @@ def main() -> int:
         str(RISKS),
     ]
     subprocess.run(cmd, check=True, cwd=ROOT / "simulation")
+    wait = [
+        sys.executable,
+        str(ROOT / "simulation" / "wait_distribution.py"),
+        "--decisions",
+        str(args.decisions),
+        "--risks",
+        str(RISKS),
+    ]
+    subprocess.run(wait, check=True, cwd=ROOT / "simulation")
     subprocess.run([sys.executable, str(ROOT / "simulation" / "parity_check.py")], check=False)
     print(
         "\nNext: check the numbers quoted in docs/IEN_RAPOR_TASLAGI.md and "
