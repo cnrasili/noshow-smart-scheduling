@@ -256,7 +256,7 @@ def open_window(url: str):
     if not exe:
         return None, None
     profile = tempfile.mkdtemp(prefix="noshow-sim-")          # own profile: the process lives exactly as long as the window
-    proc = subprocess.Popen([exe, f"--app={url}?app=1", f"--user-data-dir={profile}", "--window-size=1500,950",
+    proc = subprocess.Popen([exe, f"--app={url}?app=1", f"--user-data-dir={profile}", "--window-size=1700,1000",
                              "--no-first-run", "--no-default-browser-check"])
     return proc, profile
 
