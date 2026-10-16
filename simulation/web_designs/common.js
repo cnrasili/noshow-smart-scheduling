@@ -1,5 +1,5 @@
 // Shared by design1 and design2: data helpers, the demo calendar and the booking state.
-// Patients and doctors never receive risk, threshold or overbooking information from these helpers;
+// Patients and staff never receive risk, threshold or overbooking information from these helpers;
 // only the management screens read `risk`, `kind` and the rule settings.
 const D = DATA, S = D.session, R = D.rules, AB = D.ab, REM = D.reminder;
 const $ = (s) => document.querySelector(s);
@@ -20,7 +20,7 @@ const addDays = (i, n) => { const d = new Date(i + 'T00:00:00'); d.setDate(d.get
 const isOpenDay = (i) => i >= TODAY && dowOf(i) < 5;
 const MON = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6 };
 const DATA_DAYS = new Set(D.per_day.map((d) => { const [dd, mm, yy] = d.date.split(' '); return isoOf(+yy, MON[mm], +dd); }));
-// Management: the doctor session shown on the decision screens can be chosen per record day.
+// Management: the clinic-room session shown on the decision screens can be chosen per record day.
 const sessionOf = (i) => (D.sessions && D.sessions[i]) || D.session;
 let ADAY = REAL, AS = sessionOf(REAL);
 const setAday = (i) => { ADAY = i; AS = sessionOf(i); };
@@ -34,7 +34,7 @@ const RISKS = S.slots.flatMap((sl) => sl.patients.map((p) => p.risk));
 // Demo: the model API is not connected, so a new booking gets a risk drawn from the real risk distribution.
 const riskOf = (no) => RISKS[hash(no) % RISKS.length];
 const BK = [{ no: 'R-5778201', pid: PATIENTS[0].id, iso: '2016-06-14', time: '10:30', kind: 'normal', risk: riskOf('R-5778201'), old: true }];
-const ATT = {}; // doctor screen: attendance marks of today
+const ATT = {}; // staff screen: attendance marks of today
 
 const bookingsAt = (i, time) => BK.filter((b) => b.iso === i && b.time === time);
 const extrasUsed = (i) => BK.filter((b) => b.iso === i && b.kind === 'extra').length;
@@ -58,11 +58,11 @@ function addBooking(i, k) {
 const cancelBooking = (no) => { const x = BK.findIndex((b) => b.no === no); if (x >= 0) BK.splice(x, 1); };
 const myBookings = () => BK.filter((b) => b.pid === CUR);
 
-// Doctor's day: patient number, age and (for record days) the real outcome. Record days are read-only.
+// Staff day: patient number, age and (for record days) the real outcome. Record days are read-only.
 function dayRecords(i) {
   return (typeof RECORDS !== 'undefined' && RECORDS[i]) || [];
 }
-function doctorDay(i) {
+function staffDay(i) {
   if (DATA_DAYS.has(i)) {
     const list = dayRecords(i).map((r) => ({ time: null, id: r[0], age: r[1], key: 'r' + r[0], outcome: r[3] ? 'n' : 'g', risk: r[2] }));
     return { mode: 'data', list };
@@ -110,5 +110,5 @@ function abTable() {
 
 // Management: decision text of one booking.
 const decisionText = (b) => (b.kind === 'extra' ? `slottaki 1. hastanın riski ≥ eşik %${THR}` : 'Normal randevu (slot boştu)');
-// Doctor: calendar helpers shared by both designs.
+// Staff: calendar helpers shared by both designs.
 const dayTag = (i) => (DATA_DAYS.has(i) ? 'kayıt' : i === TODAY ? 'bugün' : '');
