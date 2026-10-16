@@ -3,7 +3,7 @@
     python build.py        # writes docs/web-designs/*.html
 
 The designs are static mock-ups for the web application: they show how the results of the IEN work
-(no-show risk, overbooking decision, KPIs, rule comparison) can appear to patients, doctors and the
+(no-show risk, overbooking decision, KPIs, rule comparison) can appear to patients, staff and the
 administrator. Every number comes from the real appointment records and the simulation; the
 simulation parameters (slot length, consultation time, lateness, demand) are assumptions.
 """
@@ -22,10 +22,19 @@ import app  # noqa: E402  (the interactive simulation engine)
 
 RAW = HERE.parents[1] / "ml" / "data" / "raw" / "KaggleV2-May-2016.csv"
 OUT = HERE.parents[1] / "docs" / "web-designs"
+DECISIONS = json.loads((HERE.parents[1] / "docs" / "decisions.json").read_text(encoding="utf-8"))
+SLOT_MIN = int(DECISIONS["slot_min"])
+N_SLOTS = int(DECISIONS["n_slots"])
 BASE = {
     "risk": "rf",
-    "template": {"n_slots": 16, "slot_min": 15},
-    "session": {"requests": 20, "service_mean": 12, "service_cv": 0.5, "lateness_sd": 4, "seed": 0},
+    "template": {"n_slots": N_SLOTS, "slot_min": SLOT_MIN},
+    "session": {
+        "requests": N_SLOTS + DECISIONS["extra_requests"],
+        "service_mean": DECISIONS["service_mean_min"],
+        "service_cv": DECISIONS["service_cv"],
+        "lateness_sd": DECISIONS["lateness_sd_min"],
+        "seed": 0,
+    },
 }
 
 
@@ -34,7 +43,7 @@ def run(rule: dict, risk: str = "rf", day: str = "all") -> dict:
 
 
 def pick_session(res: dict) -> int:
-    """A doctor session that shows the rule well: several overbooked patients, some no-shows."""
+    """A session that shows the rule well: several overbooked patients, some no-shows."""
     score = {}
     for r in res["records"]:
         s = r[12]
@@ -46,7 +55,8 @@ def pick_session(res: dict) -> int:
 
 def session_view(res: dict, sess: int, threshold: float) -> dict:
     slots = [
-        {"time": f"{8 + (s * 15) // 60:02d}:{(s * 15) % 60:02d}", "patients": []} for s in range(16)
+        {"time": f"{8 + (s * SLOT_MIN) // 60:02d}:{(s * SLOT_MIN) % 60:02d}", "patients": []}
+        for s in range(N_SLOTS)
     ]
     waiting, rejected = [], []
     for n, r in enumerate([r for r in res["records"] if r[12] == sess], start=1):
@@ -168,6 +178,7 @@ def main() -> None:
 
     payload = {
         "hospital": "Şehir Hastanesi",
+        "department": DECISIONS["department"],
         "model": {
             "auc": round(roc_auc_score(data["y"], data["p"]), 3),
             "records": int(len(data)),
@@ -180,7 +191,7 @@ def main() -> None:
         "per_day": per_day,
         "session": {
             "date": "07 Haziran 2016",
-            "doctor": sess + 1,
+            "session_no": sess + 1,
             **session_view(one, sess, 0.30),
             "baseline": one["baseline"],
             "rule": one["rule"],
@@ -188,12 +199,12 @@ def main() -> None:
         "calibration": calibration,
         "risk_hist": risk_hist,
         "assumptions": {
-            "slot_min": 15,
-            "slots": 16,
-            "service_mean": 12,
-            "service_cv": 0.5,
-            "lateness_sd": 4,
-            "requests": 20,
+            "slot_min": SLOT_MIN,
+            "slots": N_SLOTS,
+            "service_mean": DECISIONS["service_mean_min"],
+            "service_cv": DECISIONS["service_cv"],
+            "lateness_sd": DECISIONS["lateness_sd_min"],
+            "requests": N_SLOTS + DECISIONS["extra_requests"],
         },
     }
     payload.update(extras())
@@ -207,14 +218,14 @@ def main() -> None:
 
 
 def sessions() -> dict:
-    """One doctor session per record day (the one that shows the rule best), for the admin view."""
+    """One session per record day (the one that shows the rule best), for the admin view."""
     rule = {"type": "threshold", "threshold": 0.30, "max_per_slot": 2, "daily_limit": 4}
     out = {}
     for day in app.meta()["dates"]:
         one = run(rule, day=day)
         sess = pick_session(one)
         out[day] = {
-            "doctor": sess + 1,
+            "session_no": sess + 1,
             **session_view(one, sess, 0.30),
             "baseline": one["baseline"],
             "rule": one["rule"],
