@@ -172,7 +172,7 @@ def main() -> None:
     )
     config = (
         f"{args.reps} simulated sessions per policy · {cfg.n_slots} slots × {cfg.slot_min:.0f} min · "
-        f"mean consultation {cfg.service_mean:.0f} min · {cfg.n_slots + cfg.extra_requests} booking requests per session · "
+        f"mean consultation {cfg.service_mean:g} min · {cfg.n_slots + cfg.extra_requests} booking requests per session · "
         "parameters are assumptions"
     )
     html = (

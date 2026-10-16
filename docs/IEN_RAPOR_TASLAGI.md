@@ -9,8 +9,8 @@ Poliklinik randevularında hastaların yaklaşık %20'si gelmiyor ve muayene kap
 Ana bulgular:
 
 1. Tahmin gücü sınırlıdır: rastgele orman test kümesinde ROC-AUC 0,729'a (%95 aralık 0,721–0,736), 4 seviyeli karar ağacı 0,720'ye, lojistik regresyon 0,658'e ulaşır.
-2. Karar ayarı (eşik %30, günlük ek randevu sınırı 4, hasta başına 7,5 dk muayene, 10 dk slot) oturum başına görülen hastayı yaklaşık 19,2'den 22,3'e (**+%16**) çıkarır ve boşta kalmayı yaklaşık %23–24 azaltır, doluluğu %60'tan %70'e çıkarır. Bedeli: ortalama bekleme yaklaşık 1,3 dk'dan 3 dk'ya çıkar, mesai aşımı yaklaşık 0,3 dk artar. Kabul edilen en uzun ortalama bekleme 15 dk'dır; karar ayarı bu sınırın çok altındadır.
-3. Rastgele orman ile karar ağacı simülasyon sonuçlarında neredeyse aynıdır (görülen hasta 22,3 ve 22,3; bekleme 3,0 ve 2,9 dk): modeller arasındaki küçük AUC farkı klinik sonuca yansımıyor.
+2. Karar ayarı (eşik %30, günlük ek randevu sınırı 4, hasta başına ortalama 7,5 dk muayene, 15 dk slot) oturum başına görülen hastayı yaklaşık 12,8'den 15,6'ya (**+%22**) çıkarır, boşta kalmayı yaklaşık %14 azaltır ve doluluğu %40'tan %49'a çıkarır. Bedeli küçüktür: ortalama bekleme yaklaşık 0,2 dk'dan 1,1 dk'ya, mesai aşımı yaklaşık 0,2 dk artar. Kabul edilen en uzun ortalama bekleme 15 dk'dır; karar ayarı bu sınırın çok altındadır.
+3. Rastgele orman ile karar ağacı simülasyon sonuçlarında neredeyse aynıdır; modeller arasındaki küçük AUC farkı klinik sonuca yansımıyor (rakamlar `docs/SONUC_OZETI.md` dosyasındadır).
 4. Sonuç yönü tüm duyarlılık senaryolarında aynıdır; büyüklüğü muayene süresine ve gelmeme oranına bağlıdır.
 
 ## 2. Veri
@@ -36,7 +36,7 @@ Bir slota ikinci hasta, slottaki her hastanın gelmeme riski eşiğin üstündey
 
 ### 3.3 Simülasyon
 
-SimPy ayrık olay simülasyonu: departmanın bir muayene odası (oturum); 24 slot x 10 dk (4 saat); 28 randevu isteği; log-normal muayene süresi (ortalama 7,5 dk, aralık 5–10 dk, değişkenlik 0,5); hasta gecikmesi (sapma 4 dk). Muayene süresi, Türkiye'deki devlet hastanesi polikliniklerinde hasta başına 5–10 dk ayrıldığı bilgisine dayanır (kaynağı eklenecek `[ONAY]`); slot, gecikme ve talep varsayımdır. Risk ve gelme/gelmeme bilgisi gerçek tahminlerden ve gerçek sonuçlardan çekilir. Tüm politikalar **aynı rastgele oturumları** görür (ortak rastgele sayılar), farklar eşleştirilmiş olarak güven aralığı ve etki büyüklüğüyle verilir. "Tek bölüm, tek doktor" kuralı uygulanmamıştır (karar listesi 5); günün randevuları doktor oturumlarına dağıtılır, sonuçlar oturum başınadır. KPI tanımları ve uygulamayla farkları: `docs/KPI_VE_VARSAYIM_KARSILASTIRMASI.md`.
+SimPy ayrık olay simülasyonu: departmanın bir muayene odası (oturum); 16 slot x 15 dk (4 saat); 20 randevu isteği (slot sayısı + 4); log-normal muayene süresi (ortalama 7,5 dk, aralık 5–10 dk, değişkenlik 0,5); hasta gecikmesi (sapma 4 dk). Muayene süresi, Türkiye'deki devlet hastanesi polikliniklerinde hasta başına 5–10 dk ayrıldığı bilgisine, 15 dk slot ise Türkiye'de randevu aralığının genel olarak 15 dk olmasına dayanır (ekip bilgisi; kaynakları eklenecek `[ONAY]`); gecikme ve talep varsayımdır. Risk ve gelme/gelmeme bilgisi gerçek tahminlerden ve gerçek sonuçlardan çekilir. Tüm politikalar **aynı rastgele oturumları** görür (ortak rastgele sayılar), farklar eşleştirilmiş olarak güven aralığı ve etki büyüklüğüyle verilir. "Tek bölüm, tek doktor" kuralı uygulanmamıştır (karar listesi 5); günün randevuları departmanın muayene odası oturumlarına dağıtılır, sonuçlar oturum başınadır. KPI tanımları ve uygulamayla farkları: `docs/KPI_VE_VARSAYIM_KARSILASTIRMASI.md`.
 
 ## 4. Bulgular
 
@@ -56,42 +56,42 @@ SimPy ayrık olay simülasyonu: departmanın bir muayene odası (oturum); 24 slo
 
 ### 4.2 Politikalar (oturum başına, sabit aralığa göre fark; aralıklar `IEN_DENEY_SONUCLARI.md`'de)
 
-Sabit aralık: 19,2 hasta, 1,3 dk bekleme, 98 dk boşta, 1,9 dk mesai aşımı.
+Sabit aralık: 12,8 hasta, 0,2 dk bekleme, 144 dk boşta, 0,25 dk mesai aşımı, doluluk %40.
 
 | Politika | Görülen | Bekleme (dk) | Boşta (dk) | Mesai aşımı (dk) |
 |---|---|---|---|---|
-| Karar ayarı (eşik %30, sınır 4) | +3,1 | +1,8 | −23 | +0,3 |
-| Eşik %20 | +3,2 | +2,3 | −24 | −0,1 |
-| Eşik %40 | +0,6 | +0,3 | −4 | +0,3 |
-| Maliyet kuralı r=0,5 | +2,7 | +1,4 | −20 | +0,7 |
-| Havayolu kuralı | +3,2 | +2,9 | −24 | −0,1 |
+| Karar ayarı (eşik %30, sınır 4) | +2,8 | +0,9 | −20 | +0,2 |
+| Eşik %20 | +3,2 | +1,2 | −24 | +0,1 |
+| Eşik %40 | +0,4 | +0,1 | −3 | +0,0 |
+| Maliyet kuralı r=0,5 | +2,1 | +0,7 | −15 | +0,3 |
+| Havayolu kuralı | +3,2 | +1,6 | −24 | +0,1 |
 
-Maliyet kuralı r=1,0 neredeyse hiç tetiklenmez (+0,03 hasta): modelin en yüksek riski yaklaşık %50 olduğundan bu kural işe yaramaz. Hasta kazancı eşik %30'dan %20'ye inerken artmaz (+3,1 → +3,2) ama bekleme artar; kazanç talep tavanıyla sınırlıdır (28 istek, 24 slot).
+Maliyet kuralı r=1,0 neredeyse hiç tetiklenmez (+0,02 hasta): modelin en yüksek riski yaklaşık %50 olduğundan bu kural işe yaramaz. Hasta kazancı eşik %30'dan %20'ye inerken yalnızca +2,8'den +3,2'ye çıkar; kazanç talep tavanıyla sınırlıdır (20 istek, 16 slot).
 
 ### 4.3 Şablonlar ve kısa slot
 
-30 slot x 8 dk (kısa slot), tek başına görülen hastayı +3,1 artırır, boşta kalmayı 25 dk azaltır ve mesai aşımını 1,1 dk düşürür. Kısa slota karar ayarı eklenirse bekleme +5,9 dk'ya çıkar ve hasta sayısı daha fazla artmaz: kısa slot ile overbooking birbirinin yerine geçer, birlikte kazanç getirmez. Slot kaydırma (0,5) belirgin bir fark yaratmadı. Ayrıntı: `IEN_DENEY_SONUCLARI.md` bölüm 3.
+20 slot x 12 dk (kısa slot), tek başına görülen hastayı +3,2 artırır ve boşta kalmayı 24 dk azaltır; bekleme +0,4 dk ve mesai aşımı +0,6 dk artar. Kısa slota karar ayarı eklenirse hasta sayısı daha fazla artmaz (+3,2) ve bekleme +1,7 dk'ya çıkar: kısa slot ile overbooking birbirinin yerine geçer, birlikte ek kazanç yoktur. Slot kaydırma (0,5) bekleme artışını küçültür (+0,9 → +0,7 dk) ama mesai aşımını artırır (+0,2 → +0,5 dk). Ayrıntı: `IEN_DENEY_SONUCLARI.md` bölüm 3.
 
 ### 4.4 Eşik ve günlük sınır
 
-Izgara (`IEN_DENEY_SONUCLARI.md` bölüm 2) eşik %15–%30 ve sınır 4–8 aralığında ulaşılabilir en yüksek hasta sayısının (≈ 22,3) tavan olduğunu gösterir; karar ayarı (eşik %30, sınır 4) bu tavanın %99,7'sini 3,1 dk beklemeyle verir. Daha gevşek ayarlar (daha düşük eşik, daha yüksek sınır) hasta sayısını artırmaz, yalnızca beklemeyi artırır. 15 dk'lık bekleme sınırı bağlayıcı değildir.
+Izgara (`IEN_DENEY_SONUCLARI.md` bölüm 2) eşik %15–%20 ve sınır 4–6 ayarlarında ulaşılabilir en yüksek hasta sayısına (≈ 15,9) ulaşır; karar ayarı (eşik %30, sınır 4) bunun yaklaşık %97'sini 1,1 dk beklemeyle verir. Eşik %20'ye inmek yaklaşık +0,4 hasta daha getirir ve beklemeyi +0,3 dk artırır; yani 15 dk'lık bekleme sınırı hiçbir ayarda bağlayıcı değildir ve eşik seçimi bekleme sınırından çok "kaç ek hasta kabul ediyoruz" sorusudur.
 
 ### 4.5 Duyarlılık
 
-Karar ayarının sabit aralığa göre bekleme farkı: muayene 5 dk iken +0,4 dk, 10 dk iken +6,9 dk (mesai aşımı +0,2 ve +6,7 dk). Talep slot sayısına eşitse (24 istek) kural hiçbir kazanç sağlamaz. Gelmeme oranı x0,7 olursa kazanç neredeyse yok (+0,2 hasta); x1,3'te +2,9 hasta. 15 dk'lık slotla +2,8 hasta, +1,0 dk bekleme.
+Karar ayarının sabit aralığa göre bekleme farkı: muayene 5 dk iken +0,4 dk, 10 dk iken +2,2 dk (mesai aşımı 0,0 ve +1,1 dk). Talep slot sayısına yakınsa (16 istek, 16 slot) kural hiçbir kazanç sağlamaz. Gelmeme oranı x0,7 olursa kazanç neredeyse yok (+0,1 hasta); x1,3'te +2,9 hasta. 10 dk'lık slotla (24 slot) +3,1 hasta, +1,7 dk bekleme.
 
 ### 4.6 Hatırlatma senaryosu (varsayımsal)
 
-Hatırlatma etkisi %0'dan %30'a çıkarsa sabit aralıkta görülen hasta 19,3'ten 20,0'a çıkar; karar ayarıyla 22,4'ten 22,5'e. Yani hatırlatma etkili olursa overbooking'in **ek** kazancı küçülür (3,1 → 2,6 hasta). İki yöntem birbirinin yerine kısmen geçer. Gerçek etki A/B testiyle ölçülmelidir.
+Hatırlatma etkisi %0'dan %30'a çıkarsa sabit aralıkta görülen hasta 12,9'dan 13,3'e çıkar; karar ayarıyla 15,6'dan 15,2'ye düşer. Yani hatırlatma etkili olursa overbooking'in **ek** kazancı küçülür (2,8 → 1,9 hasta); iki yöntem birbirinin yerine kısmen geçer. Gerçek etki A/B testiyle ölçülmelidir.
 
 ## 5. Yorum: neden daha çok hasta görülürken bekleme artıyor?
 
-Ek hasta, yalnızca ilk hasta gelmezse "bedava" olur. İlk hastanın riski yüksek olsa bile gelme ihtimali %50–70'tir; ikisi de gelirse (bu sık olur) muayene odası aynı slotta iki hastaya bakar ve ikinci hasta bekler; bu bekleme sonraki slotlara taşınır. Boşta kalma azalır çünkü gelmeyen hastaların boşluğu dolar. Muayene süresi kısaldıkça (5–10 dk) iki hastayı aynı slotta görmek kolaylaşır ve bekleme küçük kalır; 10 dk'ya yaklaştıkça bekleme ve mesai aşımı belirgin biçimde artar. Bu yüzden iyileşme ve bedel her zaman birlikte raporlanmalıdır.
+Ek hasta, yalnızca ilk hasta gelmezse "bedava" olur. İlk hastanın riski yüksek olsa bile gelme ihtimali %50–70'tir; ikisi de gelirse (bu sık olur) muayene odası aynı slotta iki hastaya bakar ve ikinci hasta bekler; bu bekleme sonraki slotlara taşınır. Boşta kalma azalır çünkü gelmeyen hastaların boşluğu dolar. Muayene ortalaması 7,5 dk iken 15 dk'lık bir slotta iki hastayı görmek mümkündür; bu yüzden bekleme küçük kalır (yaklaşık +1 dk). Muayene 10 dk'ya yaklaştıkça iki hasta slota sığmaz ve bekleme ile mesai aşımı artar (+2,2 ve +1,1 dk). Bu yüzden iyileşme ve bedel her zaman birlikte raporlanmalıdır. Not: ortalama muayene slotun yarısı kadar olduğundan oda, kural olmadan da zamanın yaklaşık %60'ında boştur (doluluk %40); kuralın asıl işi bu kapasiteyi kullanmaktır.
 
 ## 6. Sınırlılıklar
 
 1. Tek bir zaman bölmesi ve 27 gün (simülasyon riskleri dönüşümlü katlarla üretilir; ileri doğru pencere karşılaştırması farkı küçük buldu); mevsimsellik ve haftalık kalıplar değerlendirilemez.
-2. Randevu saati, hekim kimliği ve gerçek talep verisi yok; simülasyon yapısı varsayımlara dayanır. Slot (10 dk x 24) karar listesinden **türetilmiştir** `[ONAY]`.
+2. Randevu saati, hekim kimliği ve gerçek talep verisi yok; simülasyon yapısı varsayımlara dayanır. Slot (15 dk x 16) Türkiye'de yaygın randevu aralığına dayanır, ekip bilgisidir `[ONAY]`.
 3. Hekim yoktur, sistem tek departmandır; sonuçlar muayene odası oturumu başınadır ve oda sayısı varsayımdır.
 4. Tahmin gücü sınırlı (AUC ≈ 0,73); model riski en çok %50 civarına çıkarır, bu yüzden yüksek eşikler hiç tetiklenmez.
 5. Hatırlatma etkisi ölçülmedi; senaryo analizi varsayımsaldır, `SMS_received` rastgele deney değildir.
@@ -101,7 +101,7 @@ Ek hasta, yalnızca ilk hasta gelmezse "bedava" olur. İlk hastanın riski yüks
 ## 7. Sonuç ve öneri `[ONAY]`
 
 - Model: **rastgele orman seçildi** (ekip kararı, 17 Ekim 2026; #7). Karar ağacıyla klinik sonuç aynıdır (ağaç yorumlanabilir ve birkaç KB, orman yaklaşık 15 MB); ağaç karşılaştırma için tutulur.
-- Kural: eşik %30 ve günlük sınır 4 hasta kazancının neredeyse tamamını verir ve 15 dk sınırının çok altında kalır. Serviste günlük sınır 2 ve muayene süresi 12 dk'dır; bu iki değer karar listesine göre güncellenmelidir (CEN).
+- Kural: eşik %30 ve günlük sınır 4 ulaşılabilir hasta kazancının yaklaşık %97'sini verir ve 15 dk sınırının çok altında kalır; eşik %20 biraz daha fazla hasta getirir, bekleme yine küçük kalır. Serviste günlük sınır 2 ve muayene süresi 12 dk'dır; bu iki değer karar listesine göre güncellenmelidir (PR #64).
 - Hatırlatma: etkisi canlı A/B testiyle ölçülmelidir.
 
 ## 8. Yeniden üretim

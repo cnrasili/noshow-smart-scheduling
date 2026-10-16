@@ -2,7 +2,7 @@
 
 Üç tasarım da tek dosyalık HTML'dir; çift tıklayıp tarayıcıda açılır, sunucu gerekmez.
 Sayılar gerçek randevu kayıtlarından ve SimPy simülasyonundan gelir. Simülasyon parametreleri
-(slot 10 dk x 24, muayene ortalama 7,5 dk, gecikme 4 dk, oturum başına 4 ek talep; `docs/decisions.json`) karar listesine göre geçici onaylıdır, akademik gerekçe sonra eklenecek.
+(slot 15 dk x 16, muayene ortalama 7,5 dk, gecikme 4 dk, oturum başına 4 ek talep; `docs/decisions.json`) karar listesine göre geçici onaylıdır, akademik gerekçe sonra eklenecek.
 
 | Dosya | Hasta | Personel | Yönetim |
 |---|---|---|---|
