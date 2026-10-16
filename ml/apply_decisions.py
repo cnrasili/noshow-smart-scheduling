@@ -61,10 +61,19 @@ def decision_rows(d: dict) -> list[tuple[str, str, str]]:
         status = (
             "geçici seçim, ekip onayı bekliyor" if d.get("model_status") != "final" else "kesin"
         )
-        model = f"{NAMES[chosen]} ({status}); aday: {other} (`ml/models/candidates/`)"
+        model = (
+            f"{NAMES[chosen]} ({status}); karşılaştırma için {other} "
+            "`ml/models/candidates/` altında"
+        )
     else:
         model = "**Bekliyor**"
     lo, hi = d["service_range_min"]
+    a = d.get("assumptions_approval", {})
+    approval = (
+        f"Geçici olarak onaylandı ({a.get('date', '')}, {a.get('by', '')}); {a.get('note', '')}"
+        if a.get("status") == "provisional"
+        else "Onay bekliyor"
+    )
     return [
         ("1. Model (#7)", model, "Ekip"),
         ("2. En uzun ortalama bekleme", f"{d['wait_limit_min']} dk (poliklinik)", "Ekip"),
@@ -82,7 +91,11 @@ def decision_rows(d: dict) -> list[tuple[str, str, str]]:
         ),
         (
             "5. Tek doktor kuralı (#61)",
-            "Uygulanmayacak" if not d["single_doctor_rule"] else "Uygulanacak",
+            (
+                "Uygulanmayacak; ana README kapsamı: tek bölüm, hekim adlandırılmaz ya da atanmaz"
+                if not d["single_doctor_rule"]
+                else "Uygulanacak"
+            ),
             "Ekip",
         ),
         ("6. Hatırlatma", "Canlı A/B testi + varsayımsal senaryo", "Ekip"),
@@ -94,6 +107,12 @@ def decision_rows(d: dict) -> list[tuple[str, str, str]]:
         ),
         ("9. Canlıda güncel kalma", "CEN2 modele API ile bağlanır", "CEN2"),
         ("10. Son tarih", d["deadline"], "Ekip"),
+        ("11. Simülasyon varsayımları ve 15 dk sınırı", approval, "Ekip + hoca"),
+        (
+            "12. Uçtan uca test ve final demo",
+            "IEN görevi değildir; CEN ile birlikte, ayrı iş",
+            "CEN",
+        ),
     ]
 
 
