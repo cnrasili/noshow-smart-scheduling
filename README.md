@@ -235,7 +235,7 @@ Components depend on each other through the files below. Changes to them are agr
 ## Workflow
 
 - `main` always contains working code and only the maintainer updates it: teammates' changes come through reviewed pull requests; the maintainer's own changes are pushed directly after the checks pass locally.
-- Each contributor works on one branch and keeps it up to date with `main` (`git merge origin/main`); `hazarikizler` may keep three (`LIMITS` in [`.github/scripts/cleanup_branches.py`](.github/scripts/cleanup_branches.py)). Older branches beyond that number are removed automatically by the `Branch cleanup` workflow; unmerged work is kept as an `archive/...` tag.
+- Each contributor works on one branch and keeps it up to date with `main` (`git merge origin/main`); the branches of the maintainer and of `hazarikizler` are not limited (`EXEMPT` in [`.github/scripts/cleanup_branches.py`](.github/scripts/cleanup_branches.py)). Older branches of other contributors are removed automatically by the `Branch cleanup` workflow; unmerged work is kept as an `archive/...` tag.
 - Pull requests reference the issue they solve (`Closes #<number>`); open work is tracked in [GitHub Issues](https://github.com/cnrasili/noshow-smart-scheduling/issues).
 - Each issue has one assignee and covers one component; its Scope section lists the files it may change. Work needed in another component is requested in a comment, not made in the same pull request.
 - Commit messages are one line in the form `type: Imperative short message`, for example `feat: Add prediction endpoint` or `fix: Correct lead time calculation`.
@@ -250,9 +250,9 @@ Components depend on each other through the files below. Changes to them are agr
 | Booking application | Working: login, booking, cancellation, doctor views, attendance |
 | Overbooking service | Working: prediction, overbooking decision, messages, A/B test, KPIs |
 | Admin service | Working: administrator login, internal network restriction, KPI screen, account management, audit log |
-| Prediction model | Trained; the service still uses a placeholder model until the trained model is delivered |
+| Prediction model | Delivered: random forest (`random_forest-v1`), installed in the overbooking service |
 | Overbooking rule | Default threshold; the final rule and threshold come from the simulation study |
-| Simulation | Single session, appointment templates and real appointment days; extension to several physicians and departments planned |
+| Simulation | Single session, appointment templates and real appointment days; moving to one department without physicians (#61) |
 
 ## Course
 
