@@ -40,10 +40,11 @@ def evaluate(templates: list[Template], pool, reps: int, seed: int, base: Sessio
     rows = []
     cfgs = {t.key: t.config(base) for t in templates}
     if sessions is not None:
-        for rep, (d, plen) in enumerate(sessions):
+        for rep, (d, plen, alt) in enumerate(sessions):
             for t in templates:
+                dd = dataclasses.replace(d, risk=alt[t.risk_key]) if t.risk_key and alt else d
                 rows.append({"key": t.key, "rep": rep, **simulate_session(dataclasses.replace(cfgs[t.key], requests=plen),
-                                                                          t.policy(), d, layout=t.layout())})
+                                                                          t.policy(), dd, layout=t.layout())})
         return pd.DataFrame(rows)
     for rep in range(reps):
         # all templates share the same booking requests, attendance, arrival offsets and service times
@@ -145,7 +146,8 @@ def main() -> None:
         tuned_templates.append(bt)
         if bt.threshold is not None:
             tuned[t.key] = bt.threshold
-    allt = [CURRENT_FIXED, CURRENT_OB] + tuned_templates
+    has_paper = bool(sessions) and bool(sessions[0][2])
+    allt = [CURRENT_FIXED, CURRENT_OB] + day_by_day.paper_templates(has_paper) + tuned_templates
     res = evaluate(allt, pool, args.reps, args.seed, base, sessions)
     n_sessions = len(sessions) if sessions is not None else args.reps
     s = summary(res, CURRENT_FIXED.key)
@@ -163,7 +165,7 @@ def main() -> None:
     overall = extra = ""
     if real_days:
         labels, dd = day_by_day.compute(by_date, tuned_templates, base)
-        wl = next(lab for i, lab in enumerate(labels[4:]) if tuned_templates[i].key == winner_key)
+        wl = next(lab for i, lab in enumerate(labels[-len(tuned_templates):]) if tuned_templates[i].key == winner_key)
         overall = day_by_day.overall_cards(labels, dd, wl, len(by_date))
         extra = day_by_day.section_html(labels, dd, wl, "random forest")
         intro = (f"Built from every real appointment record: {len(pool):,} appointments on {len(by_date)} days dealt to {n_sessions:,} clinic sessions "

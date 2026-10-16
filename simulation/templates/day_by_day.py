@@ -19,17 +19,31 @@ METRICS = [("seen", "Patients seen", 1), ("noshow", "No-shows (booked, did not c
 ALL = "All days"
 
 
-def scenarios(tuned: list[Template]) -> list[tuple[str, object]]:
+def paper_templates(has_paper_risk: bool) -> list[Template]:
+    """Overbooking policy of Batool et al. (2020): overbook every slot whose patient the classifier flags as a no-show
+    (p >= 0.5), with no cap on overbooked slots. Shown with our calibrated model and with a classifier trained on
+    rebalanced data, as in the paper."""
+    out = [Template("paper_cal", "Literature - classifier flag p >= 0.5, calibrated model", "", 16, 15, threshold=0.5, daily_limit=99)]
+    if has_paper_risk:
+        out.append(Template("paper_bal", "Literature - classifier flag p >= 0.5, rebalanced training (as in the paper)", "", 16, 15,
+                            threshold=0.5, daily_limit=99, risk_key="p_paper"))
+    return out
+
+
+def scenarios(tuned: list[Template], has_paper_risk: bool = False) -> list[tuple[str, object]]:
     """(label, template or rule name) pairs; the first one is the baseline without any rule."""
     out = [("No rule: fixed interval 15 min", Template("baseline", "No rule", "", 16, 15)),
            ("Rule: threshold 0.30 (same-time overbooking)", Template("r1", "", "", 16, 15, threshold=0.30)),
            ("Rule: cost-based R5-A, r = 0.5", "cost0.5"), ("Rule: cost-based R5-A, r = 1.0", "cost1.0")]
+    out += [(t.name.replace("Literature - ", "Literature: "), t) for t in paper_templates(has_paper_risk)]
     out += [(f"Template {i + 1}: {t.name.split(' - ', 1)[1]}", t) for i, t in enumerate(tuned)]
     return out
 
 
-def run_policy(what, cfg: SessionConfig, draws, part_len: int):
-    """simulate_session result for one scenario."""
+def run_policy(what, cfg: SessionConfig, draws, part_len: int, alt=None):
+    """simulate_session result for one scenario. alt: other risk columns of the session (by name)."""
+    if getattr(what, "risk_key", None) and alt:
+        draws = dataclasses.replace(draws, risk=alt[what.risk_key])
     if what in ("cost0.5", "cost1.0"):
         return simulate_session(dataclasses.replace(cfg, requests=part_len), cost_rule(float(what[4:])), draws)
     tcfg = dataclasses.replace(what.config(cfg), requests=part_len)
@@ -49,21 +63,23 @@ def build_sessions(pool: pd.DataFrame, cfg: SessionConfig) -> dict:
             part = day.iloc[np.sort(idx[start:start + REQUESTS])].sort_values("ScheduledDay", kind="stable")
             draws = dataclasses.replace(draw_session(dataclasses.replace(cfg, requests=len(part)), rng, None),
                                         risk=part["p"].to_numpy(), shows=(part["y"].to_numpy() == 0))
-            sessions.append((draws, len(part)))
+            alt = {"p_paper": part["p_paper"].to_numpy()} if "p_paper" in part.columns else {}
+            sessions.append((draws, len(part), alt))
         out[f"{date:%d %b %Y}"] = sessions
     return out
 
 
 def compute(by_date: dict, tuned: list[Template], cfg: SessionConfig) -> tuple[list[str], dict]:
     """data[date or ALL][scenario label] = metrics (sums over all sessions of the date)."""
-    scs = scenarios(tuned)
+    has_paper = any(alt for sessions in by_date.values() for _, _, alt in sessions[:1])
+    scs = scenarios(tuned, has_paper)
     labels = [s[0] for s in scs]
     sums = {}
     for key, sessions in by_date.items():
         tot = {lab: dict(appointments=0, seen=0, booked=0, noslot=0, wait_min=0.0, idle_min=0.0, ot_min=0.0) for lab in labels}
-        for draws, plen in sessions:
+        for draws, plen, alt in sessions:
             for lab, what in scs:
-                r = run_policy(what, cfg, draws, plen)
+                r = run_policy(what, cfg, draws, plen, alt)
                 a = tot[lab]
                 a["appointments"] += plen; a["seen"] += r["seen"]; a["booked"] += r["booked"]; a["noslot"] += r["deferred"]
                 a["wait_min"] += r["mean_wait"] * r["seen"]; a["idle_min"] += r["idle"]; a["ot_min"] += r["overtime"]

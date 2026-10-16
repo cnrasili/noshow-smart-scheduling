@@ -19,6 +19,7 @@ from scipy.optimize import brentq
 from sklearn.inspection import permutation_importance
 from sklearn.metrics import brier_score_loss, log_loss, roc_auc_score
 from sklearn.preprocessing import StandardScaler
+from sklearn.tree import DecisionTreeClassifier
 
 DATA = Path(__file__).parent / "data" / "processed"
 SRC = DATA / "appointments_clean.xlsx"
@@ -281,6 +282,15 @@ def comparison_report(train, test, cut, preds, r4info):
     wb.save(DATA / "auc_calibration.xlsx")
 
 
+def paper_classifier(train: pd.DataFrame) -> DecisionTreeClassifier:
+    """Classifier in the style of Batool et al. (2020): the training set is rebalanced to 50/50 by undersampling the
+    majority class and a decision tree (min_samples_split=1400) is fitted. Its probabilities are NOT calibrated: they
+    are far too high for the real 20 % no-show rate. The paper used instance-hardness undersampling, which has the same effect."""
+    miss = train[train["NoShow"] == 1]
+    kept = pd.concat([miss, train[train["NoShow"] == 0].sample(len(miss), random_state=0)])
+    return DecisionTreeClassifier(min_samples_split=1400, random_state=0).fit(kept[FEATURES], kept["NoShow"])
+
+
 def cv_risks(df, folds: int = 5) -> pd.DataFrame:
     """Out-of-sample risks for EVERY appointment day: days are dealt to folds (round robin over the calendar),
     each fold is predicted by models trained on the other folds. Written to risks_all_days.csv for the simulation."""
@@ -295,14 +305,19 @@ def cv_risks(df, folds: int = 5) -> pd.DataFrame:
         lr = LogisticRegression(max_iter=1000).fit(sc.transform(tr[FEATURES]), tr["NoShow"])
         rf = RandomForestClassifier(n_estimators=300, min_samples_leaf=50, n_jobs=-1, random_state=42).fit(tr[FEATURES], tr["NoShow"])
         p_r4, _ = r4_predict(tr, te)
+        p_paper = paper_classifier(tr).predict_proba(te[FEATURES])[:, 1]
         part = te[["AppointmentID", "ScheduledDay", "AppointmentDay", "Age", "LeadDays", "PriorApptCount"]].copy()
         part["p"], part["y"] = rf.predict_proba(te[FEATURES])[:, 1], te["NoShow"].to_numpy()
         part["p_lr"], part["p_r4"], part["fold"] = lr.predict_proba(sc.transform(te[FEATURES]))[:, 1], p_r4, k
+        part["p_paper"] = p_paper
         parts.append(part)
     out = pd.concat(parts).sort_values(["AppointmentDay", "ScheduledDay"])
     out.to_csv(DATA / "risks_all_days.csv", index=False)
     print(f"All-days out-of-sample risks: {len(out)} appointments, {len(days)} days, AUC "
-          + ", ".join(f"{n} {roc_auc_score(out['y'], out[c]):.3f}" for n, c in (("RF", "p"), ("LR", "p_lr"), ("R4", "p_r4"))))
+          + ", ".join(f"{n} {roc_auc_score(out['y'], out[c]):.3f}" for n, c in (("RF", "p"), ("LR", "p_lr"), ("R4", "p_r4"), ("paper-style", "p_paper"))))
+    print(f"Paper-style classifier (trained on rebalanced data): mean predicted risk {out['p_paper'].mean():.3f} "
+          f"(true no-show rate {out['y'].mean():.3f}), share flagged p >= 0.5: {(out['p_paper'] >= 0.5).mean():.3f}; "
+          f"calibrated random forest: mean {out['p'].mean():.3f}, share flagged p >= 0.5: {(out['p'] >= 0.5).mean():.4f}")
     return out
 
 
