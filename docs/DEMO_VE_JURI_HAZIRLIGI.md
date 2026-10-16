@@ -24,22 +24,24 @@ Hazırlık listesi:
 |---|---|
 | Veri | 110.521 randevu, 27 gün, gelmeme oranı yaklaşık %20 |
 | En iyi model | Rastgele orman, test AUC 0,729 (0,721–0,736); karar ağacı 0,720; lojistik 0,658 |
-| Karar ayarı (eşik %30, sınır 4): oturum başına 19,2 → 22,3 hasta | +%16; boşta −%23–24; bekleme 1,3 → 3,0 dk; mesai aşımı +0,3 dk (güncel değerler `docs/SONUC_OZETI.md`) |
-| Eşik %20 | 22,4 hasta; bekleme 3,6 dk; kazanç eşik %30'dan farklı değil |
-| Kısa slot (30x8) + karar ayarı | hasta sayısı yalnızca kısa slotla da +3,1; birlikte kazanç yok, bekleme +5,9 dk |
+| Karar ayarı (eşik %30, sınır 4): oturum başına 12,8 → 15,6 hasta | +%22; boşta −%14; bekleme 0,2 → 1,1 dk; mesai aşımı +0,2 dk; doluluk %40 → %49 (güncel değerler `docs/SONUC_OZETI.md`) |
+| Eşik %20 | +3,2 hasta (eşik %30'a göre +0,4); bekleme +1,2 dk |
+| Kısa slot (20x12) + karar ayarı | hasta sayısı yalnızca kısa slotla da +3,2; birlikte ek kazanç yok, bekleme +1,7 dk |
 | Servis ile simülasyon | aynı karar (20.000 slot); servis ayarları güncellenecek: günlük sınır 2 → 4, muayene 12 → 7,5 dk |
 
 ## 3. Olası sorular ve yanıtlar
 
 **Neden AUC yalnızca 0,73?** Elimizdeki özellikler (yaş, randevuya kalan gün, geçmiş vb.) gelmemeyi zayıf açıklıyor. Literatürdeki %95'i aynı veride yeniden ürettik: bölmeden önce tüm veri dengelendiği için şişiyor; sızıntısız protokolde sonuç bizimkine yakın (AUC ≈ 0,72).
 
-**Karar ağacı neredeyse rastgele ormanla aynıysa neden orman?** (Şimdilik rastgele orman seçili; karar ağacı aday olarak hazır.) Fark küçük (0,720 ve 0,729) ve simülasyonda görülen hasta 22,3 ve 22,3. Ağaç yorumlanabilirdir; orman biraz daha yüksek PR-AUC ve düşük log-loss veriyor (0,339 ve 0,423; ağaçta 0,305 ve 0,426). Seçim ekip kararıdır (#7). Her iki aday da servisin kabul kontrollerinden geçti (`python ml/export_candidate.py`).
+**Karar ağacı neredeyse rastgele ormanla aynıysa neden orman?** (Şimdilik rastgele orman seçili; karar ağacı aday olarak hazır.) Fark küçük (0,720 ve 0,729) ve simülasyonda görülen hasta sayısı iki modelde neredeyse aynı (ayrıntı `docs/SONUC_OZETI.md`). Ağaç yorumlanabilirdir; orman biraz daha yüksek PR-AUC ve düşük log-loss veriyor (0,339 ve 0,423; ağaçta 0,305 ve 0,426). Seçim ekip kararıdır (#7). Her iki aday da servisin kabul kontrollerinden geçti (`python ml/export_candidate.py`).
 
 **Kural neden hem hasta sayısını hem beklemeyi artırıyor?** Ek hasta yalnızca ilk hasta gelmezse "bedava"dır. İkisi de gelirse ikinci hasta bekler ve bekleme sonraki slotlara taşınır. Boşta kalma azalır, bekleme ve mesai aşımı artar; ikisini birlikte raporluyoruz.
 
-**Eşik neden %30?** Ekip kararı (#8): eşik %30, günlük sınır 4. Izgara deneyinde daha düşük eşik ya da yüksek sınır hasta sayısını artırmıyor (tavan yaklaşık 22,3); %30/4 bu tavanın %99,7'sini 3 dk beklemeyle veriyor. Kabul edilen en uzun ortalama bekleme 15 dk, karar ayarı bunun çok altında.
+**Eşik neden %30?** Ekip kararı (#8): eşik %30, günlük sınır 4. Izgara deneyinde daha düşük eşik (%20) biraz daha fazla hasta getiriyor (tavan yaklaşık 15,9; +0,4); %30/4 bu tavanın yaklaşık %97'sini 1,1 dk beklemeyle veriyor. Kabul edilen en uzun ortalama bekleme 15 dk, karar ayarı bunun çok altında.
 
-**Simülasyon varsayımları neye dayanıyor?** Risk ve gelme/gelmeme gerçek verilerden gelir. Muayene süresi (hasta başına 5–10 dk) Türkiye'deki devlet hastanesi poliklinik uygulamasından alınan bir ekip kararıdır; slot süresi (10 dk), geç kalma ve talep varsayımdır; duyarlılık analizinde yön değişmiyor, büyüklük değişiyor (`KPI_VE_VARSAYIM_KARSILASTIRMASI.md` bölüm 4).
+**Simülasyon varsayımları neye dayanıyor?** Risk ve gelme/gelmeme gerçek verilerden gelir. Muayene süresi (hasta başına 5–10 dk) Türkiye'deki devlet hastanesi poliklinik uygulamasından alınan bir ekip kararıdır; slot süresi (15 dk, Türkiye'de randevu aralığı genel olarak 15 dk), geç kalma ve talep varsayımdır; duyarlılık analizinde yön değişmiyor, büyüklük değişiyor (`KPI_VE_VARSAYIM_KARSILASTIRMASI.md` bölüm 4).
+
+**Doluluk neden yalnızca %40–49?** Ortalama muayene 7,5 dk iken slot 15 dk; yani slotun yarısı kullanılıyor. Kural olmadan oda zamanın yaklaşık %60'ında boş, kuralla yaklaşık %51'inde boş kalıyor. Bu, kuralın değerini ve sınırını gösteriyor: gelmeyenlerin boşluğunu doldurur ama slot süresi muayeneden uzun olduğu için kapasite zaten bol. Slot kısaltmak (20 slot x 12 dk) benzer kazancı kural olmadan da getiriyor.
 
 **Neden Arena değil SimPy?** Hocadan izin alındı `[ONAY]`; SimPy tekrarlanabilir ve sürüm kontrollü (koddan yeniden üretilebilir).
 
