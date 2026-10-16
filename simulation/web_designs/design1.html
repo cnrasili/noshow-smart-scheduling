@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Şehir Hastanesi · Tasarım 1: Kurumsal portal</title>
+<style>
+:root{--bg:#f3f7fb;--card:#fff;--ink:#14263a;--mute:#5d7184;--line:#dbe5ef;--brand:#0b5ea8;--brand2:#0a4a85;--soft:#e8f1fa;--ok:#18794e;--okbg:#e3f5ec;--warn:#b45309;--warnbg:#fdf0dc;--bad:#b42318;--badbg:#fde8e6;--shadow:0 1px 2px rgba(20,38,58,.06),0 6px 18px rgba(20,38,58,.06)}
+body[data-role=hekim]{--brand:#0f766e;--brand2:#0b5a54;--soft:#e4f3f1}
+body[data-role=yonetim]{--brand:#334155;--brand2:#1e293b;--soft:#e9edf3}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1722;--card:#13212f;--ink:#e7eef5;--mute:#8da2b5;--line:#243648;--brand:#4aa3e8;--brand2:#7cbcf0;--soft:#17293a;--ok:#4ade80;--okbg:#10301f;--warn:#fbbf24;--warnbg:#33260c;--bad:#f87171;--badbg:#391614;--shadow:none}
+body[data-role=hekim]{--brand:#3fc1b3;--brand2:#7fd9cf;--soft:#14302d}body[data-role=yonetim]{--brand:#94a3b8;--brand2:#cbd5e1;--soft:#1e2a38}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,sans-serif}
+.ribbon{background:#fff7d6;color:#6a5600;font-size:12px;padding:5px 10px;border-bottom:1px solid #ecdc8b;display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap}
+@media (prefers-color-scheme:dark){.ribbon{background:#3a3310;color:#f5e6a0;border-color:#5b5120}}
+.ribbon button{border:1px solid #c9b64d;background:transparent;color:inherit;border-radius:99px;padding:2px 12px;font:inherit;cursor:pointer}.ribbon button.on{background:#6a5600;color:#fff;border-color:#6a5600}
+header{background:var(--card);border-bottom:3px solid var(--brand);position:sticky;top:0;z-index:5}
+.bar{max-width:1180px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;color:var(--brand2)}.logo{width:34px;height:34px;border-radius:9px;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px}
+.brand small{display:block;font-weight:500;font-size:11px;color:var(--mute);margin-top:-3px}
+nav{margin-left:auto;display:flex;gap:6px;background:var(--soft);padding:4px;border-radius:12px}nav button{border:0;background:transparent;color:var(--mute);padding:8px 16px;border-radius:9px;font:inherit;font-weight:600;cursor:pointer}
+nav button.on{background:var(--card);color:var(--brand2);box-shadow:var(--shadow)}
+main{max-width:1180px;margin:0 auto;padding:22px 20px 60px}h1{font-size:24px;margin:0 0 4px}.sub{color:var(--mute);margin:0 0 18px}
+.grid{display:grid;gap:16px}.g2{grid-template-columns:1.5fr 1fr}.g4{grid-template-columns:repeat(4,1fr)}.g5{grid-template-columns:repeat(5,1fr)}@media(max-width:900px){.g2,.g4,.g5{grid-template-columns:1fr 1fr}}@media(max-width:620px){.g2,.g4,.g5{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px;box-shadow:var(--shadow)}.card h2{margin:0 0 12px;font-size:16px}
+.steps{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}.step{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--mute)}.step i{width:24px;height:24px;border-radius:50%;background:var(--soft);display:inline-flex;align-items:center;justify-content:center;font-style:normal;font-weight:700;color:var(--brand2)}.step.on i{background:var(--brand);color:#fff}.step.on{color:var(--ink);font-weight:600}.step+.step::before{content:"›";margin-right:8px;color:var(--line)}
+.mhead{display:flex;align-items:center;gap:10px;margin-bottom:10px}.mhead b{font-size:17px;flex:1}.mhead button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:9px;width:34px;height:34px;font:inherit;cursor:pointer}.mhead button:disabled{opacity:.35;cursor:default}
+.mgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}.mgrid .dw{text-align:center;font-size:11px;color:var(--mute);font-weight:700;text-transform:uppercase}
+.cd{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;min-height:62px;padding:6px;font:inherit;text-align:left;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between}.cd b{font-size:15px}.cd small{font-size:11px}
+.cd.free{background:var(--okbg);border-color:#9bd3b6}.cd.free small{color:var(--ok)}.cd.none{background:var(--soft)}.cd.none small{color:var(--mute)}.cd.closed{background:transparent;border-style:dashed;color:var(--mute);cursor:default;opacity:.6}.cd.mine{outline:2px solid var(--brand)}.cd.on{background:var(--brand);color:#fff;border-color:var(--brand)}.cd.on small{color:#fff}.cd.empty{border:0;background:transparent;cursor:default}
+.slots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.slot{border:1px solid var(--line);border-radius:12px;padding:9px 6px;text-align:center;background:var(--card);color:var(--ink);font:inherit;cursor:pointer;line-height:1.25}.slot b{display:block;font-size:15px}.slot small{font-size:11px}
+.slot.free{border-color:#9bd3b6;background:var(--okbg)}.slot.free small{color:var(--ok)}.slot.full{opacity:.55;cursor:not-allowed;background:var(--soft)}.slot.mine{border-color:var(--brand)}.slot.sel{outline:3px solid var(--brand);outline-offset:1px}
+.btn{border:0;background:var(--brand);color:#fff;border-radius:11px;padding:11px 18px;font:inherit;font-weight:700;cursor:pointer}.btn:disabled{opacity:.4;cursor:not-allowed}.btn.ghost{background:transparent;color:var(--brand2);border:1px solid var(--line)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--mute);margin-top:12px}.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.note{background:var(--soft);border-radius:12px;padding:10px 12px;font-size:13px;color:var(--mute);margin-top:12px}.note b{color:var(--ink)}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:9px 10px;text-align:left;border-bottom:1px solid var(--line)}th{color:var(--mute);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.03em}td.r,th.r{text-align:right}
+.badge{display:inline-block;border-radius:99px;padding:2px 10px;font-size:12px;font-weight:700}.b-low{background:var(--okbg);color:var(--ok)}.b-mid{background:var(--warnbg);color:var(--warn)}.b-high{background:var(--badbg);color:var(--bad)}.b-ob{background:var(--soft);color:var(--brand2)}
+.meter{height:8px;border-radius:6px;background:var(--soft);overflow:hidden;min-width:90px}.meter i{display:block;height:100%}
+.chips{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}@media(max-width:760px){.chips{grid-template-columns:1fr 1fr}}
+.chip{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 16px;box-shadow:var(--shadow)}.chip small{color:var(--mute);font-size:12px}.chip b{display:block;font-size:26px;line-height:1.2}
+.kpi small{color:var(--mute);font-size:12px}.kpi b{display:block;font-size:28px}.kpi .d{font-size:13px;font-weight:700}.good{color:var(--ok)}.bad{color:var(--bad)}.neu{color:var(--mute)}
+.seg{display:inline-flex;background:var(--soft);border-radius:10px;padding:3px;gap:2px}.seg button{border:0;background:transparent;font:inherit;color:var(--mute);padding:5px 12px;border-radius:8px;cursor:pointer}.seg button.on{background:var(--card);color:var(--ink);font-weight:700}
+.att button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:5px 12px;font:inherit;font-size:13px;cursor:pointer;margin-right:4px}.att button.on-ok{background:var(--okbg);color:var(--ok);border-color:var(--ok)}.att button.on-no{background:var(--badbg);color:var(--bad);border-color:var(--bad)}
+.tl{display:grid;grid-template-columns:64px 1fr;gap:0 12px}.tl .t{font-weight:800;color:var(--brand2);padding-top:12px;text-align:right}.tl .c{border-left:3px solid var(--soft);padding:6px 0 6px 14px;display:flex;flex-direction:column;gap:6px}
+.pt{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border:1px solid var(--line);border-radius:12px;padding:9px 12px;background:var(--card)}.pt.next{border-color:var(--brand);box-shadow:0 0 0 2px var(--soft)}.pt.ok{background:var(--okbg)}.pt.no{background:var(--badbg)}.pt .id{font-weight:700;min-width:96px}.pt .grow{flex:1;color:var(--mute);font-size:13px}
+.scroll{max-height:62vh;overflow:auto;padding-right:6px}.barrow{display:grid;grid-template-columns:150px 1fr 70px;gap:10px;align-items:center;margin:7px 0;font-size:13px}.barrow .t{height:16px;background:var(--soft);border-radius:6px;overflow:hidden}.barrow .t i{display:block;height:100%;background:var(--brand)}
+tr.hl td{background:var(--soft);font-weight:700}
+.ok-card{border-left:5px solid var(--ok)}
+</style></head><body data-role="hasta">
+<div class="ribbon"><span>Örnek tasarım 1 / 2 · demo: giriş türünü seçin</span><span id="roles"></span></div>
+<header><div class="bar"><div class="brand"><div class="logo" id="logo">✚</div><div><span id="hname"></span><small id="portal"></small></div></div>
+<nav id="nav"></nav></div></header>
+<main id="app"></main>
+<script src="records.js"></script>
+<script>
+const DATA=/*__DATA__*/null;
+/*__COMMON__*/
+const state={role:'hasta',tab:'al',month:5,day:null,slot:null,confirmed:null,kural:'thr30',dday:TODAY,dmonth:5,dshow:200,kday:REAL};
+const TABS={hasta:[['al','Randevu al'],['benim','Randevularım']],hekim:[['gun','Bugünkü program']],yonetim:[['ozet','Özet'],['karar','Randevu kararları'],['msg','Mesajlar ve A/B']]};
+const PORTAL={hasta:['✚','Hasta portalı'],hekim:['⚕','Hekim paneli'],yonetim:['▣','Yönetim paneli']};
+const riskCls=r=>r>=30?'high':r>=15?'mid':'low',riskTxt=r=>r>=30?'Yüksek':r>=15?'Orta':'Düşük';
+const names={none:'Kural yok',thr20:'Eşik %20',thr30:'Eşik %30',thr40:'Eşik %40',cost05:'Maliyet kuralı r=0,5',ev:'Havayolu kuralı',paper:'Makale yöntemi'};
+$('#hname').textContent=D.hospital;
+$('#roles').innerHTML=[['hasta','Hasta'],['hekim','Hekim'],['yonetim','Yönetim']].map(([k,l])=>`<button data-role="${k}">${l}</button>`).join('');
+document.querySelectorAll('#roles button').forEach(b=>b.onclick=()=>{state.role=b.dataset.role;state.tab=TABS[state.role][0][0];draw();});
+
+// ---------- HASTA ----------
+function monthGrid(){const y=2016,m=state.month,first=dowOf(isoOf(y,m,1)),n=new Date(y,m+1,0).getDate();let h=DOW.map(d=>`<div class="dw">${d}</div>`).join('')+'<div class="cd empty"></div>'.repeat(first);
+  for(let d=1;d<=n;d++){const i=isoOf(y,m,d),open=isOpenDay(i),fc=freeCount(i),mine=myBookings().some(b=>b.iso===i);
+    const cls=!open?'closed':fc>0?'free':'none';
+    h+=`<button class="cd ${cls} ${mine?'mine':''} ${state.day===i?'on':''}" ${open?`data-d="${i}"`:'disabled'}><b>${d}</b><small>${!open?(dowOf(i)>=5?'Kapalı':'Geçti'):fc>0?fc+' müsait':'Dolu'}</small></button>`;}
+  return h;}
+const who=()=>`<p style="margin:0 0 10px;font-size:13px;color:var(--mute)">Giriş yapan hasta (demo): <select id="cur">${PATIENTS.map(p=>`<option value="${p.id}" ${p.id===CUR?'selected':''}>${p.id}</option>`).join('')}</select></p>`;
+function hasta(){
+  if(state.tab==='benim')return `${who()}<h1>Randevularım</h1><p class="sub">Alınan randevular ve size gönderilen mesajlar.</p>
+  <div class="grid g2"><div class="card"><h2>Randevular</h2><table><tr><th>Tarih</th><th>Saat</th><th>Randevu no</th><th></th></tr>${myBookings().map(b=>`<tr><td>${longDate(b.iso)}</td><td><b>${b.time}</b></td><td>${b.no}</td><td class="r"><button class="btn ghost" data-c="${b.no}">İptal</button></td></tr>`).join('')||'<tr><td colspan="4" style="color:var(--mute)">Aktif randevunuz yok.</td></tr>'}</table>
+  <div class="note">Gelemeyecekseniz lütfen randevunuzu iptal edin: boşalan saat başka bir hastaya verilebilir.</div></div>
+  <div class="card"><h2>Mesajlar</h2>${inboxHtml()}</div></div>`;
+  const sl=state.day?slotsOf(state.day):[],sel=state.slot!==null&&state.day?sl[state.slot]:null;
+  return `${who()}<h1>Randevu al</h1><p class="sub">Poliklinik · Hekim ${S.doctor}. Takvimden günü, sonra saati seçin.</p>
+  <div class="steps"><span class="step ${state.confirmed?'':'on'}"><i>1</i>Gün ve saat</span><span class="step ${state.confirmed?'on':''}"><i>2</i>Onay</span></div>
+  <div class="grid g2"><div class="card"><div class="mhead"><button data-m="-1" ${state.month<=5?'disabled':''}>‹</button><b>${MONTHS[state.month]} 2016</b><button data-m="1" ${state.month>=6?'disabled':''}>›</button></div>
+   <div class="mgrid">${monthGrid()}</div>
+   <div class="legend"><span><i style="background:var(--okbg);border:1px solid #9bd3b6"></i>Müsait saat var</span><span><i style="background:var(--soft)"></i>Dolu</span><span><i style="border:1px dashed var(--mute)"></i>Kapalı</span><span><i style="border:2px solid var(--brand)"></i>Randevum var</span></div></div>
+  <div class="grid" style="align-content:start">
+   ${state.confirmed?`<div class="card ok-card"><h2>Randevunuz alındı ✓</h2><p style="margin:0">${longDate(state.confirmed.iso)}<br>Saat <b>${state.confirmed.time}</b> · Randevu no <b>${state.confirmed.no}</b></p><p style="margin:10px 0 0;color:var(--mute);font-size:13px">Onay mesajı e-posta adresinize gönderildi.</p><p><button class="btn ghost" id="again">Yeni randevu</button></p></div>`
+    :`<div class="card"><h2>${state.day?longDate(state.day):'Gün seçin'}</h2>${state.day?`<div class="slots">${sl.map(s=>`<button class="slot ${s.mine?'mine':s.open?'free':'full'} ${state.slot===s.k?'sel':''}" data-s="${s.k}" ${s.open?'':'disabled'}><b>${s.time}</b><small>${s.mine?'Randevum':s.open?'Müsait':'Dolu'}</small></button>`).join('')}</div>
+     <p style="margin:14px 0 0"><button class="btn" id="ok" ${sel?'':'disabled'}>${sel?sel.time+' için randevu al':'Bir saat seçin'}</button></p>`:'<p style="color:var(--mute);margin:0">Takvimde müsait saati olan bir güne tıklayın.</p>'}</div>`}
+   <div class="card"><h2>Randevularım</h2><table>${myBookings().map(b=>`<tr><td><b>${b.iso.slice(8)}.${b.iso.slice(5,7)}</b></td><td>${b.time}</td><td class="r"><small style="color:var(--mute)">${b.no}</small></td></tr>`).join('')||'<tr><td style="color:var(--mute)">Aktif randevunuz yok.</td></tr>'}</table></div></div></div>`;}
+
+// ---------- HEKİM ----------
+function docCal(){const y=2016,m=state.dmonth,first=dowOf(isoOf(y,m,1)),n=new Date(y,m+1,0).getDate();let h=DOW.map(d=>`<div class="dw">${d}</div>`).join('')+'<div class="cd empty"></div>'.repeat(first);
+  for(let d=1;d<=n;d++){const i=isoOf(y,m,d),c=BK.filter(b=>b.iso===i).length,tag=DATA_DAYS.has(i)?'kayıt':c?c+' randevu':'';
+    h+=`<button class="cd ${DATA_DAYS.has(i)?'none':c?'free':''} ${i===TODAY?'mine':''} ${state.dday===i?'on':''}" data-dd="${i}"><b>${d}</b><small>${tag}</small></button>`;}
+  return h;}
+function hekim(){const day=doctorDay(state.dday),L=day.list,live=day.mode==='today',rec=day.mode==='data';
+  const got=L.filter(p=>live?ATT[p.key]==='g':p.outcome==='g').length,miss=L.filter(p=>live?ATT[p.key]==='n':p.outcome==='n').length,wait=L.length-got-miss;
+  const next=live?L.find(p=>!ATT[p.key]):null,times=[...new Set(L.map(p=>p.time))];
+  const empty={none:'Bu gün için kayıt yok.',today:'Bugün için randevu yok. Hasta panelinden randevu alındığında burada görünür.',future:'Bu gün için henüz randevu alınmadı.'}[day.mode]||'';
+  const btn=p=>live?`<span class="att"><button class="${ATT[p.key]==='g'?'on-ok':''}" data-a="g|${p.key}">Geldi</button><button class="${ATT[p.key]==='n'?'on-no':''}" data-a="n|${p.key}">Gelmedi</button></span>`:'';
+  const flow=rec?`<table><tr><th>Randevu no</th><th>Yaş</th><th>Sonuç (kayıt)</th></tr>${L.slice(0,state.dshow).map(p=>`<tr><td>${p.id}</td><td>${p.age}</td><td><span class="badge ${p.outcome==='g'?'b-low':'b-high'}">${p.outcome==='g'?'Geldi':'Gelmedi'}</span></td></tr>`).join('')}</table>${L.length>state.dshow?`<p style="margin:10px 0 0"><button class="btn ghost" data-more="1">Daha fazla göster (${fmt(L.length-state.dshow)} kayıt daha)</button></p>`:''}`
+   :L.length?`<div class="tl">${times.map(t=>`<div class="t">${t}</div><div class="c">${L.filter(p=>p.time===t).map(p=>`<div class="pt ${next&&next.key===p.key?'next':''} ${live&&ATT[p.key]==='g'?'ok':live&&ATT[p.key]==='n'?'no':''}"><span class="id">Hasta ${p.id}</span><span class="grow">${p.age?p.age+' yaşında':''}</span>${btn(p)}</div>`).join('')}</div>`).join('')}</div>`:`<p style="color:var(--mute);margin:0">${empty}</p>`;
+  return `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px"><button class="btn ghost" data-dn="-1">‹ Önceki gün</button><h1 style="flex:1;margin:0">${longDate(state.dday)}</h1><button class="btn ghost" data-dn="1">Sonraki gün ›</button><button class="btn ghost" data-dn="0">Bugün</button></div>
+  <p class="sub">Hekim ${S.doctor}${rec?' · veri seti günü: günün tüm gerçek randevuları, sonuçlar kayıttır ve değiştirilemez':live?' · bugün':''}</p>
+  <div class="chips"><div class="chip"><small>Randevu</small><b>${fmt(L.length)}</b></div><div class="chip"><small>Geldi</small><b>${fmt(got)}</b></div><div class="chip"><small>Gelmedi</small><b>${fmt(miss)}</b></div><div class="chip"><small>${live?'Bekleyen':'Gelmeme oranı'}</small><b>${live?wait:L.length?pcs(miss/L.length):'—'}</b></div></div>
+  <div class="grid g2"><div class="card"><h2>${rec?'Günün randevuları':'Gün akışı'}</h2><div class="scroll">${flow}</div></div>
+  <div class="grid" style="align-content:start"><div class="card"><div class="mhead"><button data-dm="-1" ${state.dmonth<=3?'disabled':''}>‹</button><b>${MONTHS[state.dmonth]} 2016</b><button data-dm="1" ${state.dmonth>=6?'disabled':''}>›</button></div><div class="mgrid">${docCal()}</div><div class="legend"><span><i style="background:var(--soft)"></i>Kayıtlı veri günü</span><span><i style="background:var(--okbg);border:1px solid #9bd3b6"></i>Randevu var</span><span><i style="border:2px solid var(--brand)"></i>Bugün</span></div></div>
+   <div class="card"><h2>Sıradaki hasta</h2>${next?`<p style="margin:0;font-size:20px"><b>${next.time}</b> · Hasta ${next.id}</p><p style="margin:4px 0 0;color:var(--mute)">${next.age} yaşında</p>`:`<p style="margin:0;color:var(--mute)">${live?'Bekleyen hasta yok.':'Yalnızca bugün için gösterilir.'}</p>`}</div></div></div>`;}
+
+// ---------- YÖNETİM ----------
+function yonetim(){
+  if(state.tab==='karar')return karar();
+  if(state.tab==='msg'){const last=BK[BK.length-1];return `<h1>Mesajlar ve A/B</h1><p class="sub">Onay ve hatırlatma planı; hatırlatmanın gelmeme oranına etkisi</p>
+   <div class="grid g2"><div class="card"><h2>Mesaj planı · ${last?last.no:'örnek'}</h2>${msgTable(last?last.iso:REAL,last?last.time:'09:00')}</div><div class="card"><h2>Hatırlatma A/B testi</h2>${abTable()}</div></div>`;}
+  const b=R.none,r=R[state.kural];
+  const k=(l,key,good,dec)=>{const v=r[key],w=b[key],d=v-w,p=100*d/w,cls=Math.abs(p)<.05?'neu':(d*good>0?'good':'bad');const sh=dec?f1:fmt;return `<div class="card kpi"><small>${l}</small><b>${sh(v)}</b><small>Kural yok: ${sh(w)}</small><div class="d ${cls}">${d>=0?'+':''}${sh(d)} (${p>=0?'+':''}${f1(p)}%)</div></div>`};
+  const mx=Math.max(...Object.keys(names).map(x=>R[x].seen));
+  return `<h1>Özet</h1><p class="sub">${D.model.days} günün tüm gerçek randevuları (${fmt(D.model.records)}) · yalnızca yönetim görür</p>
+  <div style="margin-bottom:14px">Karşılaştırılan kural: <span class="seg">${['thr20','thr30','thr40','cost05'].map(x=>`<button data-r="${x}" class="${state.kural===x?'on':''}">${names[x]}</button>`).join('')}</span></div>
+  <div class="grid g5">${k('Görülen hasta','seen',1,0)}${k('Ortalama bekleme (dk)','wait',-1,1)}${k('Doluluk (%)','util',1,1)}${k('Boşta kalma (saat)','idle_h',-1,0)}${k('Mesai aşımı (saat)','ot_h',-1,0)}</div>
+  <div class="grid g2" style="margin-top:16px"><div class="card"><h2>Kuralların karşılaştırması</h2>
+   <table><tr><th>Kural</th><th class="r">Görülen</th><th class="r">Bekleme dk</th><th class="r">Doluluk</th><th class="r">Boşta saat</th><th class="r">Mesai aşımı saat</th></tr>
+   ${Object.keys(names).map(x=>`<tr class="${x===state.kural?'hl':''}"><td>${names[x]}</td><td class="r">${fmt(R[x].seen)}</td><td class="r">${f1(R[x].wait)}</td><td class="r">${f1(R[x].util)}%</td><td class="r">${fmt(R[x].idle_h)}</td><td class="r">${fmt(R[x].ot_h)}</td></tr>`).join('')}</table>
+   <h2 style="margin-top:18px">Görülen hasta sayısı</h2>${Object.keys(names).map(x=>`<div class="barrow"><span>${names[x]}</span><div class="t"><i style="width:${100*R[x].seen/mx}%;${x==='none'?'background:var(--mute)':''}"></i></div><b>${fmt(R[x].seen)}</b></div>`).join('')}</div>
+  <div class="grid" style="align-content:start"><div class="card"><h2>Etkin kural</h2><p style="margin:0"><b>Eşik kuralı %${THR}</b> · slot başına en çok 2 hasta · günde en çok 4 ek randevu</p><div class="note">Bu ayarlar ve hastaların gelmeme riski <b>yalnızca yönetim ekranında</b> görünür. Hasta takvimde yalnızca “müsait / dolu”, hekim yalnızca kendi programını görür.</div></div>
+   <div class="card"><h2>Okuma notu</h2><p style="margin:0;color:var(--mute)">Fazladan randevu hasta sayısını artırır ve doktorun boş kalma süresini azaltır, ancak <b>ortalama beklemeyi de artırır</b>. Değerler simülasyon varsayımlarına (${D.assumptions.slots} slot x ${D.assumptions.slot_min} dk, ortalama ${D.assumptions.service_mean} dk muayene) bağlıdır.</p></div></div></div>`;}
+function karar(){const all=AS.slots.flatMap(sl=>sl.patients.map(p=>({...p,time:sl.time})));
+  const exp=all.reduce((a,p)=>a+p.risk/100,0),high=all.filter(p=>p.risk>=30).length,ob=all.filter(p=>p.extra).length;
+  return `<h1>Randevu kararları</h1><p style="margin:0 0 6px;font-size:13px;color:var(--mute)">Gün: ${adayPicker()}</p><p class="sub">Hekim ${AS.doctor} · ${longDate(ADAY)} · her randevunun risk ve overbooking kararı</p>
+  <div class="chips"><div class="chip"><small>Randevu</small><b>${all.length}</b></div><div class="chip"><small>Beklenen gelmeme oranı</small><b>${pcs(exp/all.length)}</b></div><div class="chip"><small>Yüksek riskli</small><b>${high}</b></div><div class="chip"><small>Ek (overbook) randevu</small><b>${ob}</b></div></div>
+  <div class="card"><table><tr><th>Saat</th><th>Randevu no</th><th>Yaş</th><th>Gelmeme riski</th><th>Karar</th><th>Gerçek sonuç</th></tr>
+  ${all.map(p=>`<tr><td><b>${p.time}</b></td><td>${p.id}</td><td>${p.age}</td><td><div style="display:flex;gap:10px;align-items:center"><div class="meter"><i style="width:${Math.min(100,p.risk*1.6)}%;background:var(--${p.risk>=30?'bad':p.risk>=15?'warn':'ok'})"></i></div><span class="badge b-${riskCls(p.risk)}">%${p.risk} ${riskTxt(p.risk)}</span></div></td>
+   <td>${p.extra?'<span class="badge b-ob">Ek randevu verildi</span>':'Normal randevu'}</td><td>${p.showed?'Geldi':'Gelmedi'}</td></tr>`).join('')}</table>
+  <div class="note"><b>Risk nasıl hesaplanır?</b> Yalnızca randevu alındığı anda bilinen bilgiler kullanılır (yaş, randevuya kalan gün, hasta geçmişi gibi); SMS bilgisi ve mahalle kullanılmaz. Modelin ayırt etme gücü AUC ${String(D.model.auc).replace('.',',')} (0,5 = şans). Bir slota ikinci hasta, slottaki hastanın riski %${THR} ve üstündeyse yazılır.</div></div>
+  <div class="card" style="margin-top:16px"><h2>Veri günleri: gerçek randevular ve risk</h2><div class="scroll" style="max-height:340px">${dayStatsTable(ADAY)}</div><div class="note">Risk, modelin o güne hiç görmeden yaptığı tahmindir. Doktor ekranında bu günler salt okunurdur.</div></div>
+  <div class="card" style="margin-top:16px"><h2>Hasta panelinden alınan randevular</h2><table><tr><th>Tarih</th><th>Saat</th><th>Hasta</th><th>Randevu no</th><th>Hasta riski (örnek)</th><th>Karar</th></tr>
+  ${BK.filter(b=>!b.old).map(b=>`<tr><td>${longDate(b.iso)}</td><td>${b.time}</td><td>${b.pid}</td><td>${b.no}</td><td>%${b.risk}</td><td>${b.kind==='extra'?'<span class="badge b-ob">Ek randevu</span> ':''}${decisionText(b)}</td></tr>`).join('')||'<tr><td colspan="6" style="color:var(--mute)">Henüz randevu alınmadı. Hasta ekranından randevu alınca burada görünür.</td></tr>'}</table>
+  <div class="note">Demo: gelmeme riski modelinin API'si bağlı olmadığından yeni randevuların riski gerçek risk dağılımından örneklenir. Aynı saate ikinci hasta, ilk hastanın riski %${THR} ve üstündeyse ve günlük ${LIM} ek randevu dolmadıysa yazılır.</div></div>`;}
+function draw(){document.body.dataset.role=state.role;
+  document.querySelectorAll('#roles button').forEach(b=>b.classList.toggle('on',b.dataset.role===state.role));
+  $('#logo').textContent=PORTAL[state.role][0];$('#portal').textContent=PORTAL[state.role][1];
+  $('#nav').innerHTML=TABS[state.role].map(([k,l])=>`<button data-t="${k}" class="${state.tab===k?'on':''}">${l}</button>`).join('');
+  $('#nav').style.display=TABS[state.role].length>1?'flex':'none';
+  document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>{state.tab=b.dataset.t;draw();});
+  $('#app').innerHTML={hasta,hekim,yonetim}[state.role]();
+  document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{state.month+=+b.dataset.m;state.day=null;state.slot=null;draw();});
+  document.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{state.day=b.dataset.d;state.slot=null;state.confirmed=null;draw();});
+  document.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{state.slot=+b.dataset.s;draw();});
+  const ok=$('#ok');if(ok)ok.onclick=()=>{state.confirmed=addBooking(state.day,state.slot);state.slot=null;draw();};
+  const ag=$('#again');if(ag)ag.onclick=()=>{state.confirmed=null;draw();};
+  document.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{cancelBooking(b.dataset.c);draw();});
+  document.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>{const[t,key]=b.dataset.a.split('|');ATT[key]=ATT[key]===t?null:t;draw();});
+  const ad=$('#aday');if(ad)ad.onchange=()=>{setAday(ad.value);draw();};
+  const cur=$('#cur');if(cur)cur.onchange=()=>{CUR=+cur.value;state.slot=null;state.confirmed=null;draw();};
+  document.querySelectorAll('[data-dd]').forEach(b=>b.onclick=()=>{state.dday=b.dataset.dd;state.dshow=200;draw();});
+  document.querySelectorAll('[data-more]').forEach(b=>b.onclick=()=>{state.dshow+=300;draw();});
+  document.querySelectorAll('[data-kd]').forEach(b=>b.onclick=()=>{state.kday=b.dataset.kd;draw();});
+  document.querySelectorAll('[data-dm]').forEach(b=>b.onclick=()=>{state.dmonth+=+b.dataset.dm;draw();});
+  document.querySelectorAll('[data-dn]').forEach(b=>b.onclick=()=>{const n=+b.dataset.dn;state.dshow=200;state.dday=n===0?TODAY:addDays(state.dday,n);state.dmonth=+state.dday.slice(5,7)-1;draw();});
+  document.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{state.kural=b.dataset.r;draw();});}
+draw();
+</script></body></html>
