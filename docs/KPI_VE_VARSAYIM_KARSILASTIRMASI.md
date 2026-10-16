@@ -30,7 +30,7 @@ Tanımlar `docs/kpi-definitions.md`'deki gibidir ve ikisinde de aynıdır. Hesap
 | Muayene değişkenliği 0,5 | Varsayım | `SessionConfig` | Süreler sağa çarpıktır; kaynak gerekli |
 | Geç kalma sapması 4 dk | Varsayım | `SessionConfig` | Veri setinde geliş saati yok; ölçülemez |
 | Talep: slot sayısı + 4 istek (28) | Varsayım | `SessionConfig` | Veride saat bilgisi olmadığından günlük talep slota oranlanamaz |
-| Doktor sayısı | Karar: tek hekim kuralı **uygulanmaz** | #61 | Günün randevuları doktor oturumlarına dağıtılır; sonuçlar oturum başına |
+| Muayene odası (oturum) sayısı | Karar: tek hekim kuralı **uygulanmaz**; sistem tek departman (General Practice) | #61 | Günün randevuları departmanın muayene odası oturumlarına dağıtılır; sonuçlar oturum başına, oda sayısı varsayım |
 | Hatırlatma etkisi | **Ölçülmemiş**; yalnızca senaryo | `experiments.py` | Gerçek A/B testi gerekir; `SMS_received` rastgele deney değildir |
 
 ## 3. Servis ve simülasyon ayarları

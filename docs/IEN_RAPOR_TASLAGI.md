@@ -4,7 +4,7 @@
 
 ## 1. Özet
 
-Poliklinik randevularında hastaların yaklaşık %20'si gelmiyor ve doktor boş kalıyor. Çalışmada her randevu için bir gelmeme olasılığı tahmin edildi, olasılığı yüksek randevulara seçici olarak ek hasta yazıldı (overbooking) ve sonuç, sabit aralıklı randevuyla karşılaştırıldı. Karşılaştırma gerçek randevu kayıtları üzerinde SimPy ile yapılan bir simülasyonla yapıldı.
+Poliklinik randevularında hastaların yaklaşık %20'si gelmiyor ve muayene kapasitesi boş kalıyor. Çalışmada her randevu için bir gelmeme olasılığı tahmin edildi, olasılığı yüksek randevulara seçici olarak ek hasta yazıldı (overbooking) ve sonuç, sabit aralıklı randevuyla karşılaştırıldı. Karşılaştırma gerçek randevu kayıtları üzerinde SimPy ile yapılan bir simülasyonla yapıldı.
 
 Ana bulgular:
 
@@ -17,7 +17,7 @@ Ana bulgular:
 
 Kaggle "Medical Appointment No Shows" veri seti, 110.527 satır; temizlikten sonra 110.521 randevu, 27 gün (29 Nisan – 8 Haziran 2016). Temizlik adımları `ml/data/clean_data.py` içindedir. Hedef değişken: randevuya gelmeme. `SMS_received` randevudan sonra oluştuğu için model özelliği olarak kullanılmaz (`docs/features.md`). Hasta geçmişi özellikleri yalnızca randevunun alındığı günden önceki randevulardan hesaplanır.
 
-Veri setinde randevu saati ve doktor kimliği yoktur. Bu yüzden saat, doktor ve slot bilgisi simülasyonda üretilir.
+Veri setinde randevu saati ve hekim kimliği yoktur; sistem tek departmandır (General Practice, `Department` sütunu). Bu yüzden saat, muayene odası (oturum) ve slot bilgisi simülasyonda üretilir.
 
 ## 3. Yöntem
 
@@ -36,7 +36,7 @@ Bir slota ikinci hasta, slottaki her hastanın gelmeme riski eşiğin üstündey
 
 ### 3.3 Simülasyon
 
-SimPy ayrık olay simülasyonu: bir doktor; 24 slot x 10 dk (4 saat); 28 randevu isteği; log-normal muayene süresi (ortalama 7,5 dk, aralık 5–10 dk, değişkenlik 0,5); hasta gecikmesi (sapma 4 dk). Muayene süresi, Türkiye'deki devlet hastanesi polikliniklerinde hasta başına 5–10 dk ayrıldığı bilgisine dayanır (kaynağı eklenecek `[ONAY]`); slot, gecikme ve talep varsayımdır. Risk ve gelme/gelmeme bilgisi gerçek tahminlerden ve gerçek sonuçlardan çekilir. Tüm politikalar **aynı rastgele oturumları** görür (ortak rastgele sayılar), farklar eşleştirilmiş olarak güven aralığı ve etki büyüklüğüyle verilir. "Tek bölüm, tek doktor" kuralı uygulanmamıştır (karar listesi 5); günün randevuları doktor oturumlarına dağıtılır, sonuçlar oturum başınadır. KPI tanımları ve uygulamayla farkları: `docs/KPI_VE_VARSAYIM_KARSILASTIRMASI.md`.
+SimPy ayrık olay simülasyonu: departmanın bir muayene odası (oturum); 24 slot x 10 dk (4 saat); 28 randevu isteği; log-normal muayene süresi (ortalama 7,5 dk, aralık 5–10 dk, değişkenlik 0,5); hasta gecikmesi (sapma 4 dk). Muayene süresi, Türkiye'deki devlet hastanesi polikliniklerinde hasta başına 5–10 dk ayrıldığı bilgisine dayanır (kaynağı eklenecek `[ONAY]`); slot, gecikme ve talep varsayımdır. Risk ve gelme/gelmeme bilgisi gerçek tahminlerden ve gerçek sonuçlardan çekilir. Tüm politikalar **aynı rastgele oturumları** görür (ortak rastgele sayılar), farklar eşleştirilmiş olarak güven aralığı ve etki büyüklüğüyle verilir. "Tek bölüm, tek doktor" kuralı uygulanmamıştır (karar listesi 5); günün randevuları doktor oturumlarına dağıtılır, sonuçlar oturum başınadır. KPI tanımları ve uygulamayla farkları: `docs/KPI_VE_VARSAYIM_KARSILASTIRMASI.md`.
 
 ## 4. Bulgular
 
@@ -86,13 +86,13 @@ Hatırlatma etkisi %0'dan %30'a çıkarsa sabit aralıkta görülen hasta 19,3't
 
 ## 5. Yorum: neden daha çok hasta görülürken bekleme artıyor?
 
-Ek hasta, yalnızca ilk hasta gelmezse "bedava" olur. İlk hastanın riski yüksek olsa bile gelme ihtimali %50–70'tir; ikisi de gelirse (bu sık olur) doktor aynı slotta iki hastaya bakar ve ikinci hasta bekler; bu bekleme sonraki slotlara taşınır. Boşta kalma azalır çünkü gelmeyen hastaların boşluğu dolar. Muayene süresi kısaldıkça (5–10 dk) iki hastayı aynı slotta görmek kolaylaşır ve bekleme küçük kalır; 10 dk'ya yaklaştıkça bekleme ve mesai aşımı belirgin biçimde artar. Bu yüzden iyileşme ve bedel her zaman birlikte raporlanmalıdır.
+Ek hasta, yalnızca ilk hasta gelmezse "bedava" olur. İlk hastanın riski yüksek olsa bile gelme ihtimali %50–70'tir; ikisi de gelirse (bu sık olur) muayene odası aynı slotta iki hastaya bakar ve ikinci hasta bekler; bu bekleme sonraki slotlara taşınır. Boşta kalma azalır çünkü gelmeyen hastaların boşluğu dolar. Muayene süresi kısaldıkça (5–10 dk) iki hastayı aynı slotta görmek kolaylaşır ve bekleme küçük kalır; 10 dk'ya yaklaştıkça bekleme ve mesai aşımı belirgin biçimde artar. Bu yüzden iyileşme ve bedel her zaman birlikte raporlanmalıdır.
 
 ## 6. Sınırlılıklar
 
 1. Tek bir zaman bölmesi ve 27 gün (simülasyon riskleri dönüşümlü katlarla üretilir; ileri doğru pencere karşılaştırması farkı küçük buldu); mevsimsellik ve haftalık kalıplar değerlendirilemez.
-2. Randevu saati, doktor kimliği ve gerçek talep verisi yok; simülasyon yapısı varsayımlara dayanır. Slot (10 dk x 24) karar listesinden **türetilmiştir** `[ONAY]`.
-3. "Tek hekim" kuralı uygulanmadı; sonuçlar doktor oturumu başınadır.
+2. Randevu saati, hekim kimliği ve gerçek talep verisi yok; simülasyon yapısı varsayımlara dayanır. Slot (10 dk x 24) karar listesinden **türetilmiştir** `[ONAY]`.
+3. Hekim yoktur, sistem tek departmandır; sonuçlar muayene odası oturumu başınadır ve oda sayısı varsayımdır.
 4. Tahmin gücü sınırlı (AUC ≈ 0,73); model riski en çok %50 civarına çıkarır, bu yüzden yüksek eşikler hiç tetiklenmez.
 5. Hatırlatma etkisi ölçülmedi; senaryo analizi varsayımsaldır, `SMS_received` rastgele deney değildir.
 6. Ortalama bekleme 15 dk sınırının çok altında; ama bekleme dağılımı (en uzun bekleyen hastalar) ayrıca raporlanmadı.

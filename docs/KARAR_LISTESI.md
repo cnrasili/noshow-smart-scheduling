@@ -12,6 +12,7 @@ Bu dosya projedeki kararların **tek kaydıdır**. Makine tarafı: `docs/decisio
 | 3. Kural ayarı (#8) | Eşik %30, günlük ek randevu sınırı 4, slot başına en çok 2 hasta | Ekip |
 | 4. Muayene süresi (#9) | Ortalama 7.5 dk (aralık 5–10 dk); slot 10 dk x 24 (türetilmiş) | Ekip |
 | 5. Tek doktor kuralı (#61) | Uygulanmayacak; ana README kapsamı: tek bölüm, hekim adlandırılmaz ya da atanmaz | Ekip |
+| 5b. Birim | Departman bazlı: `Department` = General Practice (temizlenmiş veride her satırda); hekim yok | Ekip |
 | 6. Hatırlatma | Canlı A/B testi + varsayımsal senaryo | Ekip |
 | 7. Teslim edilen kural | Yalnızca eşik kuralı | Ekip |
 | 8. Modelin teslimi | `ml/models/` altında (seçili model); CEN `IEN` dalını çeker | IEN + CEN |
@@ -29,6 +30,7 @@ Yorumlar ve türetilen değerler:
 - **Model: rastgele orman kesin** (17 Ekim 2026); CEN'e iletildi. Karar ağacı yalnızca karşılaştırma için tutuluyor (bölüm 2).
 - **Varsayımlar geçici onaylı (17 Ekim 2026).** Slot, muayene süresi, gecikme, talep ve 15 dk bekleme sınırı şimdilik onaylandı; **akademik gerekçe ve kaynak (hoca onayı) sonra eklenecek.** Onay verilene kadar raporlarda "varsayım" diye anılır. Kaynak gerekenler: muayene süresi 5–10 dk, değişkenlik 0,5, geç kalma 4 dk, talep (slot + 4 istek), 10 dk slot.
 - **Kapsam güncellemesi (maintainer, 17 Ekim 2026, ana `README.md`):** sistemde tek bölüm vardır, hekim adlandırılmaz ya da atanmaz; kapasite ve sonuçlar bölüme aittir. Bu, 5. kararla uyumludur. Simülasyon ve web taslaklarındaki "hekim" ifadeleri bu kapsama göre güncellenmelidir (açık iş).
+- **Departman bazlı ilerleniyor (17 Ekim 2026):** temizlenmiş veride (`appointments_clean.xlsx`) her satırda `Department` = `General Practice` sütunu var (`ml/data/clean_data.py` üretir; veri setinin sütunu değildir ve model özelliği değildir). Simülasyon ve IEN belgelerindeki hekim anlatımı departman bazlıya çevrildi: "doktor" yerine **muayene odası (oturum)**; bir günün randevuları departmanın muayene odalarına dağıtılır, oda sayısı varsayımdır. Web taslaklarındaki hekim portalı henüz çevrilmedi (açık iş).
 - **Uçtan uca test ve final demo IEN görevi değildir;** CEN ile birlikte yapılacak ayrı iştir (satır 12).
 
 ## 2. Model dosyaları ve dallar
@@ -67,7 +69,7 @@ Bu komut: seçilen modelin 27 günlük tahminlerini üretir, modeli servisin kab
 
 **4. Muayene süresi ve talep? (#9)** *Karar: hasta başına 5–10 dk (devlet hastanesi poliklinik uygulaması), ortalama 7,5 dk.* Serviste `kpi.service_minutes` 12 (karar: 7,5). Değişkenlik 0,5, geç kalma sapması 4 dk ve talep (slot sayısı + 4 istek) ölçülmemiş varsayımlardır. 5 ve 10 dk için duyarlılık sonuçları üretilir.
 
-**5. "Tek bölüm, tek doktor" kuralı (#61)?** *Karar: uygulanmayacak.* Simülasyon günün randevularını doktor oturumlarına dağıtmaya devam eder; sonuçlar oturum başınadır. Rapora "doktor sayısı varsayımdır" yazılır. Maintainer'ın 17 Ekim tarihli kapsamı (tek bölüm, hekim adlandırılmaz) bununla uyumludur; #61'in "bir doktor" kriteri bu kapsama göre güncellenmeli.
+**5. "Tek bölüm, tek doktor" kuralı (#61)?** *Karar: uygulanmayacak.* Simülasyon günün randevularını departmanın muayene odası oturumlarına dağıtmaya devam eder; sonuçlar oturum başınadır. Rapora "doktor sayısı varsayımdır" yazılır. Maintainer'ın 17 Ekim tarihli kapsamı (tek bölüm, hekim adlandırılmaz) bununla uyumludur; #61'in "bir doktor" kriteri bu kapsama göre güncellenmeli.
 
 **6. Hatırlatmanın etkisi?** *Karar (benim önerim): canlı A/B testi + varsayımsal senaryo.* Senaryo (%0–30 etki) raporda açıkça "varsayım" diye etiketlidir; veri setindeki SMS alanı etki ölçmek için kullanılmaz.
 
