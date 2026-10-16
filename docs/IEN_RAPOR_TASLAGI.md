@@ -1,6 +1,6 @@
 # IEN metodoloji ve sonuç raporu (taslak)
 
-**Durum: taslak.** Kararlar `docs/KARAR_LISTESI.md` ve `docs/decisions.json` dosyalarındadır; sayılar `docs/MODEL_KARSILASTIRMA.md`, `docs/IEN_DENEY_SONUCLARI.md` ve `docs/SONUC_OZETI.md` dosyalarından alınmıştır (komutla yeniden üretilir). Aşağıdaki rakamlar **iki model dalında da birbirine çok yakındır**; kesin değer için seçilen dalın `SONUC_OZETI.md` dosyasına bakın. `[ONAY]` etiketli yerler ekibin ya da hocanın kararını bekler. Kaynakça bölümü eksiktir ve doğrulanmadan kullanılmamalıdır.
+**Durum: taslak.** Model seçimi kesin (rastgele orman); simülasyon varsayımları ve 15 dk bekleme sınırı geçici onaylıdır, akademik gerekçe ve kaynak sonra eklenecek. Kararlar `docs/KARAR_LISTESI.md` ve `docs/decisions.json` dosyalarındadır; sayılar `docs/MODEL_KARSILASTIRMA.md`, `docs/IEN_DENEY_SONUCLARI.md` ve `docs/SONUC_OZETI.md` dosyalarından alınmıştır (komutla yeniden üretilir). Aşağıdaki rakamlar **iki model dalında da birbirine çok yakındır**; kesin değer için seçilen dalın `SONUC_OZETI.md` dosyasına bakın. `[ONAY]` etiketli yerler ekibin ya da hocanın kararını bekler. Kaynakça bölümü eksiktir ve doğrulanmadan kullanılmamalıdır.
 
 ## 1. Özet
 
@@ -100,7 +100,7 @@ Ek hasta, yalnızca ilk hasta gelmezse "bedava" olur. İlk hastanın riski yüks
 
 ## 7. Sonuç ve öneri `[ONAY]`
 
-- Model: rastgele orman ile karar ağacı klinik sonuçta aynı; ağaç yorumlanabilir ve çok küçüktür (birkaç KB, ormanın yaklaşık 15 MB'ına karşı). Seçim ekibe aittir (#7); şimdilik rastgele orman seçili, karar ağacı aday olarak hazırdır.
+- Model: **rastgele orman seçildi** (ekip kararı, 17 Ekim 2026; #7). Karar ağacıyla klinik sonuç aynıdır (ağaç yorumlanabilir ve birkaç KB, orman yaklaşık 15 MB); ağaç karşılaştırma için tutulur.
 - Kural: eşik %30 ve günlük sınır 4 hasta kazancının neredeyse tamamını verir ve 15 dk sınırının çok altında kalır. Serviste günlük sınır 2 ve muayene süresi 12 dk'dır; bu iki değer karar listesine göre güncellenmelidir (CEN).
 - Hatırlatma: etkisi canlı A/B testiyle ölçülmelidir.
 

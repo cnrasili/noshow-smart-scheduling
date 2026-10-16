@@ -39,6 +39,8 @@ Hepsi, testlerde sabit yazılı eski değerlerden geliyor:
 
 Servis kodu (`rules.py`, `predictor.py`) değişmeden çalışıyor; yalnızca `config.yaml` (iki değer) ve bu testler güncellenir.
 
+**Güncelleme (17 Ekim 2026).** Karar ayarları ve ilgili 4 test (`test_booking_api`, `test_kpi`) `IEN-service-settings` dalında güncellendi (`config.yaml`, servis `README.md`); `dummy-v0` modeliyle servisin 150 testi geçiyor. Kalan 2 test (`test_predict_api.py`) model kurulunca (`install_model`) güncellenir, çünkü model sürümü modelle birlikte değişir.
+
 ## 4. Gerçek model ve kural, HTTP API üzerinden
 
 Gerçek model ve `config.yaml` kuralı (eşik 0,30, günlük sınır 4), `/predict` ve `/booking-decision` uçlarından çağrıldı. Hasta ve slot verisi sahteydi; model ve kural gerçekti.
