@@ -43,14 +43,28 @@ def test_console_sender_logs_message(caplog: pytest.LogCaptureFixture):
 def test_smtp_sender_builds_email(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(sender_module.smtplib, "SMTP", FakeSmtp)
     SmtpSender("mailpit", 1025, "clinic@noshow.local").send(
-        "patient@example.com", "Appointment reminder", "Body"
+        "patient@example.com", "Randevu hatırlatması", "Çarşamba günü randevunuz var."
     )
     address, message = FakeSmtp.sent[-1]
     assert address == ("mailpit", 1025)
     assert message["From"] == "clinic@noshow.local"
     assert message["To"] == "patient@example.com"
-    assert message["Subject"] == "Appointment reminder"
-    assert message.get_content().strip() == "Body"
+    # Turkish characters survive the email encoding
+    assert message["Subject"] == "Randevu hatırlatması"
+    assert message.get_content().strip() == "Çarşamba günü randevunuz var."
+    assert "=?utf-8?" in message.as_string()
+
+
+def test_smtp_sender_shows_hospital_name(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(sender_module.smtplib, "SMTP", FakeSmtp)
+    smtp_settings = settings.model_copy(
+        update={"smtp_host": "mailpit", "mail_from": "randevu@sehirhastanesi.example"}
+    )
+    make_sender(smtp_settings).send("patient@example.com", "Randevunuz onaylandı", "Metin")
+    _, message = FakeSmtp.sent[-1]
+    sender = message["From"].addresses[0]
+    assert sender.display_name == "Şehir Hastanesi"
+    assert sender.addr_spec == "randevu@sehirhastanesi.example"
 
 
 def test_default_reminder_settings_come_from_config():

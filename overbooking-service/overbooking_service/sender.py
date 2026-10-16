@@ -1,9 +1,11 @@
 import logging
 import smtplib
+from email.headerregistry import Address
 from email.message import EmailMessage
 from typing import Protocol
 
 from overbooking_service.config import Settings
+from overbooking_service.messages import HOSPITAL_NAME
 
 logger = logging.getLogger(__name__)
 
@@ -42,5 +44,7 @@ class SmtpSender:
 def make_sender(settings: Settings) -> MessageSender:
     """SMTP sender when an SMTP host is set, console sender otherwise."""
     if settings.smtp_host:
-        return SmtpSender(settings.smtp_host, settings.smtp_port, settings.mail_from)
+        # The configured address is shown with the hospital name
+        mail_from = str(Address(display_name=HOSPITAL_NAME, addr_spec=settings.mail_from))
+        return SmtpSender(settings.smtp_host, settings.smtp_port, mail_from)
     return ConsoleSender()

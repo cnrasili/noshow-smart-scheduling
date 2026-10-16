@@ -8,7 +8,6 @@ class OverbookingRule(BaseModel):
     """Slot-level overbooking parameters."""
 
     threshold: float = Field(ge=0, le=1)
-    max_patients_per_slot: int = Field(ge=1)
     daily_overbook_limit: int = Field(ge=0)
 
 
@@ -19,17 +18,19 @@ class Decision:
     reason: str
 
 
-def decide(booked_risks: Sequence[float], daily_overbooks: int, rule: OverbookingRule) -> Decision:
-    """Decide whether a patient may be booked into a slot."""
+def decide(
+    booked_risks: Sequence[float], max_patients: int, daily_overbooks: int, rule: OverbookingRule
+) -> Decision:
+    """Decide whether a patient may be booked into a slot of max_patients capacity."""
     if not booked_risks:
         return Decision(allow=True, overbook=False, reason="Slot is empty")
 
     patients = len(booked_risks)
-    if patients >= rule.max_patients_per_slot:
+    if patients >= max_patients:
         return Decision(
             allow=False,
             overbook=False,
-            reason=f"Slot is full ({patients}/{rule.max_patients_per_slot} patients)",
+            reason=f"Slot is full ({patients}/{max_patients} patients)",
         )
 
     # Every booked patient must be likely to miss the appointment
