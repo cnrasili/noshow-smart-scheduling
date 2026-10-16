@@ -4,7 +4,8 @@ Change a decision -> edit docs/decisions.json and docs/KARAR_LISTESI.md -> run t
 
 1. Out-of-sample risks of the chosen model for all 27 days (grouped by day, like build_reports).
 2. The chosen model is fitted on all days, checked with the overbooking service's acceptance
-   checks and written to ml/models/ (model.joblib, feature_schema.json).
+   checks and written to ml/models/ (model.joblib, feature_schema.json); the other model goes to
+   ml/models/candidates/<model>/ so that a change of decision needs no rework.
 3. simulation/experiments.py runs with the decided settings and the new risks
    (docs/IEN_DENEY_SONUCLARI.md, docs/SONUC_OZETI.md).
 4. The decision table in docs/KARAR_LISTESI.md is refreshed from decisions.json.
@@ -53,7 +54,15 @@ def cv_risks(df: pd.DataFrame, kind: str, params: dict, folds: int = 5) -> pd.Da
 
 
 def decision_rows(d: dict) -> list[tuple[str, str, str]]:
-    model = NAMES.get(d["model"], "**Bekliyor** (iki dal: IEN-RandomForest, IEN-DecisionTree)")
+    chosen = d["model"]
+    if chosen in NAMES:
+        other = ", ".join(NAMES[k] for k in NAMES if k != chosen)
+        status = (
+            "geçici seçim, ekip onayı bekliyor" if d.get("model_status") != "final" else "kesin"
+        )
+        model = f"{NAMES[chosen]} ({status}); aday: {other} (`ml/models/candidates/`)"
+    else:
+        model = "**Bekliyor**"
     lo, hi = d["service_range_min"]
     return [
         ("1. Model (#7)", model, "Ekip"),
@@ -79,7 +88,7 @@ def decision_rows(d: dict) -> list[tuple[str, str, str]]:
         ("7. Teslim edilen kural", "Yalnızca eşik kuralı", "Ekip"),
         (
             "8. Modelin teslimi",
-            "`ml/models/` altında, seçilen dalda; CEN o dalı çeker",
+            "`ml/models/` altında (seçili model); CEN `IEN` dalını çeker",
             "IEN + CEN",
         ),
         ("9. Canlıda güncel kalma", "CEN2 modele API ile bağlanır", "CEN2"),
@@ -123,6 +132,11 @@ def main() -> int:
         print(f"{NAMES[kind]}: out-of-sample AUC {roc_auc_score(risks['y'], risks['p']):.3f}")
         version = export_and_check(kind, params, d["model_version"], MODELS_DIR)
         print(f"Service acceptance checks passed; wrote {MODELS_DIR} ({version})")
+        for other in DEFAULT_PARAMS:  # the other candidate, so the team can switch without rework
+            if other != kind:
+                folder = MODELS_DIR / "candidates" / other
+                export_and_check(other, d["model_params"][other], d["model_version"], folder)
+                print(f"Candidate {NAMES[other]} written to {folder}")
     elif not RISKS.exists():
         print("No risks file yet; run without --skip-model first")
         return 1

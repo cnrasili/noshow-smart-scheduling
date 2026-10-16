@@ -33,7 +33,7 @@ Hazırlık listesi:
 
 **Neden AUC yalnızca 0,73?** Elimizdeki özellikler (yaş, randevuya kalan gün, geçmiş vb.) gelmemeyi zayıf açıklıyor. Literatürdeki %95'i aynı veride yeniden ürettik: bölmeden önce tüm veri dengelendiği için şişiyor; sızıntısız protokolde sonuç bizimkine yakın (AUC ≈ 0,72).
 
-**Karar ağacı neredeyse rastgele ormanla aynıysa neden orman?** (Seçim bekliyor; iki dal hazır.) Fark küçük (0,720 ve 0,729) ve simülasyonda görülen hasta 22,3 ve 22,3. Ağaç yorumlanabilirdir; orman biraz daha yüksek PR-AUC ve düşük log-loss veriyor (0,339 ve 0,423; ağaçta 0,305 ve 0,426). Seçim ekip kararıdır (#7). Her iki aday da servisin kabul kontrollerinden geçti (`python ml/export_candidate.py`).
+**Karar ağacı neredeyse rastgele ormanla aynıysa neden orman?** (Şimdilik rastgele orman seçili; karar ağacı aday olarak hazır.) Fark küçük (0,720 ve 0,729) ve simülasyonda görülen hasta 22,3 ve 22,3. Ağaç yorumlanabilirdir; orman biraz daha yüksek PR-AUC ve düşük log-loss veriyor (0,339 ve 0,423; ağaçta 0,305 ve 0,426). Seçim ekip kararıdır (#7). Her iki aday da servisin kabul kontrollerinden geçti (`python ml/export_candidate.py`).
 
 **Kural neden hem hasta sayısını hem beklemeyi artırıyor?** Ek hasta yalnızca ilk hasta gelmezse "bedava"dır. İkisi de gelirse ikinci hasta bekler ve bekleme sonraki slotlara taşınır. Boşta kalma azalır, bekleme ve mesai aşımı artar; ikisini birlikte raporluyoruz.
 
