@@ -29,7 +29,8 @@ pip install -r requirements.txt
 [`clinic_sim.py`](clinic_sim.py) simulates one physician session with SimPy and compares booking policies on the KPIs in [`docs/kpi-definitions.md`](../docs/kpi-definitions.md).
 
 ```bash
-python app.py                           # INTERACTIVE simulation: pick a day, risk source, rule and template, press Run (http://127.0.0.1:8770)
+python app.py                           # INTERACTIVE simulation in its own window (no tabs, closes with the window): pick a day, risk source, rule and template, press Run
+python app.py --browser                 # same, in a normal browser tab (http://127.0.0.1:8770)
 python main.py                          # everything in one go (about 30 s), then opens output/index.html
 python main.py --quick                  # fast preview
 python live_day.py --trace              # animated clinic day + SimPy event log in the terminal

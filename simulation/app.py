@@ -1,9 +1,13 @@
 """Interactive simulation: choose the data, the risk source, the booking rule and the appointment template,
 press Run, and SimPy simulates the real appointment records with your choices.
 
-    python app.py              # starts a local server and opens http://127.0.0.1:8770
+    python app.py              # opens the simulation in its own window (like a desktop program)
+    python app.py --browser    # open it in a normal browser tab instead
+    python app.py --no-open    # only start the server
     python app.py --port 8800  # another port
-    python app.py --no-open
+
+The window is Edge or Chrome in "app mode": no address bar and no tabs, so nothing else of the web distracts you.
+Closing the window stops the program.
 
 Needs ml/data/processed/risks_all_days.csv (created by ml/build_reports.py). Stop the server with Ctrl+C.
 
@@ -14,6 +18,10 @@ import argparse
 import dataclasses
 import json
 import mimetypes
+import os
+import shutil
+import subprocess
+import tempfile
 import threading
 import time
 import webbrowser
@@ -230,21 +238,64 @@ class Handler(BaseHTTPRequestHandler):
             self.send(500, {"error": f"{type(exc).__name__}: {exc}"})
 
 
+def find_app_browser():
+    """Edge or Chrome, which can open a page as a standalone window (app mode)."""
+    candidates = [os.path.expandvars(p) for p in (
+        r"%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe", r"%ProgramFiles%\Microsoft\Edge\Application\msedge.exe",
+        r"%ProgramFiles%\Google\Chrome\Application\chrome.exe", r"%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe",
+        r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe",
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge")]
+    candidates += [shutil.which(n) or "" for n in ("msedge", "google-chrome", "chromium", "chrome")]
+    return next((c for c in candidates if c and Path(c).exists()), None)
+
+
+def open_window(url: str):
+    """Start the page as a separate app window. Returns (process, profile dir) or (None, None) when no Edge/Chrome is found."""
+    exe = find_app_browser()
+    if not exe:
+        return None, None
+    profile = tempfile.mkdtemp(prefix="noshow-sim-")          # own profile: the process lives exactly as long as the window
+    proc = subprocess.Popen([exe, f"--app={url}?app=1", f"--user-data-dir={profile}", "--window-size=1500,950",
+                             "--no-first-run", "--no-default-browser-check"])
+    return proc, profile
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--port", type=int, default=8770)
-    ap.add_argument("--no-open", action="store_true")
+    ap.add_argument("--no-open", action="store_true", help="only start the server")
+    ap.add_argument("--browser", action="store_true", help="open in a normal browser tab instead of an app window")
     args = ap.parse_args()
     pool()
     server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
     url = f"http://127.0.0.1:{args.port}/"
-    print(f"Interactive simulation running at {url}  (Ctrl+C to stop)")
-    if not args.no_open:
-        webbrowser.open(url)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    print(f"Interactive simulation running at {url}")
+    proc = profile = None
+    if not args.no_open and not args.browser:
+        proc, profile = open_window(url)
     try:
-        server.serve_forever()
+        if proc is not None:
+            print("Opened in its own window. Close the window to stop the program (or press Ctrl+C here).")
+            proc.wait()
+            print("Window closed.")
+        else:
+            if not args.no_open:
+                webbrowser.open(url)
+            print("Press Ctrl+C to stop.")
+            while thread.is_alive():
+                thread.join(1)
     except KeyboardInterrupt:
-        print("\nStopped.")
+        pass
+    finally:
+        server.shutdown()
+        if proc is not None and proc.poll() is None:
+            proc.terminate()
+        if profile:
+            shutil.rmtree(profile, ignore_errors=True)
+        print("Stopped.")
 
 
 if __name__ == "__main__":

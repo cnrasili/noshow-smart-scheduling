@@ -92,7 +92,7 @@ def write_index() -> Path:
                    ("Interactive simulation", "http://127.0.0.1:8770/",
                     "<b>Choose this to test the rules yourself.</b> Pick a day, who predicts the risk (random forest, the rules R1 to R4, the paper's classifier), "
                     "the booking rule and its settings, and the appointment template, then press Run. SimPy simulates the real appointments and compares "
-                    "your choice with no rule. <i>It needs a small local server: run <code>python simulation/app.py</code> first.</i>",
+                    "your choice with no rule. <i>It runs as its own program: start it with <code>python simulation/app.py</code> (it opens in its own window); this card only works while it is running.</i>",
                     "Open the interactive simulation", "New"),
                    ("Live simulation", "live_simulation.html",
                     "<b>Choose this to understand how it works.</b> One doctor, one example day with 20 patients. You see every patient arrive, "
