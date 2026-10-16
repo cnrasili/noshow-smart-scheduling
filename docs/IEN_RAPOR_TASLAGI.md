@@ -11,7 +11,8 @@ Ana bulgular:
 1. Tahmin gücü sınırlıdır: rastgele orman test kümesinde ROC-AUC 0,729'a (%95 aralık 0,721–0,736), 4 seviyeli karar ağacı 0,720'ye, lojistik regresyon 0,658'e ulaşır.
 2. Karar ayarı (eşik %30, günlük ek randevu sınırı 4, hasta başına ortalama 7,5 dk muayene, 15 dk slot) oturum başına görülen hastayı yaklaşık 12,8'den 15,6'ya (**+%22**) çıkarır, boşta kalmayı yaklaşık %14 azaltır ve doluluğu %40'tan %49'a çıkarır. Bedeli küçüktür: ortalama bekleme yaklaşık 0,2 dk'dan 1,1 dk'ya, mesai aşımı yaklaşık 0,2 dk artar. Kabul edilen en uzun ortalama bekleme 15 dk'dır; karar ayarı bu sınırın çok altındadır.
 3. Rastgele orman ile karar ağacı simülasyon sonuçlarında neredeyse aynıdır; modeller arasındaki küçük AUC farkı klinik sonuca yansımıyor (rakamlar `docs/SONUC_OZETI.md` dosyasındadır).
-4. Sonuç yönü tüm duyarlılık senaryolarında aynıdır; büyüklüğü muayene süresine ve gelmeme oranına bağlıdır.
+4. Ortalama bekleme küçük olsa da dağılım uzun kuyrukludur: kuralda hastaların %9,5'i 5 dk'dan, %2,8'i 10 dk'dan, %0,8'i 15 dk'dan uzun bekler; %95'inci yüzdelik 7,7 dk'dır ve uzun bekleyenler çoğunlukla ek randevulu slotlardadır (bölüm 4.7).
+5. Sonuç yönü tüm duyarlılık senaryolarında aynıdır; büyüklüğü muayene süresine ve gelmeme oranına bağlıdır.
 
 ## 2. Veri
 
@@ -51,7 +52,7 @@ SimPy ayrık olay simülasyonu: departmanın bir muayene odası (oturum); 16 slo
 
 - Rastgele orman 0,30 eşiğinde precision 0,33, recall 0,48 (hastaların %27'si işaretlenir); 0,40 eşiğinde yalnızca %3,8 işaretlenir ve recall 0,08'dir. Yüksek eşikler az hastayı kapsar.
 - Kalibrasyon: eğitim ve test arasında gelmeme oranı %20,6'dan %18,5'e düştüğünden tahminler test kümesinde biraz yüksektir (kesişim −0,14).
-- Yeni hasta (geçmişi yok) AUC 0,721, tekrar gelen hasta 0,737.
+- **Alt gruplar (rastgele orman).** Test kümesindeki hastaların %54'ü yeni (geçmişi yok), %46'sı tekrar gelen hastadır. Ayırt etme gücü iki grupta da yakındır (AUC 0,721 ve 0,737): model yeni hastalarda da yaş ve randevuya kalan gün gibi özelliklerle anlamlı ayrım yapar, geçmişi olanlarda biraz daha iyidir. Her iki grupta ortalama tahmin gerçek orandan biraz yüksektir (yeni: %22,3 tahmin, %19,6 gerçek; tekrar gelen: %18,3 ve %17,2); fazlalık yeni hastalarda daha büyüktür. Kalibrasyon eğimi iki grupta da 1,12'dir (tahminler gerçek farkları biraz az gösterir). **Operasyonel sonuç:** 0,30 eşiğinde yeni hastaların %34'ü, tekrar gelenlerin %17,5'i yüksek riskli sayılır; yani kural, ek randevuyu çoğunlukla yeni hastaların slotlarında açar. İşaretlenenlerin isabet oranı iki grupta benzerdir (0,32 ve 0,35). Bu bir adalet ve güvenilirlik notudur: yeni hastaların tahmini daha belirsiz olduğundan hasta geçmişi biriktikçe model yeniden kalibre edilmelidir (`docs/MODEL_KARSILASTIRMA.md` bölüm 5).
 - Literatürdeki %95 doğruluk (Batool ve ark., 2020), değerlendirmeden önce tüm veri setinin dengelenmesinden gelir; sızıntısız protokolle sonuç bizimkine (AUC ≈ 0,72) denktir (`docs/LITERATUR_INCELEMESI.md`).
 
 ### 4.2 Politikalar (oturum başına, sabit aralığa göre fark; aralıklar `IEN_DENEY_SONUCLARI.md`'de)
@@ -84,6 +85,25 @@ Karar ayarının sabit aralığa göre bekleme farkı: muayene 5 dk iken +0,4 dk
 
 Hatırlatma etkisi %0'dan %30'a çıkarsa sabit aralıkta görülen hasta 12,9'dan 13,3'e çıkar; karar ayarıyla 15,6'dan 15,2'ye düşer. Yani hatırlatma etkili olursa overbooking'in **ek** kazancı küçülür (2,8 → 1,9 hasta); iki yöntem birbirinin yerine kısmen geçer. Gerçek etki A/B testiyle ölçülmelidir.
 
+### 4.7 Bekleme dağılımı (tek tek hastalar)
+
+3.000 eşleştirilmiş oturumda her hastanın beklemesi incelendi (`docs/BEKLEME_DAGILIMI.md`).
+
+| | Sabit aralık | Karar ayarı | Ek randevulu slottaki hastalar |
+|---|---|---|---|
+| Ortalama (dk) | 0,22 | 1,14 | 2,48 |
+| %95'inci yüzdelik (dk) | 0,73 | 7,71 | 10,87 |
+| %99'uncu yüzdelik (dk) | 6,25 | 14,16 | 17,45 |
+| 5 dk'dan uzun bekleyen | %1,5 | %9,5 | %21,5 |
+| 15 dk'dan uzun bekleyen | %0,1 | %0,8 | %1,8 |
+| En uzun (dk) | 39 | 68 | 68 |
+
+Bir oturumda en az bir hastanın 15 dk'dan uzun beklemesi sabit aralıkta %1,0, kuralda %8,7 oturumda görülür. Ortalamanın 15 dk sınırının çok altında olması, tek tek hastaların bu sınırı aşmadığı anlamına gelmez; yönetim sınırı **hasta başına** (ör. %95'inci yüzdelik) tanımlamak isteyebilir.
+
+### 4.8 Fayda ve maliyet birlikte
+
+Kural oturum başına **+2,79 hasta** görür (+%22) ve muayene odasının boş kalmasını 20 dk azaltır (doluluk %40 → %49). Bedeli: toplam **+15 hasta-dakika** ek bekleme ve **+0,21 dk** mesai aşımı; yani ek hasta başına yaklaşık **5,4 dk** toplam bekleme ve 0,07 dk mesai aşımı. Bekleme yükünün çoğunu ek randevulu slotlardaki hastalar taşır. Fayda, kapasitenin zaten bol olduğu bir ortamda (doluluk %40) elde edilir; muayene süresi 10 dk'ya çıkarsa bedel belirgin büyür (bekleme artışı +2,2 dk, mesai +1,1 dk). Hasta sayısı, bekleme, boşta kalma ve mesai aşımı birlikte ele alındığında karar ayarı (eşik %30, sınır 4) makul bir dengedir; eşik %20 yalnızca +0,4 hasta daha getirir, bekleme ve uzun bekleyen oranını artırır.
+
 ## 5. Yorum: neden daha çok hasta görülürken bekleme artıyor?
 
 Ek hasta, yalnızca ilk hasta gelmezse "bedava" olur. İlk hastanın riski yüksek olsa bile gelme ihtimali %50–70'tir; ikisi de gelirse (bu sık olur) muayene odası aynı slotta iki hastaya bakar ve ikinci hasta bekler; bu bekleme sonraki slotlara taşınır. Boşta kalma azalır çünkü gelmeyen hastaların boşluğu dolar. Muayene ortalaması 7,5 dk iken 15 dk'lık bir slotta iki hastayı görmek mümkündür; bu yüzden bekleme küçük kalır (yaklaşık +1 dk). Muayene 10 dk'ya yaklaştıkça iki hasta slota sığmaz ve bekleme ile mesai aşımı artar (+2,2 ve +1,1 dk). Bu yüzden iyileşme ve bedel her zaman birlikte raporlanmalıdır. Not: ortalama muayene slotun yarısı kadar olduğundan oda, kural olmadan da zamanın yaklaşık %60'ında boştur (doluluk %40); kuralın asıl işi bu kapasiteyi kullanmaktır.
@@ -95,7 +115,7 @@ Ek hasta, yalnızca ilk hasta gelmezse "bedava" olur. İlk hastanın riski yüks
 3. Hekim yoktur, sistem tek departmandır; sonuçlar muayene odası oturumu başınadır ve oda sayısı varsayımdır.
 4. Tahmin gücü sınırlı (AUC ≈ 0,73); model riski en çok %50 civarına çıkarır, bu yüzden yüksek eşikler hiç tetiklenmez.
 5. Hatırlatma etkisi ölçülmedi; senaryo analizi varsayımsaldır, `SMS_received` rastgele deney değildir.
-6. Ortalama bekleme 15 dk sınırının çok altında; ama bekleme dağılımı (en uzun bekleyen hastalar) ayrıca raporlanmadı.
+6. Ortalama bekleme 15 dk sınırının çok altında, ancak dağılım uzun kuyrukludur (bölüm 4.7): hastaların %0,8'i 15 dk'dan uzun bekler. Slot süresi (15 dk) için kaynak bulunamadı; devlet hastanelerinde randevu aralığının 5–10 dk olduğuna dair haberler var (`docs/KAYNAK_ARASTIRMASI.md`).
 7. Simülasyon ve uygulama KPI'ları aynı tanımı farklı hesaplar (`KPI_VE_VARSAYIM_KARSILASTIRMASI.md`).
 
 ## 7. Sonuç ve öneri `[ONAY]`
@@ -115,7 +135,7 @@ python simulation/parity_check.py     # servis ile kural uyumu
 python ml/leakage_check.py            # zamansal sızıntı kontrolü
 ```
 
-**Temiz ortam kontrolü (16 Ekim 2026).** Depo kopyası, `requirements` dosyalarıyla kurulan yeni bir sanal ortamda (Python 3.11, pandas 3.0.6, numpy 2.4.6, scikit-learn 1.9.1, scipy 1.17.1, simpy 4.1.2) baştan sona çalıştırıldı: `clean_data.py`, `build_reports.py`, `evaluate_models.py`, `apply_decisions.py` (model, deneyler, servis kabul kontrolleri), `parity_check.py` ve `leakage_check.py`. Hepsi hatasız bitti. `docs/SONUC_OZETI.md` bayt bayt aynı çıktı; `MODEL_KARSILASTIRMA.md` ve `IEN_DENEY_SONUCLARI.md` yalnızca üçüncü ondalıkta (ör. kalibrasyon eğimi 1,103 → 1,102) ve eşit değerli satırların sırasında farklıdır; sonuçlar ve yorumlar değişmez. Rapordaki sayılar Python 3.11.2 / pandas 2.0.1 / scikit-learn 1.2.2 ortamından gelir.
+**Temiz ortam kontrolü (17 Ekim 2026).** Depo kopyası, `requirements` dosyalarıyla kurulan yeni bir sanal ortamda (Python 3.11, pandas 3.0.6, numpy 2.4.6, scikit-learn 1.9.1, scipy 1.17.1, simpy 4.1.2) baştan sona çalıştırıldı: `clean_data.py`, `build_reports.py`, `evaluate_models.py`, `apply_decisions.py` (model, deneyler, bekleme dağılımı, servis kabul kontrolleri, kural uyumu) ve `leakage_check.py`. Hepsi hatasız bitti. `docs/SONUC_OZETI.md` ve `docs/BEKLEME_DAGILIMI.md` bayt bayt aynı çıktı; `MODEL_KARSILASTIRMA.md` yalnızca üçüncü ondalıkta (ör. kalibrasyon eğimi 1,103 → 1,102), `IEN_DENEY_SONUCLARI.md` ise yalnızca eşit değerli ızgara satırlarının sırasında farklıdır; sonuçlar ve yorumlar değişmez. Rapordaki sayılar Python 3.11.2 / pandas 2.0.1 / scikit-learn 1.2.2 ortamından gelir.
 
 **Servis uyumu.** Seçili model ve karar ayarları servisin kendi testlerinde ve HTTP API'sinde denendi (`docs/SERVIS_UYUM_RAPORU.md`). **Zamansal sızıntı.** Simülasyonun 27 günlük riskleri dönüşümlü katlarla üretilir; yalnızca geçmişle eğitilen model karşılaştırması AUC'de ve simülasyon sonucunda pratikte fark vermedi (`docs/ZAMANSAL_SIZINTI_KONTROLU.md`: 0,731 ve 0,729).
 
@@ -123,5 +143,5 @@ python ml/leakage_check.py            # zamansal sızıntı kontrolü
 
 - Batool T., Abuelnoor M., El Boutari O., Aloul F., Sagahyroon A. (2020). *Predicting Hospital No-Shows Using Machine Learning.* 2020 IEEE International Conference on Internet of Things and Intelligence System (IoTaIS), s. 142–148. DOI: 10.1109/IoTaIS50849.2021.9359692.
 - Veri seti: Kaggle, "Medical Appointment No Shows" (KaggleV2-May-2016). Bağlantı ve erişim tarihi eklenecek.
-- Muayene süresi (hasta başına 5–10 dk, Türkiye devlet hastaneleri): kaynak eklenecek `[ONAY]`.
+- Muayene süresi (hasta başına 5–10 dk), slot (15 dk) ve bekleme sınırı için kaynak taraması: `docs/KAYNAK_ARASTIRMASI.md` (haber ve TBMM belgeleri; hakemli kaynak değil, elle doğrulanmalı; slot için kaynak bulunamadı) `[ONAY]`.
 - Ders notlarındaki formül kaynakları ve overbooking literatürü eklenecek `[ONAY]`: her kaynak elle doğrulanmalıdır.

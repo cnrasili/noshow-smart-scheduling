@@ -164,6 +164,7 @@ Mevcut kod ve sonuçlar değiştirilmeden eklendi. Hepsi komutla yeniden üretil
 | Servis uyumu | Seçili model ve karar ayarları servisin kendi testlerinde ve HTTP API'sinde denendi (kopya üzerinde); CEN'in güncelleyeceği 6 test listelendi | `docs/SERVIS_UYUM_RAPORU.md` |
 | Zamansal sızıntı | Dönüşümlü katlarla üretilen riskler ileri doğru pencereyle karşılaştırıldı: fark çok küçük | `ml/leakage_check.py`, `docs/ZAMANSAL_SIZINTI_KONTROLU.md` |
 | Departman bazlı anlatım | `Department` = General Practice sütunu temizlenmiş veride (`ml/data/clean_data.py`). Simülasyon ve belgelerde "doktor" yerine "muayene odası (oturum)" kullanılır; KPI tanımlarında (`docs/kpi-definitions.md`) "Physician idle time" yerine "Idle time". Web taslakları da çevrildi (personel ekranı) | `docs/KARAR_LISTESI.md` |
+| Bekleme dağılımı ve kaynaklar | Tek tek hastaların bekleme dağılımı (kuyruk, uzun bekleyenler, ek hasta başına maliyet), protokol denetimi, alt grup yorumu, varsayımlar için kaynak taraması | `simulation/wait_distribution.py` → `docs/BEKLEME_DAGILIMI.md`, `docs/KAYNAK_ARASTIRMASI.md` |
 | Model dosyaları | Seçilen model rastgele orman `ml/models/` altında (kesin); karar ağacı karşılaştırma için `ml/models/candidates/` altında; ikisi de `IEN` dalında. Servis ayarları (limit 4, muayene 7,5 dk) `IEN-service-settings` dalında | `docs/KARAR_LISTESI.md` bölüm 2 |
 
 ```bash

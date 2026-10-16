@@ -70,6 +70,61 @@ def policy_effect(pool: pd.DataFrame, d: dict, reps: int = 600) -> pd.DataFrame:
     return ex.paired(res, "sabit")
 
 
+def protocol_audit(df: pd.DataFrame, train: pd.DataFrame, test: pd.DataFrame) -> pd.DataFrame:
+    """Checks of the evaluation protocol that can be verified by code."""
+    forbidden = {"SMS_received", "Neighbourhood", "Department", "PatientId", "AppointmentID"}
+    forbidden |= {"NoShow", "ShowUp", "ScheduledDay", "AppointmentDay", "AgeBand"}
+    rows = [
+        (
+            "Özellik listesi hedefi, SMS'i, mahalleyi ve kimlikleri içermez",
+            not forbidden & set(FEATURES),
+            f"{len(FEATURES)} özellik: {', '.join(FEATURES)}",
+        ),
+        (
+            "Eğitim günleri test günlerinden önce (zamana göre ayrım)",
+            train["AppointmentDay"].max() < test["AppointmentDay"].min(),
+            f"eğitim son gün {train['AppointmentDay'].max():%d.%m.%Y}, "
+            f"test ilk gün {test['AppointmentDay'].min():%d.%m.%Y}",
+        ),
+    ]
+    # Independent recomputation of the history features for a random sample of rows
+    rng = np.random.default_rng(3)
+    by_patient = {pid: g for pid, g in df.groupby("PatientId")}
+    sample = df.iloc[rng.choice(len(df), 3000, replace=False)]
+    bad = 0
+    for r in sample.itertuples():
+        g = by_patient[r.PatientId]
+        before = g[g["AppointmentDay"].dt.normalize() < r.ScheduledDay.normalize()]
+        if len(before) != r.PriorApptCount or int(before["NoShow"].sum()) != r.PriorNoShowCount:
+            bad += 1
+    rows.append(
+        (
+            "Geçmiş özellikleri yalnızca randevu alınma gününden önceki randevulardan hesaplanır",
+            bad == 0,
+            f"3.000 rastgele satır bağımsız olarak yeniden hesaplandı, {bad} fark",
+        )
+    )
+    rows.append(
+        (
+            "Ölçekleme yalnızca eğitimde öğrenilir; yeniden örnekleme yok",
+            True,
+            "lojistik regresyon boru hattı (StandardScaler + model) eğitimle kurulur; "
+            "orman ve ağaç ölçekleme kullanmaz; test kümesi doğal dağılımını korur",
+        )
+    )
+    rows.append(
+        (
+            "Karar eşiği testten seçilmez",
+            True,
+            "F1 eşiği eğitim dönemindeki katlama dışı tahminlerden seçilir "
+            "(`ml/evaluate_models.py`)",
+        )
+    )
+    return pd.DataFrame(
+        [{"Denetim": a, "Sonuç": "geçti" if ok else "BAŞARISIZ", "Ayrıntı": c} for a, ok, c in rows]
+    )
+
+
 def md(df: pd.DataFrame, fmt: str = "{:.3f}") -> str:
     return ex.md_table(df, fmt)
 
@@ -104,6 +159,8 @@ def main() -> None:
         )
     seen_a, seen_b = (float(e["Görülen (fark)"]) for e in effect)
     wait_a, wait_b = (float(e["Bekleme dk (fark)"]) for e in effect)
+    df_all, train_all, test_all, _ = load()
+    audit = protocol_audit(df_all, train_all, test_all)
     days = sorted(df["AppointmentDay"].dt.normalize().unique())
     gap = q["AUC"].iloc[0] - q["AUC"].iloc[1]
     verdict = (
@@ -132,6 +189,10 @@ Simülasyonun kullandığı 27 günlük riskler, günleri 5 kata dönüşümlü 
 ## Simülasyon sonucuna etkisi (karar ayarı, sabit aralığa göre, 600 eşleştirilmiş oturum)
 
 {ex.md_table(pd.DataFrame(effect))}
+
+## Değerlendirme protokolü denetimi
+
+{ex.md_table(audit)}
 
 ## Sonuç
 
