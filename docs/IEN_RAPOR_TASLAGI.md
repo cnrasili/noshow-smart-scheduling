@@ -90,7 +90,7 @@ Ek hasta, yalnızca ilk hasta gelmezse "bedava" olur. İlk hastanın riski yüks
 
 ## 6. Sınırlılıklar
 
-1. Tek bir zaman bölmesi ve 27 gün; mevsimsellik ve haftalık kalıplar değerlendirilemez.
+1. Tek bir zaman bölmesi ve 27 gün (simülasyon riskleri dönüşümlü katlarla üretilir; ileri doğru pencere karşılaştırması farkı küçük buldu); mevsimsellik ve haftalık kalıplar değerlendirilemez.
 2. Randevu saati, doktor kimliği ve gerçek talep verisi yok; simülasyon yapısı varsayımlara dayanır. Slot (10 dk x 24) karar listesinden **türetilmiştir** `[ONAY]`.
 3. "Tek hekim" kuralı uygulanmadı; sonuçlar doktor oturumu başınadır.
 4. Tahmin gücü sınırlı (AUC ≈ 0,73); model riski en çok %50 civarına çıkarır, bu yüzden yüksek eşikler hiç tetiklenmez.
@@ -112,9 +112,12 @@ python ml/build_reports.py
 python ml/evaluate_models.py          # docs/MODEL_KARSILASTIRMA.md
 python ml/apply_decisions.py          # karar listesine göre model + sonuçlar
 python simulation/parity_check.py     # servis ile kural uyumu
+python ml/leakage_check.py            # zamansal sızıntı kontrolü
 ```
 
-**Temiz ortam kontrolü (16 Ekim 2026).** Depo kopyası, `requirements` dosyalarıyla kurulan yeni bir sanal ortamda (Python 3.11, pandas 3.0.6, numpy 2.4.6, scikit-learn 1.9.1, scipy 1.17.1, simpy 4.1.2) çalıştırıldı: `clean_data.py`, `build_reports.py`, `evaluate_models.py --quick`, `experiments.py --quick`, `parity_check.py` ve `export_candidate.py` hatasız bitti. Test AUC'leri eski ortamla aynı çıktı (lojistik 0,658, rastgele orman 0,730). Tam deney koşuları bu ortamda yeniden çalıştırılmadı; rapordaki sayılar Python 3.11.2 / pandas 2.0.1 / scikit-learn 1.2.2 ortamından gelir.
+**Temiz ortam kontrolü (16 Ekim 2026).** Depo kopyası, `requirements` dosyalarıyla kurulan yeni bir sanal ortamda (Python 3.11, pandas 3.0.6, numpy 2.4.6, scikit-learn 1.9.1, scipy 1.17.1, simpy 4.1.2) baştan sona çalıştırıldı: `clean_data.py`, `build_reports.py`, `evaluate_models.py`, `apply_decisions.py` (model, deneyler, servis kabul kontrolleri), `parity_check.py` ve `leakage_check.py`. Hepsi hatasız bitti. `docs/SONUC_OZETI.md` bayt bayt aynı çıktı; `MODEL_KARSILASTIRMA.md` ve `IEN_DENEY_SONUCLARI.md` yalnızca üçüncü ondalıkta (ör. kalibrasyon eğimi 1,103 → 1,102) ve eşit değerli satırların sırasında farklıdır; sonuçlar ve yorumlar değişmez. Rapordaki sayılar Python 3.11.2 / pandas 2.0.1 / scikit-learn 1.2.2 ortamından gelir.
+
+**Servis uyumu.** Seçili model ve karar ayarları servisin kendi testlerinde ve HTTP API'sinde denendi (`docs/SERVIS_UYUM_RAPORU.md`). **Zamansal sızıntı.** Simülasyonun 27 günlük riskleri dönüşümlü katlarla üretilir; yalnızca geçmişle eğitilen model karşılaştırması AUC'de ve simülasyon sonucunda pratikte fark vermedi (`docs/ZAMANSAL_SIZINTI_KONTROLU.md`: 0,731 ve 0,729).
 
 ## 9. Kaynakça (eksik, doğrulanacak)
 

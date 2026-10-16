@@ -14,3 +14,4 @@ select = ["E", "F", "I", "B", "UP"]
 # Generated Turkish report texts
 "ml/evaluate_models.py" = ["E501"]
 "simulation/experiments.py" = ["E501"]
+"ml/leakage_check.py" = ["E501"]

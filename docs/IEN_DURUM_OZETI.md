@@ -161,6 +161,8 @@ Mevcut kod ve sonuçlar değiştirilmeden eklendi. Hepsi komutla yeniden üretil
 | KPI ve varsayımlar | Simülasyon ve uygulama KPI hesabı farkı, ölçülen/varsayım ayrımı, duyarlılık | `docs/KPI_VE_VARSAYIM_KARSILASTIRMASI.md` |
 | Rapor ve demo | Metodoloji ve sonuç raporu taslağı, demo akışı ve jüri soruları | `docs/IEN_RAPOR_TASLAGI.md`, `docs/DEMO_VE_JURI_HAZIRLIGI.md` |
 | Kararlar | Karar listesi (`docs/KARAR_LISTESI.md`) ve makine tarafı (`docs/decisions.json`) tek kaynaktır. Karar değişince `python ml/apply_decisions.py` modeli (`ml/models/`), deneyleri ve sonuç özetini yeniden üretir | `ml/apply_decisions.py`, `docs/SONUC_OZETI.md` |
+| Servis uyumu | Seçili model ve karar ayarları servisin kendi testlerinde ve HTTP API'sinde denendi (kopya üzerinde); CEN'in güncelleyeceği 6 test listelendi | `docs/SERVIS_UYUM_RAPORU.md` |
+| Zamansal sızıntı | Dönüşümlü katlarla üretilen riskler ileri doğru pencereyle karşılaştırıldı: fark çok küçük | `ml/leakage_check.py`, `docs/ZAMANSAL_SIZINTI_KONTROLU.md` |
 | Model dosyaları | Seçili model (şimdilik rastgele orman) `ml/models/` altında, karar ağacı adayı `ml/models/candidates/` altında; ikisi de `IEN` dalında | `docs/KARAR_LISTESI.md` bölüm 2 |
 
 ```bash
