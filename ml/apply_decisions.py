@@ -4,7 +4,8 @@ Change a decision -> edit docs/decisions.json and docs/KARAR_LISTESI.md -> run t
 
 1. Out-of-sample risks of the chosen model for all 27 days (grouped by day, like build_reports).
 2. The chosen model is fitted on all days, checked with the overbooking service's acceptance
-   checks and written to ml/models/ (model.joblib, feature_schema.json).
+   checks and written to ml/models/ (model.joblib, feature_schema.json); the other model goes to
+   ml/models/candidates/<model>/ so that a change of decision needs no rework.
 3. simulation/experiments.py runs with the decided settings and the new risks
    (docs/IEN_DENEY_SONUCLARI.md, docs/SONUC_OZETI.md).
 4. The decision table in docs/KARAR_LISTESI.md is refreshed from decisions.json.
@@ -12,6 +13,7 @@ Change a decision -> edit docs/decisions.json and docs/KARAR_LISTESI.md -> run t
     python ml/apply_decisions.py                 # everything
     python ml/apply_decisions.py --skip-model    # only results and the table
     python ml/apply_decisions.py --table-only    # only the decision table
+    python ml/apply_decisions.py --model-only    # only fit and export the models (no results)
 """
 
 from __future__ import annotations
@@ -53,8 +55,25 @@ def cv_risks(df: pd.DataFrame, kind: str, params: dict, folds: int = 5) -> pd.Da
 
 
 def decision_rows(d: dict) -> list[tuple[str, str, str]]:
-    model = NAMES.get(d["model"], "**Bekliyor** (iki dal: IEN-RandomForest, IEN-DecisionTree)")
+    chosen = d["model"]
+    if chosen in NAMES:
+        other = ", ".join(NAMES[k] for k in NAMES if k != chosen)
+        status = (
+            "geçici seçim, ekip onayı bekliyor" if d.get("model_status") != "final" else "kesin"
+        )
+        model = (
+            f"{NAMES[chosen]} ({status}); karşılaştırma için {other} "
+            "`ml/models/candidates/` altında"
+        )
+    else:
+        model = "**Bekliyor**"
     lo, hi = d["service_range_min"]
+    a = d.get("assumptions_approval", {})
+    approval = (
+        f"Geçici olarak onaylandı ({a.get('date', '')}, {a.get('by', '')}); {a.get('note', '')}"
+        if a.get("status") == "provisional"
+        else "Onay bekliyor"
+    )
     return [
         ("1. Model (#7)", model, "Ekip"),
         ("2. En uzun ortalama bekleme", f"{d['wait_limit_min']} dk (poliklinik)", "Ekip"),
@@ -72,18 +91,28 @@ def decision_rows(d: dict) -> list[tuple[str, str, str]]:
         ),
         (
             "5. Tek doktor kuralı (#61)",
-            "Uygulanmayacak" if not d["single_doctor_rule"] else "Uygulanacak",
+            (
+                "Uygulanmayacak; ana README kapsamı: tek bölüm, hekim adlandırılmaz ya da atanmaz"
+                if not d["single_doctor_rule"]
+                else "Uygulanacak"
+            ),
             "Ekip",
         ),
         ("6. Hatırlatma", "Canlı A/B testi + varsayımsal senaryo", "Ekip"),
         ("7. Teslim edilen kural", "Yalnızca eşik kuralı", "Ekip"),
         (
             "8. Modelin teslimi",
-            "`ml/models/` altında, seçilen dalda; CEN o dalı çeker",
+            "`ml/models/` altında (seçili model); CEN `IEN` dalını çeker",
             "IEN + CEN",
         ),
         ("9. Canlıda güncel kalma", "CEN2 modele API ile bağlanır", "CEN2"),
         ("10. Son tarih", d["deadline"], "Ekip"),
+        ("11. Simülasyon varsayımları ve 15 dk sınırı", approval, "Ekip + hoca"),
+        (
+            "12. Uçtan uca test ve final demo",
+            "IEN görevi değildir; CEN ile birlikte, ayrı iş",
+            "CEN",
+        ),
     ]
 
 
@@ -102,6 +131,9 @@ def update_table(d: dict) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     ap.add_argument("--skip-model", action="store_true", help="do not retrain or export the model")
+    ap.add_argument(
+        "--model-only", action="store_true", help="only fit and export the models, no results"
+    )
     ap.add_argument("--table-only", action="store_true", help="only refresh the decision table")
     ap.add_argument("--decisions", type=Path, default=DECISIONS)
     args = ap.parse_args()
@@ -117,12 +149,20 @@ def main() -> int:
     params = d["model_params"][kind]
 
     if not args.skip_model:
-        df, _, _, _ = load()
-        risks = cv_risks(df, kind, params)
-        risks.to_csv(RISKS, index=False)
-        print(f"{NAMES[kind]}: out-of-sample AUC {roc_auc_score(risks['y'], risks['p']):.3f}")
+        if not args.model_only:
+            df, _, _, _ = load()
+            risks = cv_risks(df, kind, params)
+            risks.to_csv(RISKS, index=False)
+            print(f"{NAMES[kind]}: out-of-sample AUC {roc_auc_score(risks['y'], risks['p']):.3f}")
         version = export_and_check(kind, params, d["model_version"], MODELS_DIR)
         print(f"Service acceptance checks passed; wrote {MODELS_DIR} ({version})")
+        for other in DEFAULT_PARAMS:  # the other candidate, so the team can switch without rework
+            if other != kind:
+                folder = MODELS_DIR / "candidates" / other
+                export_and_check(other, d["model_params"][other], d["model_version"], folder)
+                print(f"Candidate {NAMES[other]} written to {folder}")
+        if args.model_only:
+            return 0
     elif not RISKS.exists():
         print("No risks file yet; run without --skip-model first")
         return 1

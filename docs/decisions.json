@@ -1,6 +1,7 @@
 {
   "_note": "Tek kaynak: bu dosya ve docs/KARAR_LISTESI.md birlikte güncellenir. Değişince `python ml/apply_decisions.py` modeli ve sonuçları yeniden üretir.",
   "model": "random_forest",
+  "model_status": "final",
   "model_params": {
     "random_forest": {"n_estimators": 150, "min_samples_leaf": 20, "max_depth": 14, "random_state": 42},
     "decision_tree": {"max_depth": 4, "min_samples_leaf": 200, "random_state": 42}
@@ -20,5 +21,11 @@
   "lateness_sd_min": 4,
   "reminder": "ab_test_plus_scenario",
   "single_doctor_rule": false,
+  "assumptions_approval": {
+    "status": "provisional",
+    "by": "IEN sorumlusu",
+    "date": "2026-10-17",
+    "note": "akademik gerekçe ve kaynak (hoca onayı) sonra eklenecek"
+  },
   "deadline": "2026-12-16"
 }

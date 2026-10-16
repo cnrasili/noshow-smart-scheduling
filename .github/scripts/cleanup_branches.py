@@ -1,7 +1,8 @@
-"""Delete outdated branches: each person keeps only their most recently updated branch.
+"""Delete outdated branches: each person keeps only their most recently updated branches.
 
-Owner of a branch is the GitHub user (or email) of its latest commit. Branches in KEEP and
-branches of EXEMPT_LOGINS are never touched. Unmerged work is saved as an archive tag first.
+Owner of a branch is the GitHub user (or email) of its latest commit. An owner keeps one
+branch, or as many as LIMITS allows them. Branches in KEEP and branches of EXEMPT_LOGINS are
+never touched. Unmerged work is saved as an archive tag first.
 """
 
 import json
@@ -13,6 +14,9 @@ from datetime import UTC, datetime
 
 API = "https://api.github.com"
 KEEP = {"main"}
+# Branches allowed per owner beyond the default of one. Kept here rather than in the workflow,
+# because a run started by a new branch reads the workflow file of that branch.
+LIMITS = {"hazarikizler": 3}
 
 
 @dataclass(frozen=True)
@@ -56,17 +60,19 @@ def list_branches(repo: str) -> list[Branch]:
         page += 1
 
 
-def select_outdated(branches: list[Branch], exempt: set[str]) -> list[Branch]:
-    """Every branch except the most recently updated one of each owner."""
-    latest: dict[str, Branch] = {}
+def select_outdated(
+    branches: list[Branch], exempt: set[str], limits: dict[str, int]
+) -> list[Branch]:
+    """Every branch except the most recently updated ones of each owner."""
+    owned: dict[str, list[Branch]] = {}
     for branch in branches:
-        if branch.owner in exempt:
-            continue
-        current = latest.get(branch.owner)
-        if current is None or branch.updated > current.updated:
-            latest[branch.owner] = branch
-    keep = {branch.name for branch in latest.values()}
-    return [b for b in branches if b.owner not in exempt and b.name not in keep]
+        if branch.owner not in exempt:
+            owned.setdefault(branch.owner, []).append(branch)
+    outdated = []
+    for owner, own in owned.items():
+        own.sort(key=lambda b: b.updated, reverse=True)
+        outdated += own[limits.get(owner, 1) :]
+    return outdated
 
 
 def is_merged(repo: str, branch: Branch) -> bool:
@@ -78,12 +84,13 @@ def main() -> None:
     repo = os.environ["GITHUB_REPOSITORY"]
     dry_run = os.getenv("DRY_RUN", "false").lower() == "true"
     exempt = {login for login in os.getenv("EXEMPT_LOGINS", "").split(",") if login}
+    print(f"Owners with more than one branch: {LIMITS}")
 
     branches = list_branches(repo)
     for branch in sorted(branches, key=lambda b: (b.owner, b.updated)):
         print(f"{branch.owner:24} {branch.updated:%Y-%m-%d %H:%M}  {branch.name}")
 
-    outdated = select_outdated(branches, exempt)
+    outdated = select_outdated(branches, exempt, LIMITS)
     if not outdated:
         print("No outdated branches.")
         return
