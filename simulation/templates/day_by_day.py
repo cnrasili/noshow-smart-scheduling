@@ -3,19 +3,25 @@
 Baseline = no rule: fixed 15-minute slots, one patient per slot, every patient takes the next free slot.
 Every other row applies one rule or template to the SAME patients, show-ups, lateness and consultation lengths.
 """
+
 import dataclasses
 import html
 
 import numpy as np
 import pandas as pd
-
 from clinic_sim import SessionConfig, cost_rule, draw_session, simulate_session
 from template_base import REQUESTS, Template
 
 # metric key -> (label, good direction: -1 lower is better, +1 higher is better, 0 neutral)
-METRICS = [("seen", "Patients seen", 1), ("noshow", "No-shows (booked, did not come)", 0), ("noslot", "No free slot", -1),
-           ("wait", "Mean wait (min)", -1), ("wait_h", "Total waiting (hours)", -1), ("idle_h", "Doctor idle (hours)", -1),
-           ("ot_h", "Overtime (hours)", -1)]
+METRICS = [
+    ("seen", "Patients seen", 1),
+    ("noshow", "No-shows (booked, did not come)", 0),
+    ("noslot", "No free slot", -1),
+    ("wait", "Mean wait (min)", -1),
+    ("wait_h", "Total waiting (hours)", -1),
+    ("idle_h", "Doctor idle (hours)", -1),
+    ("ot_h", "Overtime (hours)", -1),
+]
 ALL = "All days"
 
 
@@ -23,19 +29,48 @@ def paper_templates(has_paper_risk: bool) -> list[Template]:
     """Overbooking policy of Batool et al. (2020): overbook every slot whose patient the classifier flags as a no-show
     (p >= 0.5), with no cap on overbooked slots. Shown with our calibrated model and with a classifier trained on
     rebalanced data, as in the paper."""
-    out = [Template("paper_cal", "Literature - classifier flag p >= 0.5, calibrated model", "", 16, 15, threshold=0.5, daily_limit=99)]
+    out = [
+        Template(
+            "paper_cal",
+            "Literature - classifier flag p >= 0.5, calibrated model",
+            "",
+            16,
+            15,
+            threshold=0.5,
+            daily_limit=99,
+        )
+    ]
     if has_paper_risk:
-        out.append(Template("paper_bal", "Literature - classifier flag p >= 0.5, rebalanced training (as in the paper)", "", 16, 15,
-                            threshold=0.5, daily_limit=99, risk_key="p_paper"))
+        out.append(
+            Template(
+                "paper_bal",
+                "Literature - classifier flag p >= 0.5, rebalanced training (as in the paper)",
+                "",
+                16,
+                15,
+                threshold=0.5,
+                daily_limit=99,
+                risk_key="p_paper",
+            )
+        )
     return out
 
 
 def scenarios(tuned: list[Template], has_paper_risk: bool = False) -> list[tuple[str, object]]:
     """(label, template or rule name) pairs; the first one is the baseline without any rule."""
-    out = [("No rule: fixed interval 15 min", Template("baseline", "No rule", "", 16, 15)),
-           ("Rule: threshold 0.30 (same-time overbooking)", Template("r1", "", "", 16, 15, threshold=0.30)),
-           ("Rule: cost-based R5-A, r = 0.5", "cost0.5"), ("Rule: cost-based R5-A, r = 1.0", "cost1.0")]
-    out += [(t.name.replace("Literature - ", "Literature: "), t) for t in paper_templates(has_paper_risk)]
+    out = [
+        ("No rule: fixed interval 15 min", Template("baseline", "No rule", "", 16, 15)),
+        (
+            "Rule: threshold 0.30 (same-time overbooking)",
+            Template("r1", "", "", 16, 15, threshold=0.30),
+        ),
+        ("Rule: cost-based R5-A, r = 0.5", "cost0.5"),
+        ("Rule: cost-based R5-A, r = 1.0", "cost1.0"),
+    ]
+    out += [
+        (t.name.replace("Literature - ", "Literature: "), t)
+        for t in paper_templates(has_paper_risk)
+    ]
     out += [(f"Template {i + 1}: {t.name.split(' - ', 1)[1]}", t) for i, t in enumerate(tuned)]
     return out
 
@@ -45,7 +80,9 @@ def run_policy(what, cfg: SessionConfig, draws, part_len: int, alt=None):
     if getattr(what, "risk_key", None) and alt:
         draws = dataclasses.replace(draws, risk=alt[what.risk_key])
     if what in ("cost0.5", "cost1.0"):
-        return simulate_session(dataclasses.replace(cfg, requests=part_len), cost_rule(float(what[4:])), draws)
+        return simulate_session(
+            dataclasses.replace(cfg, requests=part_len), cost_rule(float(what[4:])), draws
+        )
     tcfg = dataclasses.replace(what.config(cfg), requests=part_len)
     return simulate_session(tcfg, what.policy(), draws, layout=what.layout())
 
@@ -60,9 +97,14 @@ def build_sessions(pool: pd.DataFrame, cfg: SessionConfig) -> dict:
         rng = np.random.default_rng(seed + 1)
         sessions = []
         for start in range(0, len(day), REQUESTS):
-            part = day.iloc[np.sort(idx[start:start + REQUESTS])].sort_values("ScheduledDay", kind="stable")
-            draws = dataclasses.replace(draw_session(dataclasses.replace(cfg, requests=len(part)), rng, None),
-                                        risk=part["p"].to_numpy(), shows=(part["y"].to_numpy() == 0))
+            part = day.iloc[np.sort(idx[start : start + REQUESTS])].sort_values(
+                "ScheduledDay", kind="stable"
+            )
+            draws = dataclasses.replace(
+                draw_session(dataclasses.replace(cfg, requests=len(part)), rng, None),
+                risk=part["p"].to_numpy(),
+                shows=(part["y"].to_numpy() == 0),
+            )
             alt = {"p_paper": part["p_paper"].to_numpy()} if "p_paper" in part.columns else {}
             sessions.append((draws, len(part), alt))
         out[f"{date:%d %b %Y}"] = sessions
@@ -76,25 +118,47 @@ def compute(by_date: dict, tuned: list[Template], cfg: SessionConfig) -> tuple[l
     labels = [s[0] for s in scs]
     sums = {}
     for key, sessions in by_date.items():
-        tot = {lab: dict(appointments=0, seen=0, booked=0, noslot=0, wait_min=0.0, idle_min=0.0, ot_min=0.0) for lab in labels}
+        tot = {
+            lab: dict(
+                appointments=0, seen=0, booked=0, noslot=0, wait_min=0.0, idle_min=0.0, ot_min=0.0
+            )
+            for lab in labels
+        }
         for draws, plen, alt in sessions:
             for lab, what in scs:
                 r = run_policy(what, cfg, draws, plen, alt)
                 a = tot[lab]
-                a["appointments"] += plen; a["seen"] += r["seen"]; a["booked"] += r["booked"]; a["noslot"] += r["deferred"]
-                a["wait_min"] += r["mean_wait"] * r["seen"]; a["idle_min"] += r["idle"]; a["ot_min"] += r["overtime"]
+                a["appointments"] += plen
+                a["seen"] += r["seen"]
+                a["booked"] += r["booked"]
+                a["noslot"] += r["deferred"]
+                a["wait_min"] += r["mean_wait"] * r["seen"]
+                a["idle_min"] += r["idle"]
+                a["ot_min"] += r["overtime"]
         sums[key] = tot
     first = next(iter(sums))
-    allsum = {lab: {k: sum(sums[d][lab][k] for d in sums) for k in sums[first][lab]} for lab in labels}
+    allsum = {
+        lab: {k: sum(sums[d][lab][k] for d in sums) for k in sums[first][lab]} for lab in labels
+    }
     data = {ALL: _metrics(allsum)}
     data.update({key: _metrics(tot) for key, tot in sums.items()})
     return labels, data
 
 
 def _metrics(tot: dict) -> dict:
-    return {lab: {"appointments": a["appointments"], "seen": a["seen"], "noshow": a["booked"] - a["seen"], "noslot": a["noslot"],
-                  "wait": a["wait_min"] / max(a["seen"], 1), "wait_h": a["wait_min"] / 60, "idle_h": a["idle_min"] / 60,
-                  "ot_h": a["ot_min"] / 60} for lab, a in tot.items()}
+    return {
+        lab: {
+            "appointments": a["appointments"],
+            "seen": a["seen"],
+            "noshow": a["booked"] - a["seen"],
+            "noslot": a["noslot"],
+            "wait": a["wait_min"] / max(a["seen"], 1),
+            "wait_h": a["wait_min"] / 60,
+            "idle_h": a["idle_min"] / 60,
+            "ot_h": a["ot_min"] / 60,
+        }
+        for lab, a in tot.items()
+    }
 
 
 def fmt(key: str, v: float) -> str:
@@ -115,14 +179,21 @@ def overall_cards(labels: list[str], data: dict, winner_label: str, n_days: int)
     cards = ""
     for k, name, good in METRICS:
         text, cls = change(k, good, rows[k], base[k])
-        share = (f"<div class='s'>{100 * rows[k] / rows['appointments']:.1f}% of appointments</div>"
-                 if k in ("seen", "noshow", "noslot") else "")
-        cards += (f"<div class='kc'><h4>{html.escape(name)}</h4><div class='v'>{fmt(k, rows[k])}</div>{share}"
-                  f"<div class='s'>no rule: {fmt(k, base[k])}</div><div class='d {cls}'>{text}</div></div>")
+        share = (
+            f"<div class='s'>{100 * rows[k] / rows['appointments']:.1f}% of appointments</div>"
+            if k in ("seen", "noshow", "noslot")
+            else ""
+        )
+        cards += (
+            f"<div class='kc'><h4>{html.escape(name)}</h4><div class='v'>{fmt(k, rows[k])}</div>{share}"
+            f"<div class='s'>no rule: {fmt(k, base[k])}</div><div class='d {cls}'>{text}</div></div>"
+        )
     n = base["appointments"]
-    return (f"<p>Winner <b>{html.escape(winner_label)}</b> against the baseline with no rule, summed over all {n_days} days "
-            f"({n:,} real appointments). Each card: the winner's number, the no-rule number, and the change as a count and a percentage.</p>"
-            f"<div class='cards'>{cards}</div>")
+    return (
+        f"<p>Winner <b>{html.escape(winner_label)}</b> against the baseline with no rule, summed over all {n_days} days "
+        f"({n:,} real appointments). Each card: the winner's number, the no-rule number, and the change as a count and a percentage.</p>"
+        f"<div class='cards'>{cards}</div>"
+    )
 
 
 def section_html(labels: list[str], data: dict, winner_label: str, risk_name: str) -> str:
@@ -136,12 +207,18 @@ def section_html(labels: list[str], data: dict, winner_label: str, risk_name: st
             r, b = rows[lab], rows[base]
             cells = ""
             for k, _, good in METRICS:
-                share = f"<br><small>{100 * r[k] / n:.1f}% of appointments</small>" if k in ("seen", "noshow", "noslot") else ""
+                share = (
+                    f"<br><small>{100 * r[k] / n:.1f}% of appointments</small>"
+                    if k in ("seen", "noshow", "noslot")
+                    else ""
+                )
                 if lab == base:
                     cells += f"<td>{fmt(k, r[k])}{share}</td>"
                 else:
                     text, cls = change(k, good, r[k], b[k])
-                    cells += f"<td>{fmt(k, r[k])}{share}<br><span class='d {cls}'>{text}</span></td>"
+                    cells += (
+                        f"<td>{fmt(k, r[k])}{share}<br><span class='d {cls}'>{text}</span></td>"
+                    )
             attr = ' class="base"' if lab == base else ""
             body += f"<tr{attr}><td>{html.escape(lab)}</td>{cells}</tr>"
         return f"<div class='wrap'><table class='dd'><tr><th>Scenario</th>{head}</tr>{body}</table></div>"
@@ -153,10 +230,14 @@ def section_html(labels: list[str], data: dict, winner_label: str, risk_name: st
             blocks += f"<h3>{ALL} <small>({n:,} real appointments, {len(data) - 1} days)</small></h3>{table(rows)}<h3>Each day</h3>"
             continue
         w, b = rows[winner_label], rows[base]
-        headline = (f"{html.escape(winner_label.split(':')[0])}: {w['seen'] - b['seen']:+,} patients "
-                    f"({100 * (w['seen'] - b['seen']) / b['seen']:+.1f}%), wait {w['wait'] - b['wait']:+.1f} min")
-        blocks += (f"<details><summary><b>{html.escape(key)}</b> <small>{n:,} appointments &middot; {headline}</small></summary>"
-                   f"{table(rows)}</details>")
+        headline = (
+            f"{html.escape(winner_label.split(':')[0])}: {w['seen'] - b['seen']:+,} patients "
+            f"({100 * (w['seen'] - b['seen']) / b['seen']:+.1f}%), wait {w['wait'] - b['wait']:+.1f} min"
+        )
+        blocks += (
+            f"<details><summary><b>{html.escape(key)}</b> <small>{n:,} appointments &middot; {headline}</small></summary>"
+            f"{table(rows)}</details>"
+        )
     return f"""<h2>Day by day, on real appointment records</h2>
 <p>Every real appointment of each of the {len(data) - 1} days, in real booking order (risk: {html.escape(risk_name)}, out-of-sample; attendance: real).
 The first row is the <b>baseline with no rule or algorithm</b>: fixed 15-minute slots, one patient per slot, no overbooking. Each other row applies one rule or template

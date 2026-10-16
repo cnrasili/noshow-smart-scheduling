@@ -1,6 +1,6 @@
 # Shared Database
 
-SQLAlchemy models and Alembic migrations shared by the web backend and the overbooking service. Both use the same PostgreSQL database and a single migration history.
+SQLAlchemy models and Alembic migrations shared by the web backend, the overbooking service and the admin service. All use the same PostgreSQL database and a single migration history.
 
 ## Tech Stack
 
@@ -14,6 +14,7 @@ SQLAlchemy models and Alembic migrations shared by the web backend and the overb
 |---|---|
 | `noshow_db/models/core.py` | Patients, doctors, slots, appointments |
 | `noshow_db/models/service.py` | Predictions, overbooking decisions, reminders, A/B assignments |
+| `noshow_db/models/admin.py` | Administrator accounts, sessions and audit log of the admin service |
 | `migrations/` | Alembic migration history |
 
 ## Migrations

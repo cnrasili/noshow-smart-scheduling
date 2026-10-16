@@ -6,9 +6,15 @@ from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from noshow_db.models.service import Message
-from overbooking_service.config import ReminderSettings
-from overbooking_service.dependencies import get_now, get_reminder_settings, get_session
+from noshow_db.models.service import AbAssignment, Message
+from overbooking_service.ab import Group, assign_group
+from overbooking_service.config import AbTestSettings, ReminderSettings
+from overbooking_service.dependencies import (
+    get_ab_settings,
+    get_now,
+    get_reminder_settings,
+    get_session,
+)
 from overbooking_service.messages import Kind, Status, render
 from overbooking_service.schemas import (
     AppointmentBooked,
@@ -21,11 +27,18 @@ from overbooking_service.schemas import (
 router = APIRouter(prefix="/events")
 
 
-def _scheduled(messages: list[Message]) -> ScheduledMessages:
+def _scheduled(messages: list[Message], ab_group: str | None) -> ScheduledMessages:
     return ScheduledMessages(
         messages=[
             ScheduledMessage(kind=m.kind, send_at=m.send_at, status=m.status) for m in messages
-        ]
+        ],
+        ab_group=ab_group,
+    )
+
+
+def _existing_group(session: Session, appointment_id: int) -> str | None:
+    return session.scalar(
+        select(AbAssignment.group).where(AbAssignment.appointment_id == appointment_id)
     )
 
 
@@ -41,6 +54,7 @@ def _existing(session: Session, appointment_id: int) -> list[Message]:
 def appointment_booked(
     body: AppointmentBooked,
     reminders: Annotated[ReminderSettings, Depends(get_reminder_settings)],
+    ab_test: Annotated[AbTestSettings, Depends(get_ab_settings)],
     now: Annotated[datetime, Depends(get_now)],
     session: Annotated[Session, Depends(get_session)],
 ) -> ScheduledMessages:
@@ -50,13 +64,23 @@ def appointment_booked(
     # Repeated events do not create duplicate messages
     existing = _existing(session, body.appointment_id)
     if existing:
-        return _scheduled(existing)
+        return _scheduled(existing, _existing_group(session, body.appointment_id))
 
     start = body.appointment_start.astimezone(UTC)
     send_times = {Kind.CONFIRMATION: now}
     reminder_at = start - timedelta(hours=reminders.hours_before)
+    group = None
     if reminder_at > now:
-        send_times[Kind.REMINDER] = reminder_at
+        # Only appointments that can get a reminder take part in the A/B test
+        if ab_test.enabled:
+            group = assign_group(body.patient_id, ab_test.salt)
+            session.add(
+                AbAssignment(
+                    appointment_id=body.appointment_id, patient_id=body.patient_id, group=group
+                )
+            )
+        if group != Group.CONTROL:
+            send_times[Kind.REMINDER] = reminder_at
 
     messages = []
     for kind, send_at in send_times.items():
@@ -82,8 +106,10 @@ def appointment_booked(
     except IntegrityError:
         # A concurrent event created the messages first
         session.rollback()
-        return _scheduled(_existing(session, body.appointment_id))
-    return _scheduled(messages)
+        return _scheduled(
+            _existing(session, body.appointment_id), _existing_group(session, body.appointment_id)
+        )
+    return _scheduled(messages, group)
 
 
 @router.post("/appointment-cancelled")

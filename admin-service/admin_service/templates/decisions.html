@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block title %}Model kararları{% endblock %}
+{% block content %}
+{% macro risk(decision) %}
+<meter min="0" max="1" low="{{ decision.threshold }}" high="{{ decision.threshold }}" optimum="0" value="{{ decision.p_noshow }}"></meter>
+{{ decision.p_noshow | percent }}
+{% endmacro %}
+<header>
+  <h1>Model kararları</h1>
+  <form method="get" action="{{ url_for('decisions_page') }}">
+    <label>
+      Hekim
+      <select name="doctor_id">
+        {% for doctor in doctors %}
+        <option value="{{ doctor.id }}" {% if selected and doctor.id == selected.id %}selected{% endif %}>
+          {{ doctor.full_name }}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      Tarih
+      <input type="date" name="date" value="{{ day.isoformat() }}" />
+    </label>
+    <button type="submit">Göster</button>
+  </form>
+</header>
+
+<p class="muted">
+  Randevu karar servisi her randevu talebinde hastanın gelmeme riskini tahmin eder. Dolu bir saate ek randevu, yalnızca
+  o saatteki hastanın riski eşiğin üstündeyse verilir. Sonuçlar hekimin geliş kayıtlarından gelir.
+</p>
+
+{% if not selected %}
+<p class="empty">Henüz hekim kaydı yok.</p>
+{% else %}
+<section aria-label="{{ day | long_date }} kararları">
+  <h2>{{ selected.full_name }} · {{ day | long_date }}</h2>
+  {% if slots %}
+  <table class="decisions">
+    <thead>
+      <tr>
+        <th scope="col">Saat</th>
+        <th scope="col">Hasta</th>
+        <th scope="col">Tahmini gelmeme riski</th>
+        <th scope="col">Karar</th>
+        <th scope="col">Sonuç</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for slot in slots %}
+      {% set hours = slot.start.strftime('%H:%M') ~ '–' ~ slot.end.strftime('%H:%M') %}
+      {% if not slot.bookings and not slot.refusals %}
+      <tr>
+        <td>{{ hours }}</td>
+        <td colspan="4" class="muted">Boş</td>
+      </tr>
+      {% endif %}
+      {% for booking in slot.bookings %}
+      {% set kind = decision_kind(booking.decision) if booking.decision else 'unknown' %}
+      <tr>
+        <td>{{ hours }}</td>
+        <td>{{ booking.patient }}</td>
+        <td>{% if booking.decision %}{{ risk(booking.decision) }}{% else %}<span class="muted">–</span>{% endif %}</td>
+        <td>
+          <span class="badge {{ kind }}">{{ decision_kinds[kind] }}</span>
+          {% if kind == 'extra' %}
+          <small class="muted">Saatteki hastanın riski {{ booking.decision.booked_p_noshow | percent }}, eşik {{ booking.decision.threshold | percent }}</small>
+          {% endif %}
+        </td>
+        <td><span class="outcome {{ booking.outcome }}">{{ outcomes[booking.outcome] }}</span></td>
+      </tr>
+      {% endfor %}
+      {% for patient, decision in slot.refusals %}
+      {% set reason = decision_kind(decision) %}
+      <tr class="refused">
+        <td>{{ hours }}</td>
+        <td>{{ patient }}</td>
+        <td>{{ risk(decision) }}</td>
+        <td>
+          <span class="badge refused">Reddedildi</span>
+          <small class="muted">
+            {{ refusals[reason] }}{% if reason == 'low_risk' and decision.booked_p_noshow is not none %}: {{ decision.booked_p_noshow | percent }}, eşik {{ decision.threshold | percent }}{% endif %}
+          </small>
+        </td>
+        <td class="muted">–</td>
+      </tr>
+      {% endfor %}
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">Bu tarihte slot yok.</p>
+  {% endif %}
+</section>
+{% endif %}
+
+<section aria-label="Son {{ period_days }} gün">
+  <h2>Son {{ period_days }} gün · tüm hekimler</h2>
+  <p class="muted">{{ first_day.strftime('%d.%m.%Y') }} – {{ day.strftime('%d.%m.%Y') }} arasındaki saatler için verilen kararlar.</p>
+  {% if requests %}
+  <div class="tiles">
+    <div class="tile"><span>Randevu talebi</span><strong>{{ requests }}</strong></div>
+    <div class="tile"><span>Normal randevu</span><strong>{{ kinds['normal'] }}</strong></div>
+    <div class="tile"><span>Ek randevu verildi</span><strong>{{ kinds['extra'] }}</strong></div>
+    <div class="tile"><span>Reddedilen talep</span><strong>{{ refused }}</strong></div>
+  </div>
+  {% if refused %}
+  <ul class="reasons">
+    {% for reason, text in refusals.items() if kinds[reason] %}
+    <li>{{ text }}: {{ kinds[reason] }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  <p class="muted">Eşik {{ latest.threshold | percent }} · model sürümü {{ latest.model_version }}</p>
+  {% else %}
+  <p class="empty">Bu dönemde karar kaydı yok.</p>
+  {% endif %}
+</section>
+
+<section aria-label="Tahmini risk ve gerçekleşen gelmeme">
+  <h2>Tahmini risk ve gerçekleşen gelmeme</h2>
+  {% if marked %}
+  <div class="chart">
+    <canvas id="risk-chart" role="img" aria-label="Tahmini risk aralıklarına göre gerçekleşen gelmeme oranı ve ortalama tahmin"></canvas>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Tahmini risk</th>
+        <th scope="col">Geliş kaydı olan randevu</th>
+        <th scope="col">Gelmeyen</th>
+        <th scope="col">Gerçekleşen gelmeme</th>
+        <th scope="col">Ortalama tahmin</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for band in bands if band.appointments %}
+      <tr>
+        <td>{{ band.label }}</td>
+        <td>{{ band.appointments }}</td>
+        <td>{{ band.no_shows }}</td>
+        <td>{{ band.rate | percent }}</td>
+        <td>{{ band.predicted | percent }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted">
+    Model isabetliyse yüksek riskli aralıklarda gerçekleşen gelmeme oranı da yüksek çıkar ve ortalama tahmine yakın olur.
+  </p>
+  {% else %}
+  <p class="empty">Bu dönemde geliş kaydı girilmiş randevu yok.</p>
+  {% endif %}
+</section>
+
+<section aria-label="Ek randevuların sonucu">
+  <h2>Ek randevuların sonucu</h2>
+  {% if extras %}
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Sonuç</th>
+        <th scope="col">Ek randevulu saat</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for outcome, text in extra_outcomes.items() %}
+      <tr>
+        <td>{{ text }}</td>
+        <td>{{ extras[outcome] }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">Bu dönemde ek randevu yok.</p>
+  {% endif %}
+</section>
+
+<footer>
+  Riskler ve kararlar randevu karar servisinin karar kaydından okunur; risk, randevu alındığı andaki tahmindir.
+</footer>
+{% endblock %}
+
+{% block scripts %}
+{% if marked %}
+<script type="application/json" id="risk-data">{{ chart | tojson }}</script>
+<script src="{{ url_for('static', path='chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', path='decisions.js') }}"></script>
+{% endif %}
+{% endblock %}

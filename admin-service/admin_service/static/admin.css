@@ -1,0 +1,315 @@
+/* Admin service pages */
+:root {
+  --bg: #f7f7f5;
+  --surface: #ffffff;
+  --ink: #1f2328;
+  --muted: #6b7075;
+  --line: #e2e2de;
+  --accent: #2f6fdb;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #17191c;
+    --surface: #202327;
+    --ink: #e8e9ea;
+    --muted: #9aa0a6;
+    --line: #33373c;
+    --accent: #6d9cf0;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font:
+    15px/1.5 system-ui,
+    sans-serif;
+}
+
+main {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+
+header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+h2 {
+  margin: 32px 0 12px;
+  font-size: 1.1rem;
+}
+
+form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+}
+
+label {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+select,
+input,
+button {
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+
+button {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.tile {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.tile span {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.tile strong {
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart {
+  position: relative;
+  height: 280px;
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+  font-variant-numeric: tabular-nums;
+}
+
+th,
+td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: right;
+}
+
+th:first-child,
+td:first-child {
+  text-align: left;
+}
+
+th {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+section {
+  overflow-x: auto;
+}
+
+.empty,
+.muted,
+footer {
+  color: var(--muted);
+}
+
+footer {
+  margin-top: 32px;
+  font-size: 0.85rem;
+}
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+nav a {
+  color: var(--accent);
+}
+
+nav form {
+  margin-left: auto;
+  align-items: center;
+}
+
+button.secondary {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+.login {
+  max-width: 360px;
+  margin: 48px auto;
+}
+
+.stack {
+  display: grid;
+  gap: 12px;
+}
+
+.error {
+  padding: 10px 12px;
+  border: 1px solid #d9534f;
+  border-radius: 6px;
+  color: #d9534f;
+}
+
+.form-page {
+  max-width: 560px;
+}
+
+fieldset {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+legend {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+label.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  font-size: 1rem;
+}
+
+table.hours th,
+table.hours td {
+  padding: 4px 8px;
+  text-align: left;
+}
+
+.credentials {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 16px;
+}
+
+.credentials dt {
+  color: var(--muted);
+}
+
+.credentials dd {
+  margin: 0;
+}
+
+code {
+  font-size: 1.1rem;
+  user-select: all;
+}
+
+table.decisions th,
+table.decisions td {
+  text-align: left;
+  vertical-align: top;
+}
+
+table.decisions small {
+  display: block;
+}
+
+meter {
+  width: 88px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
+.badge.extra {
+  border-color: #e8a25c;
+  background: rgb(232 162 92 / 18%);
+}
+
+.badge.refused {
+  border-color: #d9534f;
+  background: rgb(217 83 79 / 15%);
+}
+
+.outcome.came {
+  color: #2f9e6e;
+}
+
+.outcome.missed {
+  color: #d9534f;
+}
+
+.outcome.unmarked,
+.outcome.upcoming {
+  color: var(--muted);
+}
+
+tr.refused td {
+  background: rgb(217 83 79 / 6%);
+}
+
+.reasons {
+  margin: 0 0 8px;
+  padding-left: 20px;
+}

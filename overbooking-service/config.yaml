@@ -1,7 +1,10 @@
+# Time zone of slot dates; matches the booking database triggers
+clinic_timezone: Europe/Istanbul
+
 # Overbooking rule defaults; final values come from the simulation study
+# Slot capacity is each slot's max_patients in the booking database
 overbooking:
   threshold: 0.30
-  max_patients_per_slot: 2
   daily_overbook_limit: 2
 
 # Confirmation and reminder messages
@@ -10,3 +13,15 @@ reminders:
   hours_before: 24
   dispatch_interval_seconds: 60
   max_attempts: 3
+
+# Reminder A/B test; control group patients get no reminder
+# Changing the salt reassigns patients, so it stays fixed during the study
+ab_test:
+  enabled: true
+  salt: reminder-ab-v1
+
+# Schedule KPIs; consultation length matches the simulation's mean service time
+kpi:
+  service_minutes: 12
+  # slots: first slot start to last slot end; schedule: the doctor's working hours
+  session: slots

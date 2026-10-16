@@ -5,8 +5,9 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-noshow}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-noshow}
       POSTGRES_DB: ${POSTGRES_DB:-noshow}
+    # Internal services are published on the loopback interface only
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
@@ -28,8 +29,8 @@ services:
   mailpit:
     image: axllent/mailpit
     ports:
-      - "${MAILPIT_UI_PORT:-8025}:8025"
-      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"
+      - "127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025"
 
   web-backend:
     build:
@@ -39,6 +40,10 @@ services:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-noshow}:${POSTGRES_PASSWORD:-noshow}@db:5432/${POSTGRES_DB:-noshow}
       OVERBOOKING_SERVICE_URL: http://overbooking-service:8001
       FRONTEND_ORIGIN: http://localhost:${WEB_FRONTEND_PORT:-5173}
+      # Internal account API for the admin service; disabled while empty
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-}
+      # Length of newly generated slots in minutes; 20 while empty
+      SLOT_MINUTES: ${SLOT_MINUTES:-}
       WATCHFILES_FORCE_POLLING: "true"
     ports:
       - "${WEB_BACKEND_PORT:-8000}:8000"
@@ -69,12 +74,36 @@ services:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-noshow}:${POSTGRES_PASSWORD:-noshow}@db:5432/${POSTGRES_DB:-noshow}
       SMTP_HOST: mailpit
       SMTP_PORT: 1025
-      MAIL_FROM: ${MAIL_FROM:-clinic@noshow.local}
+      MAIL_FROM: ${MAIL_FROM:-randevu@sehirhastanesi.example}
       WATCHFILES_FORCE_POLLING: "true"
+    # Reached by the web backend and the admin service over the Docker network
     ports:
-      - "${OVERBOOKING_SERVICE_PORT:-8001}:8001"
+      - "127.0.0.1:${OVERBOOKING_SERVICE_PORT:-8001}:8001"
     volumes:
       - ./overbooking-service/overbooking_service:/app/overbooking-service/overbooking_service
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  admin-service:
+    build:
+      context: .
+      dockerfile: admin-service/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-noshow}:${POSTGRES_PASSWORD:-noshow}@db:5432/${POSTGRES_DB:-noshow}
+      ADMIN_OVERBOOKING_SERVICE_URL: http://overbooking-service:8001
+      # Account management through the web backend's internal account API
+      ADMIN_WEB_BACKEND_URL: http://web-backend:8000
+      ADMIN_INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-}
+      # Requests from the host arrive from the Docker network gateway (Windows, Linux)
+      # or from Docker Desktop's VM network on Mac
+      ADMIN_ALLOWED_NETWORKS: ${ADMIN_ALLOWED_NETWORKS:-127.0.0.0/8,::1/128,172.16.0.0/12,192.168.65.0/24}
+      WATCHFILES_FORCE_POLLING: "true"
+    # Published on the loopback interface only: other machines cannot reach the admin service
+    ports:
+      - "127.0.0.1:${ADMIN_SERVICE_PORT:-8002}:8002"
+    volumes:
+      - ./admin-service/admin_service:/app/admin-service/admin_service
     depends_on:
       migrate:
         condition: service_completed_successfully
