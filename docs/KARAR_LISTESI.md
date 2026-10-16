@@ -65,7 +65,7 @@ Bu komut: seçilen modelin 27 günlük tahminlerini üretir, modeli servisin kab
 
 **7. Hangi kural teslim edilecek?** *Karar: yalnızca eşik kuralı.* Maliyet bazlı ve havayolu kuralı raporda karşılaştırma olarak kalır.
 
-**8. Modelin servise teslimi?** *Karar:* model `IEN` dalında `ml/models/` altındadır; CEN o dalı (birleştirildikten sonra `main`'i) çeker; servis `python -m overbooking_service.install_model` ile kurar.
+**8. Modelin servise teslimi?** *Karar:* model `IEN` dalında `ml/models/` altındadır; CEN o dalı (birleştirildikten sonra `main`'i) çeker. Modeller servisin kullandığı scikit-learn 1.9.1 ile eğitildi (`feature_schema.json` içinde yazar); aynı koşulda test AUC'si 1.2.2 ile aynı çıktı (0,729 ve 0,720). Yeniden eğitmek için: `python ml/apply_decisions.py --model-only`; servis `python -m overbooking_service.install_model` ile kurar.
 
 **9. Canlıda modelin güncel kalması?** *Karar:* CEN2 modele API ile bağlanarak çözer; IEN tarafında ek iş yok.
 

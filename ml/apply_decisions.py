@@ -13,6 +13,7 @@ Change a decision -> edit docs/decisions.json and docs/KARAR_LISTESI.md -> run t
     python ml/apply_decisions.py                 # everything
     python ml/apply_decisions.py --skip-model    # only results and the table
     python ml/apply_decisions.py --table-only    # only the decision table
+    python ml/apply_decisions.py --model-only    # only fit and export the models (no results)
 """
 
 from __future__ import annotations
@@ -111,6 +112,9 @@ def update_table(d: dict) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     ap.add_argument("--skip-model", action="store_true", help="do not retrain or export the model")
+    ap.add_argument(
+        "--model-only", action="store_true", help="only fit and export the models, no results"
+    )
     ap.add_argument("--table-only", action="store_true", help="only refresh the decision table")
     ap.add_argument("--decisions", type=Path, default=DECISIONS)
     args = ap.parse_args()
@@ -126,10 +130,11 @@ def main() -> int:
     params = d["model_params"][kind]
 
     if not args.skip_model:
-        df, _, _, _ = load()
-        risks = cv_risks(df, kind, params)
-        risks.to_csv(RISKS, index=False)
-        print(f"{NAMES[kind]}: out-of-sample AUC {roc_auc_score(risks['y'], risks['p']):.3f}")
+        if not args.model_only:
+            df, _, _, _ = load()
+            risks = cv_risks(df, kind, params)
+            risks.to_csv(RISKS, index=False)
+            print(f"{NAMES[kind]}: out-of-sample AUC {roc_auc_score(risks['y'], risks['p']):.3f}")
         version = export_and_check(kind, params, d["model_version"], MODELS_DIR)
         print(f"Service acceptance checks passed; wrote {MODELS_DIR} ({version})")
         for other in DEFAULT_PARAMS:  # the other candidate, so the team can switch without rework
@@ -137,6 +142,8 @@ def main() -> int:
                 folder = MODELS_DIR / "candidates" / other
                 export_and_check(other, d["model_params"][other], d["model_version"], folder)
                 print(f"Candidate {NAMES[other]} written to {folder}")
+        if args.model_only:
+            return 0
     elif not RISKS.exists():
         print("No risks file yet; run without --skip-model first")
         return 1
