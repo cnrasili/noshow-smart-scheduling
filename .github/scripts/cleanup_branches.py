@@ -1,8 +1,8 @@
 """Delete outdated branches: each person keeps only their most recently updated branches.
 
 Owner of a branch is the GitHub user (or email) of its latest commit. An owner keeps one
-branch, or as many as BRANCH_LIMITS allows them ("login=3,other=2"). Branches in KEEP and
-branches of EXEMPT_LOGINS are never touched. Unmerged work is saved as an archive tag first.
+branch, or as many as LIMITS allows them. Branches in KEEP and branches of EXEMPT_LOGINS are
+never touched. Unmerged work is saved as an archive tag first.
 """
 
 import json
@@ -14,6 +14,9 @@ from datetime import UTC, datetime
 
 API = "https://api.github.com"
 KEEP = {"main"}
+# Branches allowed per owner beyond the default of one. Kept here rather than in the workflow,
+# because a run started by a new branch reads the workflow file of that branch.
+LIMITS = {"hazarikizler": 3}
 
 
 @dataclass(frozen=True)
@@ -57,17 +60,6 @@ def list_branches(repo: str) -> list[Branch]:
         page += 1
 
 
-def parse_limits(value: str) -> dict[str, int]:
-    """Branches allowed per owner, from "login=3,other=2"; at least one each."""
-    limits = {}
-    for item in filter(None, (part.strip() for part in value.split(","))):
-        owner, count = (part.strip() for part in item.split("="))
-        if int(count) < 1:
-            raise ValueError(f"Branch limit of {owner} must be at least 1")
-        limits[owner] = int(count)
-    return limits
-
-
 def select_outdated(
     branches: list[Branch], exempt: set[str], limits: dict[str, int]
 ) -> list[Branch]:
@@ -92,13 +84,13 @@ def main() -> None:
     repo = os.environ["GITHUB_REPOSITORY"]
     dry_run = os.getenv("DRY_RUN", "false").lower() == "true"
     exempt = {login for login in os.getenv("EXEMPT_LOGINS", "").split(",") if login}
-    limits = parse_limits(os.getenv("BRANCH_LIMITS", ""))
+    print(f"Owners with more than one branch: {LIMITS}")
 
     branches = list_branches(repo)
     for branch in sorted(branches, key=lambda b: (b.owner, b.updated)):
         print(f"{branch.owner:24} {branch.updated:%Y-%m-%d %H:%M}  {branch.name}")
 
-    outdated = select_outdated(branches, exempt, limits)
+    outdated = select_outdated(branches, exempt, LIMITS)
     if not outdated:
         print("No outdated branches.")
         return

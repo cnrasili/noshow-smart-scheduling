@@ -236,7 +236,7 @@ Components depend on each other through the files below. Changes to them are agr
 ## Workflow
 
 - `main` always contains working code and only the maintainer updates it: teammates' changes come through reviewed pull requests; the maintainer's own changes are pushed directly after the checks pass locally.
-- Each contributor works on one branch and keeps it up to date with `main` (`git merge origin/main`); `hazarikizler` may keep three (`BRANCH_LIMITS` in the `Branch cleanup` workflow). Older branches beyond that number are removed automatically by the `Branch cleanup` workflow; unmerged work is kept as an `archive/...` tag.
+- Each contributor works on one branch and keeps it up to date with `main` (`git merge origin/main`); `hazarikizler` may keep three (`LIMITS` in [`.github/scripts/cleanup_branches.py`](.github/scripts/cleanup_branches.py)). Older branches beyond that number are removed automatically by the `Branch cleanup` workflow; unmerged work is kept as an `archive/...` tag.
 - Pull requests reference the issue they solve (`Closes #<number>`); open work is tracked in [GitHub Issues](https://github.com/cnrasili/noshow-smart-scheduling/issues).
 - Each issue has one assignee and covers one component; its Scope section lists the files it may change. Work needed in another component is requested in a comment, not made in the same pull request.
 - Commit messages are one line in the form `type: Imperative short message`, for example `feat: Add prediction endpoint` or `fix: Correct lead time calculation`.
