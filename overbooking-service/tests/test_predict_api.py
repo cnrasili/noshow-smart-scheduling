@@ -14,7 +14,7 @@ def test_returns_probability_and_version(client: TestClient):
     assert response.status_code == 200
     data = response.json()
     assert 0 <= data["p_noshow"] <= 1
-    assert data["model_version"] == "dummy-v0"
+    assert data["model_version"] == app.state.predictor.version
 
 
 def test_prediction_is_logged(client: TestClient, session_factory: sessionmaker[Session]):
@@ -22,7 +22,7 @@ def test_prediction_is_logged(client: TestClient, session_factory: sessionmaker[
     with session_factory() as session:
         logged = session.scalars(select(Prediction)).one()
     assert logged.patient_id == 1
-    assert logged.model_version == "dummy-v0"
+    assert logged.model_version == app.state.predictor.version
     assert logged.features["prior_noshow_count"] == 1
 
 
