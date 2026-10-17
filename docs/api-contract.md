@@ -24,7 +24,7 @@ All services use one PostgreSQL database with a single Alembic history in [`db/`
 
 ### Attendance
 
-Attendance is not reported by an event. The doctor marks an appointment as attended or missed in the web application, and the web backend stores it in `appointments.attended` (`NULL` until marked). The overbooking service reads this column directly:
+Attendance is not reported by an event. The department's staff mark an appointment as attended or missed in the web application, and the web backend stores it in `appointments.attended` (`NULL` until marked). The overbooking service reads this column directly:
 
 - patient history for the model features (`prior_appt_count`, `prior_noshow_count`), counting the appointments with a recorded outcome and the patient's past appointments in `dataset_appointments`, both only before the booking date,
 - the no-show rates of `GET /ab/summary`,
@@ -114,7 +114,7 @@ Rule (`max_patients` is the slot's capacity in the `slots` table; other paramete
 | Patient already booked in the slot | Reject |
 | Patients in slot >= `max_patients` | Reject |
 | Any booked patient's `p_noshow` < `threshold` | Reject |
-| Overbooks of the doctor on the slot date >= `daily_overbook_limit` | Reject |
+| Overbooks of the department on the slot date >= `daily_overbook_limit` | Reject |
 | Otherwise | Allow as overbook |
 
 Errors:
@@ -222,9 +222,9 @@ Response:
 
 ## `GET /kpi`
 
-Returns schedule KPIs for a doctor and a date. Read by the admin service's KPI screen. Definitions are in [KPI definitions](kpi-definitions.md). The date is a clinic calendar day.
+Returns the department's schedule KPIs for a date. Read by the admin service's KPI screen. Definitions are in [KPI definitions](kpi-definitions.md). The date is a clinic calendar day.
 
-Request: `GET /kpi?doctor_id=1&date=2026-11-10`
+Request: `GET /kpi?date=2026-11-10`
 
 Response:
 
@@ -239,13 +239,13 @@ Response:
 }
 ```
 
-The session runs from the doctor's first slot start to the last slot end on that date, or over the doctor's working hours of the weekday when the overbooking service's `kpi.session` setting is `schedule` (days without working hours fall back to the slots). Patients with `attended = true` are seen in slot order, each for a fixed consultation length, and are assumed to arrive on time; consultation start and end times are not recorded.
+The session runs from the department's first slot start to the last slot end on that date, or over the department's working hours of the weekday when the overbooking service's `kpi.session` setting is `schedule` (days without working hours fall back to the slots). Patients with `attended = true` are seen in slot order, each for a fixed consultation length, and are assumed to arrive on time; consultation start and end times are not recorded.
 
 Errors:
 
 | Status | Reason |
 |---|---|
-| 404 | Doctor not found, or the doctor has no slots on the date |
+| 404 | No slots on the date |
 | 422 | Invalid request |
 
 ## Internal account API (web backend)

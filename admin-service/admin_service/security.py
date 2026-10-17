@@ -9,7 +9,7 @@ _SCRYPT_R = 8
 _SCRYPT_P = 1
 _KEY_LENGTH = 64
 MIN_PASSWORD_LENGTH = 12
-# Letters and digits without look-alikes, for passwords read out to patients and doctors
+# Letters and digits without look-alikes, for passwords read out to patients and staff
 _PASSWORD_ALPHABET = "".join(c for c in string.ascii_letters + string.digits if c not in "0O1lI")
 
 
@@ -55,5 +55,5 @@ def csrf_token(session_token: str) -> str:
 
 
 def generate_password(length: int = 14) -> str:
-    """Random initial password for a patient or doctor account."""
+    """Random initial password for a patient or department account."""
     return "".join(secrets.choice(_PASSWORD_ALPHABET) for _ in range(length))

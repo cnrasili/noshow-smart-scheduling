@@ -30,5 +30,5 @@ ab_test:
 # Schedule KPIs; consultation length matches the simulation's mean service time
 kpi:
   service_minutes: 7.5
-  # slots: first slot start to last slot end; schedule: the doctor's working hours
+  # slots: first slot start to last slot end; schedule: the department's working hours
   session: slots

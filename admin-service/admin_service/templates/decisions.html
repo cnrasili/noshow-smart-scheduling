@@ -9,16 +9,6 @@
   <h1>Model kararları</h1>
   <form method="get" action="{{ url_for('decisions_page') }}">
     <label>
-      Hekim
-      <select name="doctor_id">
-        {% for doctor in doctors %}
-        <option value="{{ doctor.id }}" {% if selected and doctor.id == selected.id %}selected{% endif %}>
-          {{ doctor.full_name }}
-        </option>
-        {% endfor %}
-      </select>
-    </label>
-    <label>
       Tarih
       <input type="date" name="date" value="{{ day.isoformat() }}" />
     </label>
@@ -28,14 +18,11 @@
 
 <p class="muted">
   Randevu karar servisi her randevu talebinde hastanın gelmeme riskini tahmin eder. Dolu bir saate ek randevu, yalnızca
-  o saatteki hastanın riski eşiğin üstündeyse verilir. Sonuçlar hekimin geliş kayıtlarından gelir.
+  o saatteki hastanın riski eşiğin üstündeyse verilir. Sonuçlar bölümün geliş kayıtlarından gelir.
 </p>
 
-{% if not selected %}
-<p class="empty">Henüz hekim kaydı yok.</p>
-{% else %}
 <section aria-label="{{ day | long_date }} kararları">
-  <h2>{{ selected.full_name }} · {{ day | long_date }}</h2>
+  <h2>{{ department_name }} · {{ day | long_date }}</h2>
   {% if slots %}
   <table class="decisions">
     <thead>
@@ -93,10 +80,9 @@
   <p class="empty">Bu tarihte slot yok.</p>
   {% endif %}
 </section>
-{% endif %}
 
 <section aria-label="Son {{ period_days }} gün">
-  <h2>Son {{ period_days }} gün · tüm hekimler</h2>
+  <h2>Son {{ period_days }} gün</h2>
   <p class="muted">{{ first_day.strftime('%d.%m.%Y') }} – {{ day.strftime('%d.%m.%Y') }} arasındaki saatler için verilen kararlar.</p>
   {% if requests %}
   <div class="tiles">

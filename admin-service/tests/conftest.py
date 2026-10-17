@@ -35,13 +35,13 @@ class FakeOverbooking:
     """KPIs and A/B summary of the overbooking service, kept in memory."""
 
     def __init__(self) -> None:
-        self.kpis: dict[tuple[int, date], dict] = {}
+        self.kpis: dict[date, dict] = {}
         self.available = True
 
-    def kpi(self, doctor_id: int, day: date) -> dict | None:
+    def kpi(self, day: date) -> dict | None:
         if not self.available:
             raise OverbookingUnavailable("down")
-        return self.kpis.get((doctor_id, day))
+        return self.kpis.get(day)
 
     def ab_summary(self, unit: str = "appointment") -> dict:
         if not self.available:
@@ -75,25 +75,14 @@ class FakeAccounts:
             raise AccountRejected(self.reject)
         self.next_id += 1
 
-    def create_patient(self, patient: dict) -> dict:
-        self._answer("patient", patient)
+    def open_patient_account(self, patient_number: str, password: str) -> dict:
+        self._answer("patient", {"patient_number": patient_number, "password": password})
         return {
             "account_id": self.next_id,
             "patient_id": self.next_id + 1000,
-            "national_id": patient["national_id"],
-            "full_name": patient["full_name"],
-            "email": patient["email"],
-        }
-
-    def create_doctor(self, doctor: dict) -> dict:
-        self._answer("doctor", doctor)
-        return {
-            "account_id": self.next_id,
-            "doctor_id": self.next_id + 1000,
-            "full_name": doctor["full_name"],
-            "specialty": doctor["specialty"],
-            "email": doctor["email"],
-            "slots_created": 18,
+            "patient_number": patient_number,
+            "full_name": f"Hasta {patient_number}",
+            "email": f"{patient_number}@hasta.sehirhastanesi.example",
         }
 
     def reset_password(self, account_id: int, password: str) -> None:
@@ -117,7 +106,8 @@ def session_factory() -> sessionmaker[Session]:
     factory = sessionmaker(bind=engine)
     with factory() as session:
         create_admin(session, EMAIL, PASSWORD)
-        session.add_all([Doctor(full_name="Dr. Ada"), Doctor(full_name="Dr. Bora")])
+        # The department's schedule is its one record in doctors
+        session.add(Doctor(full_name="General Practice"))
         session.commit()
     return factory
 

@@ -14,12 +14,13 @@ KPIS = {
 }
 
 
-def test_kpi_page_shows_selected_doctor_and_day(client: TestClient, log_in, overbooking):
-    overbooking.kpis[(1, date(2026, 11, 10))] = KPIS
-    overbooking.kpis[(1, date(2026, 11, 9))] = {**KPIS, "utilization": 0.5}
+def test_kpi_page_shows_the_department_on_the_selected_day(client: TestClient, log_in, overbooking):
+    overbooking.kpis[date(2026, 11, 10)] = KPIS
+    overbooking.kpis[date(2026, 11, 9)] = {**KPIS, "utilization": 0.5}
     log_in()
-    html = client.get("/kpi", params={"doctor_id": 1, "date": "2026-11-10"}).text
-    assert "Dr. Ada · 10 Kasım 2026 Salı" in html
+    html = client.get("/kpi", params={"date": "2026-11-10"}).text
+    assert "Aile Hekimliği · 10 Kasım 2026 Salı" in html
+    assert 'name="doctor_id"' not in html
     assert "%60,0" in html
     assert "24 dk" in html and "3,5 dk" in html
     data = json.loads(re.search(r'id="kpi-data">(.*?)</script>', html).group(1))
@@ -27,12 +28,12 @@ def test_kpi_page_shows_selected_doctor_and_day(client: TestClient, log_in, over
     assert data[-1] == {"date": "10.11", "utilization": 60.0, "idle": 24.0, "overtime": 0.0}
 
 
-def test_kpi_page_defaults_to_first_doctor_and_today(client: TestClient, log_in, clock):
+def test_kpi_page_defaults_to_today(client: TestClient, log_in, clock):
     # 22:00 UTC is already 11 November in the clinic
     clock.now = datetime(2026, 11, 10, 22, 0, tzinfo=UTC)
     log_in()
     html = client.get("/kpi").text
-    assert "Dr. Ada · 11 Kasım 2026 Çarşamba" in html
+    assert "Aile Hekimliği · 11 Kasım 2026 Çarşamba" in html
     assert "Bu tarihte slot yok." in html
 
 
@@ -54,9 +55,9 @@ def test_kpi_page_when_overbooking_service_is_down(client: TestClient, log_in, o
 
 
 def test_kpi_page_needs_no_external_scripts(client: TestClient, log_in, overbooking):
-    overbooking.kpis[(1, date(2026, 11, 10))] = KPIS
+    overbooking.kpis[date(2026, 11, 10)] = KPIS
     log_in()
-    html = client.get("/kpi", params={"doctor_id": 1, "date": "2026-11-10"}).text
+    html = client.get("/kpi", params={"date": "2026-11-10"}).text
     assert re.findall(r'src="(https?://[^"]+)"', html) == [
         "https://admin.test/static/chart.umd.min.js",
         "https://admin.test/static/kpi.js",

@@ -1,6 +1,6 @@
 # Admin Service
 
-Hospital administration screen, separate from the hospital website and the booking system. Administrators log in here to see the schedule KPIs, the reminder A/B test and the demo SMS sent to patients, and to create patient and doctor accounts; patients and doctors cannot register themselves.
+Hospital administration screen, separate from the hospital website and the booking system. Administrators log in here to see the schedule KPIs, the reminder A/B test and the demo SMS sent to patients, to open login accounts for dataset patients and to reset passwords; patients cannot register themselves.
 
 ## Tech Stack
 
@@ -12,7 +12,7 @@ Hospital administration screen, separate from the hospital website and the booki
 
 | Measure | Implementation |
 |---|---|
-| Separate accounts | Administrators are stored in `admin_users`, not in the website's `user_accounts`; patient and doctor accounts cannot log in here. There is no registration page. |
+| Separate accounts | Administrators are stored in `admin_users`, not in the website's `user_accounts`; patient and department accounts cannot log in here. There is no registration page. |
 | Internal network only | Requests from addresses outside `ADMIN_ALLOWED_NETWORKS` get 403 before any page, including the login page. Forwarded headers are ignored, so a client cannot claim an internal address. In Docker Compose the port is published on `127.0.0.1` only. |
 | Passwords | scrypt hashes; at least 12 characters. A wrong password and an unknown email get the same answer. |
 | Sessions | Random token in an HttpOnly, Secure, SameSite=Strict cookie; only its SHA-256 hash is stored. Sessions expire after `ADMIN_SESSION_MINUTES`. |
@@ -31,18 +31,16 @@ A real hospital would also place the admin service behind a VPN or on a separate
 | Path | Content |
 |---|---|
 | `/login` | Administrator login |
-| `/kpi` | Schedule KPIs per doctor and day, the last days as chart and table, and the reminder A/B test |
-| `/decisions` | The model's predicted no-show risks and the booking decisions: a doctor's slots on a day with each patient's risk, the decision and the outcome; for the last 30 days the decisions by kind, the actual no-show rate per predicted risk band, and the outcomes of slots with an extra appointment |
+| `/kpi` | The department's schedule KPIs per day, the last days as chart and table, and the reminder A/B test |
+| `/decisions` | The model's predicted no-show risks and the booking decisions: the department's slots on a day with each patient's risk, the decision and the outcome; for the last 30 days the decisions by kind, the actual no-show rate per predicted risk band, and the outcomes of slots with an extra appointment |
 | `/sms` | SMS inbox: the demo SMS of the overbooking service, newest first, with the patient number, kind, sending time, status and text; searched by patient number |
-| `/patients` | Patients with their dataset patient number, searched by name or patient number; password reset for patients with a login account |
-| `/patients/new` | Create a patient account |
-| `/doctors` | Doctors with department, working hours and password reset |
-| `/doctors/new` | Create a doctor account with weekly working hours; slots are opened for the next two weeks |
+| `/patients` | Patients with their dataset patient number, searched by name or patient number; a login account is opened for a dataset patient from the patient's row, and the password is reset for patients with an account |
+| `/department` | The one department, "Aile Hekimliği": its working hours and the password reset of its staff account. No doctor is named |
 | `/audit` | The latest audit log events |
 
 KPIs and the A/B summary come from the overbooking service (`GET /kpi`, `GET /ab/summary`, see the [API contract](../docs/api-contract.md)); the admin service does not compute them itself. The decisions page reads the overbooking service's decision log (`booking_decisions`) and the appointments from the database, and the SMS inbox reads its `messages` table.
 
-Patient and doctor lists are read from the database. Accounts are created and passwords reset through the web backend's internal account API, which owns the account rules (national ID check, unique email, password hashing); see the [API contract](../docs/api-contract.md#internal-account-api-web-backend).
+The patient list and the department page are read from the database. Accounts are opened and passwords reset through the web backend's internal account API, which owns the account rules (accounts only for dataset patients, one account per patient, unique email, password hashing); see the [API contract](../docs/api-contract.md#internal-account-api-web-backend).
 
 ## Setup
 

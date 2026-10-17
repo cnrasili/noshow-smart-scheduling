@@ -20,6 +20,7 @@ def csrf(request: Request) -> str:
 
 templates.env.globals["csrf"] = csrf
 templates.env.globals["panel_name"] = turkish.PANEL_NAME
+templates.env.globals["department_name"] = turkish.DEPARTMENT_NAME
 templates.env.globals["audit_events"] = turkish.AUDIT_EVENTS
 templates.env.globals["ab_groups"] = turkish.AB_GROUPS
 templates.env.globals["message_kinds"] = turkish.MESSAGE_KINDS

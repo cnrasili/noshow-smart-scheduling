@@ -12,7 +12,7 @@
   </form>
 </header>
 {% if enabled %}
-<p><a href="{{ url_for('new_patient_page') }}">Hasta hesabı aç</a></p>
+<p class="muted">Veri setindeki bir hastaya giriş hesabı, hasta numarasıyla aranıp satırındaki düğmeyle açılır.</p>
 {% else %}
 <p class="error" role="alert">Hesap yönetimi kapalı: INTERNAL_API_TOKEN ayarlanmamış.</p>
 {% endif %}
@@ -43,6 +43,11 @@
           </form>
           {% elif account_id %}
           Var
+          {% elif enabled and patient.patient_number %}
+          <form method="post" action="{{ url_for('open_patient_account', patient_id=patient.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf(request) }}" />
+            <button type="submit">Giriş hesabı aç</button>
+          </form>
           {% else %}
           <span class="muted">Giriş hesabı yok</span>
           {% endif %}

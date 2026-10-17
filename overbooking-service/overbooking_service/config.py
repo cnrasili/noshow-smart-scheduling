@@ -41,11 +41,11 @@ class AbTestSettings(BaseModel):
 
 
 class SessionDefinition(StrEnum):
-    """What counts as a doctor's session for the KPIs."""
+    """What counts as the department's session for the KPIs."""
 
     # First slot start to last slot end of the day
     SLOTS = "slots"
-    # The doctor's working hours of the weekday; days without working hours fall back to SLOTS
+    # The department's working hours of the weekday; days without working hours fall back to SLOTS
     SCHEDULE = "schedule"
 
 
