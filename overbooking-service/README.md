@@ -97,7 +97,7 @@ Rule parameters are read from `config.yaml`. The current values are defaults unt
 | Setting | Default | Meaning |
 |---|---|---|
 | `threshold` | 0.30 | Minimum `p_noshow` of the booked patient for an overbook |
-| `daily_overbook_limit` | 2 | Maximum overbooks per doctor per day |
+| `daily_overbook_limit` | 4 | Maximum overbooks per doctor per day |
 
 Environment variables override the file, for example `OVERBOOKING__THRESHOLD=0.25`. With Docker Compose, rebuild the service after editing `config.yaml`.
 
@@ -168,7 +168,7 @@ The default consultation length is the simulation's mean service time.
 
 | Setting | Default | Meaning |
 |---|---|---|
-| `kpi.service_minutes` | 12 | Consultation length in minutes |
+| `kpi.service_minutes` | 7.5 | Consultation length in minutes |
 | `kpi.session` | `slots` | Session definition: `slots` or `schedule`; the final choice belongs to the session parameters decided with the simulation side |
 
 ## Demo Scenario
