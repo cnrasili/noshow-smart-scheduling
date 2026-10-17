@@ -30,6 +30,13 @@ function hash(str) { let h = 2166136261; for (const c of str) { h ^= c.charCodeA
 // Demo patients (the person using the patient portal can be switched in the demo).
 const PATIENTS = [{ id: 5778201, age: 34 }, { id: 5778202, age: 61 }, { id: 5778203, age: 27 }];
 let CUR = PATIENTS[0].id;
+// Demo bookings are also written to output/web_randevulari.xlsx by simulation/web_designs/serve.py (if running).
+function sendRecord(path, body) {
+  const mark = (ok) => { const u = document.getElementById('xl'); if (u) u.textContent = ok ? ' · Excel kaydı: açık' : ' · Excel kaydı: kapalı (serve.py çalışmıyor)'; };
+  try {
+    fetch('http://127.0.0.1:8765/' + path, { method: 'POST', body: JSON.stringify(body) }).then((r) => mark(r.ok)).catch(() => mark(false));
+  } catch (e) { mark(false); }
+}
 const RISKS = S.slots.flatMap((sl) => sl.patients.map((p) => p.risk));
 // Demo: the model API is not connected, so a new booking gets a risk drawn from the real risk distribution.
 const riskOf = (no) => RISKS[hash(no) % RISKS.length];
@@ -53,9 +60,10 @@ function addBooking(i, k) {
   const no = 'R-' + (5780000 + Math.floor(Math.random() * 9999));
   const bk = { no, pid: CUR, iso: i, time, kind, risk: riskOf(no) };
   BK.push(bk);
+  sendRecord('kayit', { ...bk, who: (window.SESSION || {}).who });
   return bk;
 }
-const cancelBooking = (no) => { const x = BK.findIndex((b) => b.no === no); if (x >= 0) BK.splice(x, 1); };
+const cancelBooking = (no) => { sendRecord('iptal', { no }); const x = BK.findIndex((b) => b.no === no); if (x >= 0) BK.splice(x, 1); };
 const myBookings = () => BK.filter((b) => b.pid === CUR);
 
 // Staff day: patient number, age and (for record days) the real outcome. Record days are read-only.

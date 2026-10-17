@@ -136,12 +136,7 @@ function draw(){document.body.dataset.role=st.role;$('#portal').textContent=PORT
   if($('#rules').dataset.role!==st.role){$('#rules').dataset.role=st.role;$('#rules').innerHTML=st.role==='yonetim'?`<div class="box"><b>Overbooking eşiği</b><div class="big" id="thv"></div><input type="range" id="thr" min="10" max="60" step="1" value="${st.thr}"><div class="note" style="margin-top:6px">Bir slota ikinci hasta, o slottaki hastaların gelmeme riski eşiğin üstündeyse yazılabilir. Yalnızca yönetim görür.</div></div>
    <div class="box"><b>Gün</b>${adayPicker()}<div class="note" style="margin-top:6px">Takvim ve karar ekranları seçilen günün bir muayene odası oturumunu gösterir.</div></div>
    <div class="box"><b>Günlük sınır</b><div class="big" id="limv"></div><input type="range" id="lim" min="0" max="8" step="1" value="${st.lim}"><div class="note" style="margin-top:6px">Departmanın bir günde açabileceği en çok ek randevu.</div></div>`:'';
-   const ad=$('#aday');if(ad)ad.onchange=()=>{setAday(ad.value);st.sel=firstExtra();draw();
-Gate.start({hospital:D.hospital,
-  roleButtons:()=>[...document.querySelectorAll('#who button')].map(el=>({el,role:el.dataset.w})),
-  setUser:(name,role,out)=>{const r=document.querySelector('.ribbon');let u=document.getElementById('usr');if(!u){u=document.createElement('span');u.id='usr';r.appendChild(u);}
-    u.innerHTML='Giriş: <b></b> <button type="button">Çıkış</button>';u.querySelector('b').textContent=name;u.querySelector('button').onclick=out;},
-  enter:role=>{st.role=role;st.v=NAV[role][0][0];st.day=null;st.slot=null;st.confirmed=null;draw();}});};const th=$('#thr');if(th)th.oninput=e=>{st.thr=+e.target.value;draw();};const li=$('#lim');if(li)li.oninput=e=>{st.lim=+e.target.value;draw();};}
+   const ad=$('#aday');if(ad)ad.onchange=()=>{setAday(ad.value);st.sel=firstExtra();draw();};const th=$('#thr');if(th)th.oninput=e=>{st.thr=+e.target.value;draw();};const li=$('#lim');if(li)li.oninput=e=>{st.lim=+e.target.value;draw();};}
   if($('#thv')){$('#thv').textContent='%'+st.thr;$('#limv').textContent=st.lim;}
   $('#main').innerHTML=MAIN[st.role][st.v]();$('#side').innerHTML=side();
   document.querySelectorAll('.nv').forEach(b=>b.onclick=()=>{st.v=b.dataset.v;draw();});
@@ -161,6 +156,6 @@ st.sel=firstExtra();draw();
 Gate.start({hospital:D.hospital,
   roleButtons:()=>[...document.querySelectorAll('#who button')].map(el=>({el,role:el.dataset.w})),
   setUser:(name,role,out)=>{const r=document.querySelector('.ribbon');let u=document.getElementById('usr');if(!u){u=document.createElement('span');u.id='usr';r.appendChild(u);}
-    u.innerHTML='Giriş: <b></b> <button type="button">Çıkış</button>';u.querySelector('b').textContent=name;u.querySelector('button').onclick=out;},
+    u.innerHTML='Giriş: <b></b> <button type="button">Çıkış</button><span id="xl"></span>';u.querySelector('b').textContent=name;u.querySelector('button').onclick=out;},
   enter:role=>{st.role=role;st.v=NAV[role][0][0];st.day=null;st.slot=null;st.confirmed=null;draw();}});
 </script></body></html>
