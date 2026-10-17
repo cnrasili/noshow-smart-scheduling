@@ -24,16 +24,16 @@ class OverbookingClient:
             with urlopen(url, timeout=TIMEOUT_SECONDS) as response:
                 return json.load(response)
         except HTTPError as exc:
-            # 404 means the doctor has no slots on the date
+            # 404 means the department has no slots on the date
             if exc.code == 404:
                 return None
             raise OverbookingUnavailable(f"{path} returned {exc.code}") from exc
         except (URLError, TimeoutError, ValueError) as exc:
             raise OverbookingUnavailable(f"{path} failed: {exc}") from exc
 
-    def kpi(self, doctor_id: int, day: date) -> dict[str, Any] | None:
-        """KPIs of a doctor on a date; None if the doctor has no slots on it."""
-        return self._get("/kpi", {"doctor_id": doctor_id, "date": day.isoformat()})
+    def kpi(self, day: date) -> dict[str, Any] | None:
+        """The department's KPIs on a date; None if it has no slots on it."""
+        return self._get("/kpi", {"date": day.isoformat()})
 
     def ab_summary(self, unit: str = "appointment") -> dict[str, Any]:
         summary = self._get("/ab/summary", {"unit": unit})

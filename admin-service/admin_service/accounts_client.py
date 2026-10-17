@@ -61,8 +61,5 @@ class AccountsClient:
         body = {"patient_number": patient_number, "password": password}
         return self._send("POST", "/patients", body)
 
-    def create_doctor(self, doctor: dict[str, Any]) -> dict[str, Any]:
-        return self._send("POST", "/doctors", doctor)
-
     def reset_password(self, account_id: int, password: str) -> None:
         self._send("PUT", f"/{account_id}/password", {"password": password})

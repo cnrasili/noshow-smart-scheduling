@@ -46,7 +46,7 @@ The project is developed as an interdisciplinary study combining industrial engi
 | **Selective overbooking** | A booked slot accepts an extra patient only when every booked patient is likely to miss the appointment, within the slot capacity and a daily limit. Every decision is logged with its reason. |
 | **Confirmation and reminders** | A confirmation SMS is sent at booking and a reminder SMS before the appointment; cancelled appointments stop their reminders. The SMS are demo messages addressed by the patient number and shown in the admin service; no phone number or e-mail address is used. |
 | **Reminder A/B test** | Patients are split into reminder and control groups; the no-show rates of the groups are compared with a two-proportion z-test. |
-| **Admin service** | Separate administration screen reachable only from the internal network, with its own administrator accounts, login protection and audit log. Creates patient and doctor accounts. Shows utilization, physician idle time, overtime, mean waiting time and overbooked slots per doctor and day, the reminder A/B test and the demo SMS sent to patients. |
+| **Admin service** | Separate administration screen reachable only from the internal network, with its own administrator accounts, login protection and audit log. Opens login accounts for dataset patients. Shows the department's utilization, idle time, overtime, mean waiting time and overbooked slots per day, the reminder A/B test and the demo SMS sent to patients. |
 | **Simulation** | SimPy model of a clinic session that compares fixed-interval booking, overbooking rules and appointment templates on real appointment days. |
 | **Model reports** | Data cleaning, logistic regression and random forest, AUC and calibration reports. |
 

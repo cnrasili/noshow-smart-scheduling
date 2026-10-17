@@ -17,16 +17,6 @@ WITHOUT_ACCOUNT = "93779.52927"
 OUTSIDE = "Mehmet Demir"
 NAMES = [f"Hasta {WITH_ACCOUNT}", f"Hasta {WITHOUT_ACCOUNT}", OUTSIDE]
 
-DOCTOR_FORM = {
-    "full_name": "Dr. Ece Tan",
-    "specialty": "Dahiliye",
-    "email": "ece.tan@demo.local",
-    "start_0": "09:00",
-    "end_0": "12:00",
-    "start_2": "13:00",
-    "end_2": "16:00",
-}
-
 
 def dataset_patient(number: str, age: int) -> Patient:
     return Patient(
@@ -54,9 +44,10 @@ def clinic(session_factory: sessionmaker[Session]) -> None:
                     role="patient",
                     patient_id=with_account.id,
                 ),
+                # The department's staff account and working hours
                 UserAccount(
                     id=8,
-                    email="ada@demo.local",
+                    email="aile.hekimligi",
                     password_hash=hash_password("demo1234"),
                     role="doctor",
                     doctor_id=1,
@@ -93,7 +84,7 @@ def initial_password(html: str) -> str:
     return re.findall(r"<code>([^<]+)</code>", html)[-1]
 
 
-@pytest.mark.parametrize("path", ["/patients", "/doctors", "/doctors/new"])
+@pytest.mark.parametrize("path", ["/patients", "/department"])
 def test_pages_need_login(client: TestClient, path: str):
     assert client.get(path, follow_redirects=False).headers["location"] == "/login"
 
@@ -144,13 +135,20 @@ def test_patient_search_finds_names_with_wildcard_characters(
     assert shown == [name]
 
 
-def test_doctor_list_shows_department_hours_and_account(client: TestClient, log_in):
+def test_department_page_shows_working_hours_and_account(client: TestClient, log_in):
     log_in()
-    html = client.get("/doctors").text
-    assert "Dr. Ada" in html and "Dr. Bora" in html
-    assert "ada@demo.local" in html
-    assert "Pzt 09:00–12:00" in html
+    html = client.get("/department").text
+    assert "Aile Hekimliği" in html
+    assert "Pazartesi" in html and "09:00–12:00" in html
+    assert "aile.hekimligi" in html
     assert html.count("Şifreyi sıfırla") == 1
+    assert "General Practice" not in html
+
+
+@pytest.mark.parametrize("path", ["/doctors", "/doctors/new"])
+def test_doctor_pages_are_gone(client: TestClient, log_in, path: str):
+    log_in()
+    assert client.get(path).status_code == 404
 
 
 def test_open_account_for_a_dataset_patient(client: TestClient, log_in, accounts, session_factory):
@@ -194,36 +192,6 @@ def test_rejected_account_is_shown_and_logged(
     assert audit(session_factory)[-1] == ("account_rejected", "Bu hastanın zaten giriş hesabı var.")
 
 
-def test_create_doctor(client: TestClient, log_in, accounts, session_factory):
-    log_in()
-    response = post(client, "/doctors/new", DOCTOR_FORM)
-    assert response.status_code == 200
-    kind, sent = accounts.requests[0]
-    assert kind == "doctor"
-    assert sent["working_hours"] == [
-        {"weekday": 0, "start_time": "09:00", "end_time": "12:00"},
-        {"weekday": 2, "start_time": "13:00", "end_time": "16:00"},
-    ]
-    assert initial_password(response.text) == sent["password"]
-    assert "18 slot açıldı" in response.text
-    assert audit(session_factory)[-1] == ("doctor_created", "hesap 101, hekim 1101")
-
-
-@pytest.mark.parametrize(
-    ("changes", "message"),
-    [
-        ({"end_2": ""}, "Çarşamba için başlangıç ve bitiş saatini birlikte girin"),
-        ({"start_0": "", "end_0": "", "start_2": "", "end_2": ""}, "En az bir çalışma günü girin"),
-    ],
-)
-def test_doctor_hours_are_checked(client: TestClient, log_in, accounts, changes, message):
-    log_in()
-    response = post(client, "/doctors/new", {**DOCTOR_FORM, **changes})
-    assert response.status_code == 400
-    assert message in response.text
-    assert accounts.requests == []
-
-
 def test_reset_password(client: TestClient, log_in, accounts, session_factory):
     log_in()
     response = post(client, "/accounts/7/password")
@@ -233,6 +201,15 @@ def test_reset_password(client: TestClient, log_in, accounts, session_factory):
     assert initial_password(response.text) == sent["password"]
     assert WITH_ACCOUNT in response.text and "Hasta numarası" in response.text
     assert audit(session_factory)[-1] == ("password_reset", "hesap 7")
+
+
+def test_reset_password_of_the_department_account(client: TestClient, log_in, accounts):
+    log_in()
+    response = post(client, "/accounts/8/password")
+    [(kind, sent)] = accounts.requests
+    assert (kind, sent["account_id"]) == ("reset", 8)
+    assert "Aile Hekimliği" in response.text
+    assert "aile.hekimligi" in response.text and "Giriş adı" in response.text
 
 
 def test_reset_password_of_unknown_account(client: TestClient, log_in, accounts):
@@ -247,6 +224,9 @@ def test_disabled_account_management(client: TestClient, log_in, accounts, sessi
     listing = client.get("/patients").text
     assert "Hesap yönetimi kapalı" in listing
     assert "Giriş hesabı aç" not in listing
+    department = client.get("/department").text
+    assert "Hesap yönetimi kapalı" in department
+    assert "Şifreyi sıfırla" not in department
     response = post(client, account_path(session_factory, f"Hasta {WITHOUT_ACCOUNT}"))
     assert response.status_code == 400
     assert "Hesap yönetimi kapalı" in response.text
