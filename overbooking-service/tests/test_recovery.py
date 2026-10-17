@@ -111,7 +111,6 @@ def test_lost_booking_gets_confirmation_reminder_and_group(session_factory):
         assert (confirmation.kind, utc(confirmation.send_at)) == ("confirmation", NOW)
         assert (reminder.kind, utc(reminder.send_at)) == ("reminder", START - timedelta(hours=24))
         for message in (confirmation, reminder):
-            assert message.email == f"patient{REMINDER_PATIENT}@demo.local"
             assert message.status == "pending"
             assert utc(message.appointment_start) == START
             # The local appointment time, as the booking application sends it
@@ -146,7 +145,6 @@ def test_recovery_matches_the_booked_event(client: TestClient, session_factory):
         json={
             "appointment_id": reported,
             "patient_id": REMINDER_PATIENT,
-            "email": f"patient{REMINDER_PATIENT}@demo.local",
             "appointment_start": START.astimezone(TZ).isoformat(),
         },
     )
@@ -158,7 +156,7 @@ def test_recovery_matches_the_booked_event(client: TestClient, session_factory):
 
         def content(appointment_id: int) -> list[tuple]:
             return [
-                (m.kind, m.email, m.subject, m.body, m.appointment_start, m.send_at, m.status)
+                (m.kind, m.body, m.appointment_start, m.send_at, m.status)
                 for m in messages(session, appointment_id)
             ]
 
@@ -172,14 +170,13 @@ def test_appointments_with_messages_are_left_alone(session_factory):
         booking = AppointmentBooked(
             appointment_id=appointment_id,
             patient_id=REMINDER_PATIENT,
-            email="other@demo.local",
             appointment_start=START,
         )
-        schedule_messages(session, booking, NOW, REMINDERS, AB_TEST)
+        scheduled, _ = schedule_messages(session, booking, NOW, REMINDERS, AB_TEST)
         session.commit()
 
         assert recover(session) == 0
-        assert {m.email for m in messages(session, appointment_id)} == {"other@demo.local"}
+        assert messages(session, appointment_id) == scheduled
 
 
 def test_cancelled_messages_also_count_as_messages(session_factory):
@@ -232,7 +229,6 @@ def test_booked_event_after_recovery_creates_no_duplicates(client: TestClient, s
         json={
             "appointment_id": appointment_id,
             "patient_id": REMINDER_PATIENT,
-            "email": f"patient{REMINDER_PATIENT}@demo.local",
             "appointment_start": START.astimezone(TZ).isoformat(),
         },
     )
@@ -264,16 +260,6 @@ def test_event_arriving_during_recovery_creates_no_duplicates(tmp_path, monkeypa
         assert len(messages(session, appointment_id)) == 2
         assert count(session, AbAssignment) == 1
     engine.dispose()
-
-
-def test_invalid_email_does_not_stop_the_other_bookings(session_factory):
-    with session_factory() as session:
-        session.get(Patient, CONTROL_PATIENT).email = "no email"
-        broken = book(session, patient_id=CONTROL_PATIENT)
-        fine = book(session, doctor_id=2)
-        assert recover(session) == 1
-        assert messages(session, broken) == []
-        assert len(messages(session, fine)) == 2
 
 
 class FakeScheduler:

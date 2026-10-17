@@ -78,16 +78,13 @@ def schedule_messages(
 
     messages = []
     for kind, send_at in send_times.items():
-        # Texts use the appointment time as sent by the booking application
-        subject, text = render(kind, booking.appointment_start)
         messages.append(
             Message(
                 appointment_id=booking.appointment_id,
                 patient_id=booking.patient_id,
                 kind=kind,
-                email=booking.email,
-                subject=subject,
-                body=text,
+                # Texts use the appointment time as sent by the booking application
+                body=render(kind, booking.appointment_start),
                 appointment_start=start,
                 send_at=send_at,
                 status=Status.PENDING,

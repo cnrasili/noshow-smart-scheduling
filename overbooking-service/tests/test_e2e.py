@@ -15,6 +15,7 @@ from overbooking_service.config import settings
 from overbooking_service.dependencies import get_data_source, get_now
 from overbooking_service.dispatcher import dispatch_due
 from overbooking_service.main import app
+from overbooking_service.messages import Kind, render
 
 CLINIC = ZoneInfo("Europe/Istanbul")
 TODAY = date(2026, 11, 16)
@@ -28,8 +29,8 @@ class FakeSender:
     def __init__(self) -> None:
         self.sent: list[tuple[str, str]] = []
 
-    def send(self, to: str, subject: str, body: str) -> None:
-        self.sent.append((to, subject))
+    def send(self, patient_number: str, text: str) -> None:
+        self.sent.append((patient_number, text))
 
 
 def empty_slot(session: Session, doctor_id: int, day: date) -> Slot:
@@ -112,7 +113,6 @@ def test_booking_flow(client: TestClient, session_factory: sessionmaker[Session]
         json={
             "appointment_id": appointment_id,
             "patient_id": NEW_PATIENT,
-            "email": EMAIL,
             "appointment_start": slot_start.astimezone(CLINIC).isoformat(),
         },
     ).json()
@@ -121,16 +121,14 @@ def test_booking_flow(client: TestClient, session_factory: sessionmaker[Session]
     kinds = ["confirmation", "reminder"] if group == "reminder" else ["confirmation"]
     assert [m["kind"] for m in booked["messages"]] == kinds
 
-    # 3. The dispatcher sends the confirmation now and the reminder a day before
+    # 3. The dispatcher sends the confirmation SMS now and the reminder a day before
     sender = FakeSender()
     with session_factory() as session:
         assert dispatch_due(session, sender, NOW, 3) == 1
         reminder_time = slot_start - timedelta(hours=settings.reminders.hours_before)
         assert dispatch_due(session, sender, reminder_time, 3) == len(kinds) - 1
-    assert [subject for _, subject in sender.sent] == [
-        "Randevunuz onaylandı",
-        "Randevu hatırlatması",
-    ][: len(kinds)]
+    local_start = slot_start.astimezone(CLINIC)
+    assert sender.sent == [("999", render(Kind(kind), local_start)) for kind in kinds]
 
     # 4. The doctor marks the patient as attended
     with session_factory() as session:
