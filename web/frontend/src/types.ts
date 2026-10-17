@@ -16,12 +16,11 @@ export interface LoginResponse extends Me {
   token: string
 }
 
+// A slot as the patient sees it: free ("Müsait") or full ("Dolu"); no counts or risks
 export interface Slot {
   id: number
   start_at: string
   end_at: string
-  max_patients: number
-  booked_count: number
   available: boolean
   booked_by_me: boolean
 }
@@ -34,6 +33,13 @@ export interface Appointment {
   appointment_date: string
   booking_date: string
   attended: boolean | null
+}
+
+// A demo SMS that reached the patient
+export interface SmsMessage {
+  kind: 'confirmation' | 'reminder'
+  sent_at: string
+  body: string
 }
 
 export interface CalendarAppointment {
@@ -66,7 +72,7 @@ export interface AgendaAppointment {
   start_at: string
   end_at: string
   patient_name: string
-  // Booked into a slot that already had a patient (overbooking)
+  // Part of the API contract; the department's screens do not show it
   extra: boolean
 }
 
@@ -77,16 +83,16 @@ export interface AgendaDay {
   appointments: AgendaAppointment[]
 }
 
-export interface PublicWorkingHours {
-  weekday: number
-  start_time: string
-  end_time: string
+// A day of the public dataset (29 April – 8 June 2016)
+export interface DatasetDay {
+  date: string
+  appointments: number
+  missed: number
 }
 
-// The department's record as shown on the public hospital site; no account data
-export interface PublicDoctor {
-  id: number
-  full_name: string
-  specialty: string | null
-  working_hours: PublicWorkingHours[]
+// A real appointment of a dataset day; read-only
+export interface DatasetRecord {
+  patient_name: string
+  patient_age: number
+  attended: boolean
 }

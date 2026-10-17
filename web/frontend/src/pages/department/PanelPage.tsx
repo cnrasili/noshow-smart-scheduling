@@ -1,200 +1,167 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api, errorText } from '../../api'
-import {
-  addDays,
-  appointmentNumber,
-  dayParts,
-  formatLongDate,
-  formatShortDate,
-  formatTime,
-  formatTimeRange,
-  genderLabel,
-  hasStarted,
-  relativeDayLabel,
-  todayKey,
-  weekStart,
-} from '../../format'
-import type { AgendaDay, CalendarAppointment, CalendarSlot } from '../../types'
-import { Notice, PageHeader, Status, type NoticeState } from '../../ui'
+import { DEPARTMENT_NAME } from '../../config'
+import { addDays, dayParts, formatLongDate, formatTime, todayKey, weekStart } from '../../format'
+import type { AgendaDay, CalendarSlot, DatasetDay, DatasetRecord } from '../../types'
+import { Notice, PageTop, type NoticeState } from '../../ui'
 
-function AttendanceStatus({
-  appointment,
-  started,
-}: {
-  appointment: CalendarAppointment
-  started: boolean
-}) {
-  if (appointment.attended === true) return <Status tone="ok">Geldi</Status>
-  if (appointment.attended === false) return <Status tone="miss">Gelmedi</Status>
-  return started ? (
-    <Status tone="warn">İşaretlenmedi</Status>
-  ) : (
-    <Status tone="neutral">Bekleniyor</Status>
-  )
+// Dataset days have thousands of records; the columns grow on request
+const FIRST_SHOWN = 150
+const MORE_SHOWN = 300
+
+interface Entry {
+  key: string
+  // Clinic time; dataset records have none
+  time: string | null
+  name: string
+  age: number
+  attended: boolean | null
+  // Booked in the application; dataset records cannot be marked
+  appointmentId: number | null
 }
 
-function Summary({ calendar }: { calendar: CalendarSlot[] }) {
-  const appointments = calendar.flatMap((slot) => slot.appointments)
-  const items = [
-    ['Slot', calendar.length],
-    ['Randevulu', appointments.length],
-    ['Geldi', appointments.filter((a) => a.attended === true).length],
-    ['Gelmedi', appointments.filter((a) => a.attended === false).length],
-    ['Kayıt bekleyen', appointments.filter((a) => a.attended === null).length],
-  ] as const
-  return (
-    <dl className="summary">
-      {items.map(([label, value]) => (
-        <div key={label}>
-          <dt>{label}</dt>
-          <dd>{value}</dd>
-        </div>
-      ))}
-    </dl>
+type Mode = 'data' | 'today' | 'future' | 'past'
+
+const fromCalendar = (slots: CalendarSlot[]): Entry[] =>
+  slots.flatMap((slot) =>
+    slot.appointments.map((a) => ({
+      key: `a${a.id}`,
+      time: formatTime(slot.start_at),
+      name: a.patient_name,
+      age: a.patient_age,
+      attended: a.attended,
+      appointmentId: a.id,
+    })),
   )
+
+const fromDataset = (records: DatasetRecord[]): Entry[] =>
+  records.map((r, index) => ({
+    key: `r${index}`,
+    time: null,
+    name: r.patient_name,
+    age: r.patient_age,
+    attended: r.attended,
+    appointmentId: null,
+  }))
+
+const percent = (part: number, whole: number) =>
+  `%${((100 * part) / Math.max(whole, 1)).toLocaleString('tr-TR', { maximumFractionDigits: 1 })}`
+
+type Column = { title: string; filter: (entry: Entry) => boolean }
+
+const COLUMNS: Record<Mode, Column[]> = {
+  today: [
+    { title: 'Bekleyen', filter: (e) => e.attended === null },
+    { title: 'Geldi', filter: (e) => e.attended === true },
+    { title: 'Gelmedi', filter: (e) => e.attended === false },
+  ],
+  data: [
+    { title: 'Geldi (kayıt)', filter: (e) => e.attended === true },
+    { title: 'Gelmedi (kayıt)', filter: (e) => e.attended === false },
+  ],
+  past: [
+    { title: 'Geldi', filter: (e) => e.attended === true },
+    { title: 'Gelmedi', filter: (e) => e.attended === false },
+    { title: 'İşaretlenmedi', filter: (e) => e.attended === null },
+  ],
+  future: [{ title: 'Randevular', filter: () => true }],
 }
 
-// Days shown in the upcoming appointments, today included
-const UPCOMING_DAYS = 14
-
-function WeekOverview({
-  week,
-  day,
-  onSelect,
+function Ticket({
+  entry,
+  live,
+  busy,
+  onMark,
 }: {
-  week: AgendaDay[] | null
-  day: string
-  onSelect: (day: string) => void
+  entry: Entry
+  live: boolean
+  busy: boolean
+  onMark: (entry: Entry, attended: boolean | null) => void
 }) {
-  if (week === null) return <p className="muted panel-body">Hafta yükleniyor…</p>
   return (
-    <div className="panel-body">
-      <div className="day-strip" role="group" aria-label="Haftanın günleri">
-        {week.map((entry) => {
-          const parts = dayParts(entry.date)
-          const count = entry.appointments.length
-          return (
+    <li className="tk">
+      <b>{entry.time ?? 'Randevu'}</b> · {entry.name}
+      <small>{entry.age} yaşında</small>
+      {live && (
+        <div className="a">
+          {entry.attended !== true && (
             <button
-              key={entry.date}
               type="button"
-              aria-pressed={entry.date === day}
-              aria-label={`${formatLongDate(entry.date)}: ${
-                entry.slot_count === 0 ? 'çalışma yok' : `${count} randevu`
-              }`}
-              className={`day-option ${entry.date === day ? 'is-active' : ''}`}
-              onClick={() => onSelect(entry.date)}
+              onClick={() => onMark(entry, true)}
+              disabled={busy}
+              aria-label={`${entry.name}: geldi`}
             >
-              <span className="day-weekday">{parts.weekday}</span>
-              <span className="day-number">{parts.day}</span>
-              <span className="day-month">{parts.month}</span>
-              <span
-                className={`day-free ${entry.slot_count === 0 || count === 0 ? 'is-full' : ''}`}
-              >
-                {entry.slot_count === 0 ? 'Çalışma yok' : `${count} randevu`}
-              </span>
+              Geldi
             </button>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-function UpcomingAppointments({
-  days,
-  onSelect,
-}: {
-  days: AgendaDay[] | null
-  onSelect: (day: string) => void
-}) {
-  const booked = days?.filter((entry) => entry.appointments.length > 0) ?? []
-  return (
-    <section className="panel" aria-labelledby="upcoming-title">
-      <div className="panel-head">
-        <h2 id="upcoming-title">Yaklaşan randevular</h2>
-        <p className="muted">Bugünden itibaren {UPCOMING_DAYS} gün</p>
-      </div>
-      {days === null ? (
-        <p className="muted panel-body">Yükleniyor…</p>
-      ) : booked.length === 0 ? (
-        <p className="muted panel-body">Önümüzdeki iki haftada randevu yok.</p>
-      ) : (
-        <div className="upcoming">
-          {booked.map((entry) => {
-            const relative = relativeDayLabel(entry.date)
-            return (
-              <div key={entry.date} className="upcoming-day">
-                <h3>
-                  <button
-                    type="button"
-                    className="link-button"
-                    onClick={() => onSelect(entry.date)}
-                  >
-                    {formatLongDate(entry.date)}
-                  </button>
-                  {relative && <Status tone="info">{relative}</Status>}
-                  <span className="muted">{entry.appointments.length} randevu</span>
-                </h3>
-                <table className="table upcoming-table">
-                  <thead>
-                    <tr>
-                      <th>Saat</th>
-                      <th>Hasta</th>
-                      <th>Randevu no</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {entry.appointments.map((appointment) => (
-                      <tr key={appointment.id}>
-                        <td data-label="Saat" className="mono">
-                          {formatTime(appointment.start_at)}
-                        </td>
-                        <td data-label="Hasta" className="strong">
-                          {appointment.patient_name}{' '}
-                          {appointment.extra && <Status tone="warn">Ek randevu</Status>}
-                        </td>
-                        <td data-label="Randevu no" className="mono">
-                          {appointmentNumber(appointment.id)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )
-          })}
+          )}
+          {entry.attended !== false && (
+            <button
+              type="button"
+              onClick={() => onMark(entry, false)}
+              disabled={busy}
+              aria-label={`${entry.name}: gelmedi`}
+            >
+              Gelmedi
+            </button>
+          )}
+          {entry.attended !== null && (
+            <button
+              type="button"
+              onClick={() => onMark(entry, null)}
+              disabled={busy}
+              aria-label={`${entry.name}: geri al`}
+            >
+              Geri al
+            </button>
+          )}
         </div>
       )}
-    </section>
+    </li>
   )
 }
 
-export function WorklistPage() {
-  const [day, setDay] = useState(todayKey)
-  const [calendar, setCalendar] = useState<CalendarSlot[] | null>(null)
+export function PanelPage() {
+  const today = todayKey()
+  const [day, setDay] = useState(today)
+  const [datasetDays, setDatasetDays] = useState<DatasetDay[] | null>(null)
   const [week, setWeek] = useState<AgendaDay[] | null>(null)
-  const [upcoming, setUpcoming] = useState<AgendaDay[] | null>(null)
-  const [busyId, setBusyId] = useState<number | null>(null)
+  const [entries, setEntries] = useState<Entry[] | null>(null)
+  const [todayEntries, setTodayEntries] = useState<Entry[] | null>(null)
+  const [shown, setShown] = useState(FIRST_SHOWN)
+  const [busyKey, setBusyKey] = useState<string | null>(null)
   const [notice, setNotice] = useState<NoticeState | null>(null)
-
   const closeNotice = useCallback(() => setNotice(null), [])
-  const showError = (error: unknown) => setNotice({ kind: 'error', text: errorText(error) })
+  const showError = useCallback(
+    (error: unknown) => setNotice({ kind: 'error', text: errorText(error) }),
+    [],
+  )
+
+  const recordDays = useMemo(() => new Set(datasetDays?.map((d) => d.date)), [datasetDays])
+  const mode: Mode = recordDays.has(day)
+    ? 'data'
+    : day === today
+      ? 'today'
+      : day > today
+        ? 'future'
+        : 'past'
+  const monday = weekStart(day)
 
   useEffect(() => {
-    // Ignore a late response after the day has changed
-    let current = true
-    api
-      .calendar(day)
-      .then((next) => {
-        if (current) setCalendar(next)
-      })
-      .catch(showError)
-    return () => {
-      current = false
-    }
-  }, [day])
+    api.datasetDays().then(setDatasetDays).catch(showError)
+  }, [showError])
 
-  const monday = weekStart(day)
+  const loadToday = useCallback(
+    () =>
+      api
+        .calendar(today)
+        .then((slots) => setTodayEntries(fromCalendar(slots)))
+        .catch(showError),
+    [today, showError],
+  )
+  useEffect(() => {
+    loadToday()
+  }, [loadToday])
+
   useEffect(() => {
     let current = true
     api
@@ -206,177 +173,203 @@ export function WorklistPage() {
     return () => {
       current = false
     }
-  }, [monday])
+  }, [monday, showError])
 
   useEffect(() => {
-    const today = todayKey()
-    api
-      .agenda(today, addDays(today, UPCOMING_DAYS - 1))
-      .then(setUpcoming)
+    // Today's board uses the same data as the side panel
+    if (datasetDays === null || mode === 'today') return
+    let current = true
+    const load =
+      mode === 'data' ? api.datasetDay(day).then(fromDataset) : api.calendar(day).then(fromCalendar)
+    load
+      .then((next) => {
+        if (current) setEntries(next)
+      })
       .catch(showError)
-  }, [])
+    return () => {
+      current = false
+    }
+  }, [day, mode, datasetDays, showError])
 
   function changeDay(next: string) {
     if (!next) return
     if (weekStart(next) !== monday) setWeek(null)
-    setCalendar(null)
+    setEntries(null)
+    setShown(FIRST_SHOWN)
     setDay(next)
   }
 
-  async function mark(appointment: CalendarAppointment, attended: boolean) {
-    setBusyId(appointment.id)
+  async function mark(entry: Entry, attended: boolean | null) {
+    if (entry.appointmentId === null) return
+    setBusyKey(entry.key)
     try {
-      const updated = await api.markAttendance(appointment.id, attended)
-      setCalendar(
-        (slots) =>
-          slots?.map((slot) => ({
-            ...slot,
-            appointments: slot.appointments.map((a) => (a.id === updated.id ? updated : a)),
-          })) ?? null,
-      )
+      await api.markAttendance(entry.appointmentId, attended)
+      await loadToday()
     } catch (error) {
       showError(error)
     } finally {
-      setBusyId(null)
+      setBusyKey(null)
     }
   }
 
+  const list = mode === 'today' ? todayEntries : entries
+  const missed = (list ?? []).filter((e) => e.attended === false).length
+  const next = todayEntries?.find((e) => e.attended === null)
+  const columns = COLUMNS[mode]
+  const empty =
+    list !== null && list.length === 0 && mode !== 'today'
+      ? mode === 'future'
+        ? 'Bu gün için henüz randevu alınmadı.'
+        : 'Bu gün için kayıt yok.'
+      : null
+
   return (
     <>
-      <Notice notice={notice} onClose={closeNotice} />
-      <PageHeader title="Hasta Listesi" description="Günlük randevular ve geliş kaydı">
-        <div className="date-nav">
-          <button type="button" onClick={() => changeDay(addDays(day, -1))} aria-label="Önceki gün">
-            ‹
+      <main className="main">
+        <Notice notice={notice} onClose={closeNotice} />
+        <PageTop
+          title={formatLongDate(day)}
+          description={
+            DEPARTMENT_NAME +
+            (mode === 'data'
+              ? ' · veri seti günü: günün tüm gerçek randevuları, sonuçlar kayıttır ve değiştirilemez'
+              : mode === 'today'
+                ? ' · bugün'
+                : '')
+          }
+        >
+          <div className="stats">
+            <div className="stat">
+              <small>Randevu</small>
+              <b>{list === null ? '…' : list.length.toLocaleString('tr-TR')}</b>
+            </div>
+            {mode === 'data' && list !== null && (
+              <div className="stat">
+                <small>Gelmeme oranı</small>
+                <b>{percent(missed, list.length)}</b>
+              </div>
+            )}
+          </div>
+        </PageTop>
+
+        <div className="wnav">
+          <button type="button" onClick={() => changeDay(addDays(day, -7))}>
+            ‹ Önceki hafta
           </button>
-          <input
-            type="date"
-            value={day}
-            onChange={(event) => changeDay(event.target.value)}
-            aria-label="Gün"
-          />
-          <button type="button" onClick={() => changeDay(addDays(day, 1))} aria-label="Sonraki gün">
-            ›
+          <div className="strip" role="group" aria-label="Haftanın günleri">
+            {[...Array(7).keys()].map((n) => {
+              const date = addDays(monday, n)
+              const parts = dayParts(date)
+              const count = week?.find((d) => d.date === date)?.appointments.length ?? 0
+              const tag = recordDays.has(date)
+                ? 'kayıt'
+                : date === today
+                  ? 'bugün'
+                  : count > 0
+                    ? `${count} randevu`
+                    : ''
+              return (
+                <button
+                  key={date}
+                  type="button"
+                  className={`dy ${date === day ? 'on' : ''} ${recordDays.has(date) ? 'rec' : ''}`}
+                  aria-pressed={date === day}
+                  aria-label={`${formatLongDate(date)}${tag ? `: ${tag}` : ''}`}
+                  onClick={() => changeDay(date)}
+                >
+                  <small>{parts.weekday}</small>
+                  <b>{parts.day}</b>
+                  <small>{tag || ' '}</small>
+                </button>
+              )
+            })}
+          </div>
+          <button type="button" onClick={() => changeDay(addDays(day, 7))}>
+            Sonraki hafta ›
           </button>
-          <button type="button" onClick={() => changeDay(todayKey())} disabled={day === todayKey()}>
+          <button type="button" onClick={() => changeDay(today)} disabled={day === today}>
             Bugün
           </button>
+          <select
+            aria-label="Veri seti günü"
+            value={recordDays.has(day) ? day : ''}
+            onChange={(event) => changeDay(event.target.value)}
+            disabled={!datasetDays?.length}
+          >
+            <option value="">Veri seti günleri</option>
+            {datasetDays?.map((d) => (
+              <option key={d.date} value={d.date}>
+                {formatLongDate(d.date)}
+              </option>
+            ))}
+          </select>
         </div>
-      </PageHeader>
 
-      <div className="stack">
-        <section className="panel" aria-labelledby="week-title">
-          <div className="panel-head">
-            <h2 id="week-title">Hafta</h2>
+        {list === null ? (
+          <p className="muted">Yükleniyor…</p>
+        ) : empty ? (
+          <p className="card muted">{empty}</p>
+        ) : (
+          <div className={`board c${columns.length}`}>
+            {columns.map((column) => {
+              const items = list.filter(column.filter)
+              return (
+                <section key={column.title} className="col" aria-label={column.title}>
+                  <h3>
+                    {column.title}
+                    <span>{items.length.toLocaleString('tr-TR')}</span>
+                  </h3>
+                  <ul>
+                    {items.slice(0, shown).map((entry) => (
+                      <Ticket
+                        key={entry.key}
+                        entry={entry}
+                        live={mode === 'today'}
+                        busy={busyKey === entry.key}
+                        onMark={mark}
+                      />
+                    ))}
+                  </ul>
+                  {mode === 'today' && column.title === 'Bekleyen' && list.length === 0 && (
+                    <p className="note">
+                      Bugün için randevu yok. Hasta portalından randevu alındığında burada görünür.
+                    </p>
+                  )}
+                  {items.length > shown && (
+                    <button
+                      type="button"
+                      className="btn ghost"
+                      style={{ width: '100%' }}
+                      onClick={() => setShown((n) => n + MORE_SHOWN)}
+                    >
+                      Daha fazla göster ({(items.length - shown).toLocaleString('tr-TR')})
+                    </button>
+                  )}
+                </section>
+              )
+            })}
           </div>
-          <WeekOverview week={week} day={day} onSelect={changeDay} />
-        </section>
-
-        <section className="panel" aria-labelledby="day-title">
-          <div className="panel-head day-head">
-            <h2 id="day-title" className="day-title">
-              {formatLongDate(day)}
-            </h2>
-            {relativeDayLabel(day) && <Status tone="info">{relativeDayLabel(day)}</Status>}
-          </div>
-          {calendar === null ? (
-            <p className="muted panel-body">Yükleniyor…</p>
-          ) : calendar.length === 0 ? (
-            <p className="muted panel-body">Bu gün için tanımlı slot yok.</p>
-          ) : (
-            <>
-              <Summary calendar={calendar} />
-              <table className="table worklist">
-                <thead>
-                  <tr>
-                    <th>Saat</th>
-                    <th>Randevu no</th>
-                    <th>Hasta</th>
-                    <th>Yaş / Cinsiyet</th>
-                    <th>Alınma tarihi</th>
-                    <th>Durum</th>
-                    <th className="cell-actions">Geliş kaydı</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {calendar.flatMap((slot) => {
-                    const time = formatTimeRange(slot.start_at, slot.end_at)
-                    const started = hasStarted(slot.start_at)
-                    if (slot.appointments.length === 0) {
-                      return [
-                        <tr key={`slot-${slot.slot_id}`} className="row-empty">
-                          <td data-label="Saat" className="mono">
-                            {time}
-                          </td>
-                          <td colSpan={6} className="muted">
-                            Boş
-                          </td>
-                        </tr>,
-                      ]
-                    }
-                    // Later patients in a slot came in as overbooks
-                    return slot.appointments.map((appointment, index) => (
-                      <tr key={appointment.id}>
-                        <td data-label="Saat" className="mono">
-                          {time}
-                        </td>
-                        <td data-label="Randevu no" className="mono">
-                          {appointmentNumber(appointment.id)}
-                        </td>
-                        <td data-label="Hasta" className="strong">
-                          {appointment.patient_name}{' '}
-                          {index > 0 && <Status tone="warn">Ek randevu</Status>}
-                        </td>
-                        <td data-label="Yaş / Cinsiyet">
-                          {appointment.patient_age} · {genderLabel(appointment.patient_gender)}
-                        </td>
-                        <td data-label="Alınma tarihi">
-                          {formatShortDate(appointment.booking_date)}
-                        </td>
-                        <td data-label="Durum">
-                          <AttendanceStatus appointment={appointment} started={started} />
-                        </td>
-                        <td data-label="Geliş kaydı" className="cell-actions">
-                          <div
-                            className="segmented"
-                            role="group"
-                            aria-label={`${appointment.patient_name}: geliş kaydı`}
-                          >
-                            <button
-                              type="button"
-                              className={appointment.attended === true ? 'is-on is-ok' : ''}
-                              aria-pressed={appointment.attended === true}
-                              aria-label={`${appointment.patient_name}: geldi`}
-                              onClick={() => mark(appointment, true)}
-                              disabled={!started || busyId === appointment.id}
-                              title={started ? undefined : 'Randevu saati gelince işaretlenebilir'}
-                            >
-                              Geldi
-                            </button>
-                            <button
-                              type="button"
-                              className={appointment.attended === false ? 'is-on is-miss' : ''}
-                              aria-pressed={appointment.attended === false}
-                              aria-label={`${appointment.patient_name}: gelmedi`}
-                              onClick={() => mark(appointment, false)}
-                              disabled={!started || busyId === appointment.id}
-                              title={started ? undefined : 'Randevu saati gelince işaretlenebilir'}
-                            >
-                              Gelmedi
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  })}
-                </tbody>
-              </table>
-            </>
-          )}
-        </section>
-
-        <UpcomingAppointments days={upcoming} onSelect={changeDay} />
-      </div>
+        )}
+      </main>
+      <aside className="side" aria-label="Sıradaki hasta">
+        <h2>Sıradaki hasta</h2>
+        {todayEntries === null ? (
+          <p className="muted">Yükleniyor…</p>
+        ) : next ? (
+          <>
+            <p style={{ fontSize: 20 }}>
+              <b>{next.time}</b> · {next.name}
+            </p>
+            <p className="muted">{next.age} yaşında</p>
+          </>
+        ) : (
+          <p className="muted">Bekleyen hasta yok.</p>
+        )}
+        <p className="note">
+          Hastalar yalnızca numarayla gösterilir. “Geldi / Gelmedi” yalnızca bugün işaretlenir; veri
+          setindeki günlerin sonuçları kayıttan gelir ve değiştirilemez.
+        </p>
+      </aside>
     </>
   )
 }

@@ -2,225 +2,185 @@ import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { addDays, formatLongDate, todayKey, weekStart } from '../format'
-import type { AgendaAppointment, AgendaDay, CalendarAppointment, CalendarSlot } from '../types'
-import { DEPARTMENT, fakeBackend, hoursFromNow, plusMinutes, renderApp, signIn } from './backend'
+import type { AgendaDay, CalendarAppointment, CalendarSlot, DatasetRecord } from '../types'
+import { DEPARTMENT, fakeBackend, renderApp, signIn } from './backend'
 
-function appointment(id: number, name: string): CalendarAppointment {
+const TODAY = todayKey()
+const DATA_DAY = '2016-06-07'
+
+const at = (day: string, clock: string) => new Date(`${day}T${clock}:00+03:00`).toISOString()
+
+function appointment(id: number, number: string, attended: boolean | null = null) {
   return {
     id,
-    patient_name: name,
-    patient_age: 34,
+    patient_name: `Hasta ${number}`,
+    patient_age: 30 + id,
     patient_gender: 'F',
-    booking_date: todayKey(),
-    attended: null,
-  }
+    booking_date: TODAY,
+    attended,
+  } satisfies CalendarAppointment
 }
 
-function calendarSlot(
-  id: number,
-  start: string,
-  appointments: CalendarAppointment[],
-): CalendarSlot {
+function calendarSlot(id: number, day: string, clock: string, appointments: CalendarAppointment[]) {
   return {
     slot_id: id,
-    start_at: start,
-    end_at: plusMinutes(start, 20),
+    start_at: at(day, clock),
+    end_at: at(day, clock),
     max_patients: 2,
     appointments,
-  }
+  } satisfies CalendarSlot
 }
 
-function agendaAppointment(id: number, name: string, extra = false): AgendaAppointment {
-  const start = `${addDays(todayKey(), 0)}T07:00:00Z`
-  return {
-    id,
-    slot_id: id,
-    start_at: start,
-    end_at: plusMinutes(start, 20),
-    patient_name: name,
-    extra,
+/** Agenda answer: every day of the range without appointments. */
+const agenda = (_: unknown, url: URL): AgendaDay[] => {
+  const days: AgendaDay[] = []
+  for (
+    let key = url.searchParams.get('date_from')!;
+    key <= url.searchParams.get('date_to')!;
+    key = addDays(key, 1)
+  ) {
+    days.push({ date: key, slot_count: 16, appointments: [] })
   }
+  return days
 }
 
-/** Agenda answer: every day of the range, with slots on weekdays and the given appointments. */
-function agenda(booked: Record<string, AgendaAppointment[]> = {}) {
-  return (_: unknown, url: URL): AgendaDay[] => {
-    const from = url.searchParams.get('date_from')!
-    const to = url.searchParams.get('date_to')!
-    const days: AgendaDay[] = []
-    for (let key = from; key <= to; key = addDays(key, 1)) {
-      const weekday = (new Date(`${key}T12:00:00Z`).getUTCDay() + 6) % 7
-      days.push({ date: key, slot_count: weekday < 5 ? 9 : 0, appointments: booked[key] ?? [] })
-    }
-    return days
-  }
-}
-
-// Data of a fixed day returned by the fake backend; only the start times matter for marking
-const CALENDAR = [
-  calendarSlot(1, hoursFromNow(-2), [
-    appointment(10, 'Hasta 1421986987763'),
-    appointment(11, 'Hasta 26886125921145'),
-  ]),
-  calendarSlot(2, hoursFromNow(-1), []),
-  calendarSlot(3, hoursFromNow(2), [appointment(12, 'Hasta 93779.52927')]),
+const RECORDS: DatasetRecord[] = [
+  { patient_name: 'Hasta 111', patient_age: 9, attended: false },
+  { patient_name: 'Hasta 222', patient_age: 63, attended: true },
 ]
 
-describe('department patient list', () => {
-  it('shows the day and marks attendance', async () => {
-    const calls = fakeBackend({
-      ...signIn(DEPARTMENT),
-      'GET /doctors/me/agenda': agenda(),
-      'GET /doctors/me/calendar': () => CALENDAR,
-      'PATCH /appointments/10/attendance': (body) => ({
-        ...appointment(10, 'Hasta 1421986987763'),
-        attended: (body as { attended: boolean }).attended,
-      }),
-      'PATCH /appointments/11/attendance': (body) => ({
-        ...appointment(11, 'Hasta 26886125921145'),
-        attended: (body as { attended: boolean }).attended,
-      }),
-    })
-    renderApp('/hasta-listesi')
-    const user = userEvent.setup()
+function backend(today: CalendarSlot[], others: Record<string, CalendarSlot[]> = {}) {
+  return fakeBackend({
+    ...signIn(DEPARTMENT),
+    'GET /doctors/me/calendar': (_, url) => {
+      const day = url.searchParams.get('date')!
+      return day === TODAY ? today : (others[day] ?? [])
+    },
+    'GET /doctors/me/agenda': agenda,
+    'GET /department/dataset-days': () => [{ date: DATA_DAY, appointments: 2, missed: 1 }],
+    'GET /department/dataset-days/2016-06-07': () => RECORDS,
+  })
+}
 
-    expect(await screen.findByText('Hasta 1421986987763')).toBeInTheDocument()
-    expect(calls.find((c) => c.path === '/doctors/me/calendar')?.search).toBe(`?date=${todayKey()}`)
-    expect(screen.getByText('Boş')).toBeInTheDocument()
+const column = (name: string) => screen.getByRole('region', { name })
 
-    await user.click(screen.getByRole('button', { name: 'Hasta 1421986987763: geldi' }))
-    await user.click(screen.getByRole('button', { name: 'Hasta 26886125921145: gelmedi' }))
-
-    expect(
-      await screen.findByRole('button', { name: 'Hasta 1421986987763: geldi' }),
-    ).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: 'Hasta 26886125921145: gelmedi' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
-    const ayseRow = screen.getByText('Hasta 1421986987763').closest('tr')!
-    expect(within(ayseRow).getAllByText('Geldi').length).toBeGreaterThan(0)
-    expect(calls.filter((c) => c.method === 'PATCH').map((c) => [c.path, c.body])).toEqual([
-      ['/appointments/10/attendance', { attended: true }],
-      ['/appointments/11/attendance', { attended: false }],
+describe('department panel', () => {
+  it("shows today's program in waiting, attended and missed columns", async () => {
+    backend([
+      calendarSlot(1, TODAY, '08:00', [appointment(10, '1421986987763')]),
+      calendarSlot(2, TODAY, '08:15', [appointment(11, '93779.52927', true)]),
+      calendarSlot(3, TODAY, '08:30', []),
     ])
+    renderApp('/departman')
+
+    expect(await screen.findByRole('heading', { name: formatLongDate(TODAY) })).toBeVisible()
+    await screen.findByRole('region', { name: 'Bekleyen' })
+    expect(await within(column('Bekleyen')).findByText(/Hasta 1421986987763/)).toBeVisible()
+    expect(within(column('Geldi')).getByText(/Hasta 93779\.52927/)).toBeVisible()
+    expect(within(column('Gelmedi')).queryAllByRole('listitem')).toHaveLength(0)
+    const side = screen.getByRole('complementary', { name: 'Sıradaki hasta' })
+    expect(within(side).getByText(/Hasta 1421986987763/)).toBeVisible()
+    expect(within(side).getByText('40 yaşında')).toBeVisible()
+    // The department sees no overbooking or risk information
+    expect(document.body.textContent).not.toMatch(/Ek randevu|risk|overbook/i)
   })
 
-  it('cannot mark an appointment that has not started', async () => {
-    fakeBackend({
-      ...signIn(DEPARTMENT),
-      'GET /doctors/me/agenda': agenda(),
-      'GET /doctors/me/calendar': () => CALENDAR,
-    })
-    renderApp('/hasta-listesi')
-
-    expect(await screen.findByRole('button', { name: 'Hasta 93779.52927: geldi' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Hasta 93779.52927: gelmedi' })).toBeDisabled()
-  })
-
-  it('opens another day', async () => {
+  it('marks attendance for today and takes a mark back', async () => {
+    let attended: boolean | null = null
     const calls = fakeBackend({
       ...signIn(DEPARTMENT),
-      'GET /doctors/me/agenda': agenda(),
-      'GET /doctors/me/calendar': () => [],
+      'GET /doctors/me/calendar': () => [
+        calendarSlot(1, TODAY, '08:00', [appointment(10, '1421986987763', attended)]),
+      ],
+      'GET /doctors/me/agenda': agenda,
+      'GET /department/dataset-days': () => [],
+      'PATCH /appointments/10/attendance': (body) => {
+        attended = (body as { attended: boolean | null }).attended
+        return appointment(10, '1421986987763', attended)
+      },
     })
-    renderApp('/hasta-listesi')
+    renderApp('/departman')
     const user = userEvent.setup()
 
-    expect(await screen.findByText('Bu gün için tanımlı slot yok.')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Sonraki gün' }))
+    await user.click(await screen.findByRole('button', { name: 'Hasta 1421986987763: gelmedi' }))
+    expect(await within(column('Gelmedi')).findByText(/Hasta 1421986987763/)).toBeVisible()
+    expect(screen.getByText('Bekleyen hasta yok.')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Hasta 1421986987763: geri al' }))
 
-    const days = calls.filter((c) => c.path === '/doctors/me/calendar').map((c) => c.search)
-    expect(days).toHaveLength(2)
-    expect(days[1]).not.toBe(days[0])
+    expect(await within(column('Bekleyen')).findByText(/Hasta 1421986987763/)).toBeVisible()
+    expect(
+      calls
+        .filter((c) => c.method === 'PATCH')
+        .map((c) => (c.body as { attended: unknown }).attended),
+    ).toEqual([false, null])
   })
 
-  it('shows the selected date, the appointment number, the booking date and extra appointments', async () => {
-    fakeBackend({
-      ...signIn(DEPARTMENT),
-      'GET /doctors/me/agenda': agenda(),
-      'GET /doctors/me/calendar': () => CALENDAR,
-    })
-    renderApp('/hasta-listesi')
-
-    const heading = await screen.findByRole('heading', { name: formatLongDate(todayKey()) })
-    expect(within(heading.parentElement!).getByText('Bugün')).toBeInTheDocument()
-    expect(await screen.findByRole('columnheader', { name: 'Alınma tarihi' })).toBeInTheDocument()
-    expect(screen.queryByRole('columnheader', { name: 'Randevu alma' })).not.toBeInTheDocument()
-    const ayseRow = screen.getByText('Hasta 1421986987763').closest('tr')!
-    expect(within(ayseRow).getByText('R-000010')).toBeInTheDocument()
-    expect(within(ayseRow).queryByText('Ek randevu')).not.toBeInTheDocument()
-    // Hasta 26886125921145 was booked into Hasta 1421986987763's slot
-    const aliRow = screen.getByText('Hasta 26886125921145').closest('tr')!
-    expect(within(aliRow).getByText('Ek randevu')).toBeInTheDocument()
-  })
-
-  it('shows the week with appointment counts and opens a day from it', async () => {
-    const monday = weekStart(todayKey())
-    const wednesday = addDays(monday, 2)
-    const calls = fakeBackend({
-      ...signIn(DEPARTMENT),
-      'GET /doctors/me/agenda': agenda({
-        [wednesday]: [
-          agendaAppointment(30, 'Hasta 1421986987763'),
-          agendaAppointment(31, 'Hasta 26886125921145'),
-        ],
-      }),
-      'GET /doctors/me/calendar': () => [],
-    })
-    renderApp('/hasta-listesi')
+  it('shows a dataset day read-only with the recorded outcome', async () => {
+    backend([])
+    renderApp('/departman')
     const user = userEvent.setup()
 
-    const week = await screen.findByRole('group', { name: 'Haftanın günleri' })
-    const saturday = addDays(monday, 5)
-    expect(
-      within(week).getByRole('button', { name: `${formatLongDate(wednesday)}: 2 randevu` }),
-    ).toBeInTheDocument()
-    expect(
-      within(week).getByRole('button', { name: `${formatLongDate(saturday)}: çalışma yok` }),
-    ).toBeInTheDocument()
-    expect(within(week).getAllByRole('button')).toHaveLength(7)
+    const select = await screen.findByRole('combobox', { name: 'Veri seti günü' })
+    await screen.findByRole('option', { name: formatLongDate(DATA_DAY) })
+    await user.selectOptions(select, DATA_DAY)
 
+    expect(await screen.findByRole('heading', { name: formatLongDate(DATA_DAY) })).toBeVisible()
+    expect(await within(column('Gelmedi (kayıt)')).findByText(/Hasta 111/)).toBeVisible()
+    expect(within(column('Geldi (kayıt)')).getByText(/Hasta 222/)).toBeVisible()
+    expect(screen.getByText('%50')).toBeVisible()
+    expect(screen.queryByRole('button', { name: /geldi|gelmedi/ })).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: `${formatLongDate(DATA_DAY)}: kayıt`, pressed: true }),
+    ).toBeVisible()
+  })
+
+  it('shows the bookings of another day read-only', async () => {
+    const nextMonday = addDays(weekStart(TODAY), 7)
+    backend([], {
+      [nextMonday]: [calendarSlot(5, nextMonday, '09:00', [appointment(20, '26886125921145')])],
+    })
+    renderApp('/departman')
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: 'Sonraki hafta ›' }))
     await user.click(
-      within(week).getByRole('button', { name: `${formatLongDate(wednesday)}: 2 randevu` }),
+      screen.getByRole('button', { name: new RegExp(`^${formatLongDate(addDays(TODAY, 7))}`) }),
     )
+    if (addDays(TODAY, 7) !== nextMonday) {
+      await user.click(
+        screen.getByRole('button', { name: new RegExp(`^${formatLongDate(nextMonday)}`) }),
+      )
+    }
 
-    expect(
-      await screen.findByRole('heading', { name: formatLongDate(wednesday) }),
-    ).toBeInTheDocument()
-    expect(calls.filter((c) => c.path === '/doctors/me/calendar').at(-1)?.search).toBe(
-      `?date=${wednesday}`,
-    )
+    expect(await within(column('Randevular')).findByText(/Hasta 26886125921145/)).toBeVisible()
+    expect(screen.queryByRole('button', { name: /: geldi$/ })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Bugün' }))
+    expect(await screen.findByRole('heading', { name: formatLongDate(TODAY) })).toBeVisible()
   })
 
-  it('lists the next two weeks and opens a day two weeks ahead', async () => {
-    const later = addDays(todayKey(), 13)
-    const calls = fakeBackend({
+  it('shows long dataset days in parts', async () => {
+    const many: DatasetRecord[] = Array.from({ length: 160 }, (_, n) => ({
+      patient_name: `Hasta ${n}`,
+      patient_age: 40,
+      attended: true,
+    }))
+    fakeBackend({
       ...signIn(DEPARTMENT),
-      'GET /doctors/me/agenda': agenda({
-        [later]: [
-          agendaAppointment(373, 'Hasta 93779.52927'),
-          agendaAppointment(374, 'Hasta 26886125921145', true),
-        ],
-      }),
       'GET /doctors/me/calendar': () => [],
+      'GET /doctors/me/agenda': agenda,
+      'GET /department/dataset-days': () => [{ date: DATA_DAY, appointments: 160, missed: 0 }],
+      'GET /department/dataset-days/2016-06-07': () => many,
     })
-    renderApp('/hasta-listesi')
+    renderApp('/departman')
     const user = userEvent.setup()
 
-    const upcoming = await screen.findByRole('region', { name: 'Yaklaşan randevular' })
-    const dayButton = await within(upcoming).findByRole('button', { name: formatLongDate(later) })
-    expect(within(upcoming).getByText('R-000373')).toBeInTheDocument()
-    expect(within(upcoming).getByText('Hasta 93779.52927')).toBeInTheDocument()
-    expect(within(upcoming).getByText('Ek randevu')).toBeInTheDocument()
-    const ranges = calls.filter((c) => c.path === '/doctors/me/agenda').map((c) => c.search)
-    expect(ranges).toContain(`?date_from=${todayKey()}&date_to=${later}`)
+    await screen.findByRole('option', { name: formatLongDate(DATA_DAY) })
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Veri seti günü' }), DATA_DAY)
+    const attended = await screen.findByRole('region', { name: 'Geldi (kayıt)' })
+    await within(attended).findByText(/Hasta 0$/)
 
-    await user.click(dayButton)
-
-    expect(await screen.findByRole('heading', { name: formatLongDate(later) })).toBeInTheDocument()
-    expect(calls.filter((c) => c.path === '/doctors/me/calendar').at(-1)?.search).toBe(
-      `?date=${later}`,
-    )
+    expect(within(attended).getAllByRole('listitem')).toHaveLength(150)
+    await user.click(within(attended).getByRole('button', { name: 'Daha fazla göster (10)' }))
+    expect(within(attended).getAllByRole('listitem')).toHaveLength(160)
   })
 })

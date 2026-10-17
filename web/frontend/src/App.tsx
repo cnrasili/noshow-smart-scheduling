@@ -1,39 +1,17 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router'
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router'
 import { api, getToken, onUnauthorized } from './api'
+import { PortalLayout } from './layout/PortalLayout'
+import { PanelPage } from './pages/department/PanelPage'
 import { SchedulePage } from './pages/department/SchedulePage'
-import { WorklistPage } from './pages/department/WorklistPage'
-import { HomePage } from './pages/HomePage'
+import { EntryPage } from './pages/EntryPage'
 import { LoginPage } from './pages/LoginPage'
 import { AppointmentsPage } from './pages/patient/AppointmentsPage'
 import { BookingPage } from './pages/patient/BookingPage'
-import { AboutPage } from './pages/site/AboutPage'
-import { AnnouncementPage, AnnouncementsPage } from './pages/site/AnnouncementsPage'
-import { ContactPage } from './pages/site/ContactPage'
-import { DepartmentPage } from './pages/site/DepartmentPage'
-import { GuidePage } from './pages/site/GuidePage'
-import { PATHS, homeFor, loginFor, type LoginReturn } from './routes'
-import { SiteLayout } from './site/SiteLayout'
-import { PageHeader } from './ui'
+import { OLD_PATHS, PATHS, homeFor, loginFor, type LoginReturn } from './routes'
 import type { Me, Role } from './types'
 
 type Session = { status: 'loading' } | { status: 'signed-out' } | { status: 'signed-in'; me: Me }
-
-// The department's staff opening Online Randevu learn that booking needs a patient account
-function BookingNeedsPatient() {
-  return (
-    <>
-      <PageHeader title="Online Randevu" />
-      <section className="panel panel-body stack-tight">
-        <p>
-          Online Randevu ile randevu almak için hasta hesabıyla giriş yapmanız gerekir. Departman
-          hesabıyla randevu alınamaz.
-        </p>
-        <Link to={PATHS.worklist}>Hasta Listesine dön</Link>
-      </section>
-    </>
-  )
-}
 
 function App() {
   const navigate = useNavigate()
@@ -52,11 +30,11 @@ function App() {
       .catch(() => setSession({ status: 'signed-out' }))
   }, [])
 
-  if (session.status === 'loading') return <p className="center muted">Yükleniyor…</p>
+  if (session.status === 'loading') return <p className="center-text muted">Yükleniyor…</p>
   const me = session.status === 'signed-in' ? session.me : null
 
-  // After signing in, continue to the page that sent the visitor to the login (for example
-  // the booking with its preselection); otherwise to the account's own home
+  // After signing in, continue to the page that sent the visitor to the login; otherwise to
+  // the account's own home
   function afterLogin(user: Me) {
     const back = location.state as LoginReturn | null
     return back?.role === user.role ? back.from : homeFor(user.role)
@@ -69,7 +47,7 @@ function App() {
 
   async function signOut() {
     await api.logout().catch(() => {})
-    // A full load of the landing page also clears every screen's state left in memory
+    // A full load of the entry page also clears every screen's state left in memory
     window.location.replace(PATHS.home)
   }
 
@@ -82,55 +60,44 @@ function App() {
     return me.role === role ? page : <Navigate to={homeFor(me.role)} replace />
   }
 
-  // Login forms get a key per role so switching forms starts with empty fields
+  // The entry page and the login forms are for signed-out visitors
   function signedOutOnly(page: ReactNode) {
     return me ? <Navigate to={afterLogin(me)} replace /> : page
   }
 
   return (
     <Routes>
-      <Route element={<SiteLayout me={me} onSignOut={signOut} />}>
-        <Route path={PATHS.home} element={<HomePage />} />
-        <Route path={PATHS.about} element={<AboutPage />} />
-        <Route path={PATHS.department} element={<DepartmentPage />} />
-        <Route path={PATHS.announcements} element={<AnnouncementsPage />} />
-        <Route path={`${PATHS.announcements}/:slug`} element={<AnnouncementPage />} />
-        <Route path={PATHS.guide} element={<GuidePage />} />
-        <Route path={PATHS.contact} element={<ContactPage />} />
-        <Route
-          path={PATHS.patientLogin}
-          element={signedOutOnly(<LoginPage key="patient" role="patient" onSignedIn={signedIn} />)}
-        />
-        <Route
-          path={PATHS.departmentLogin}
-          element={signedOutOnly(
-            <LoginPage key="department" role="department" onSignedIn={signedIn} />,
-          )}
-        />
-        <Route
-          path={PATHS.booking}
-          element={
-            me?.role === 'department' ? (
-              <BookingNeedsPatient />
-            ) : (
-              only(
-                'patient',
-                <BookingPage onShowAppointments={() => navigate(PATHS.appointments)} />,
-              )
-            )
-          }
-        />
-        <Route
-          path={PATHS.oldBooking}
-          element={<Navigate to={PATHS.booking + location.search} replace />}
-        />
-        <Route
-          path={PATHS.appointments}
-          element={only('patient', <AppointmentsPage onBook={() => navigate(PATHS.booking)} />)}
-        />
-        <Route path={PATHS.worklist} element={only('department', <WorklistPage />)} />
-        <Route path={PATHS.schedule} element={only('department', <SchedulePage />)} />
-      </Route>
+      <Route path={PATHS.home} element={signedOutOnly(<EntryPage />)} />
+      {/* Login forms get a key per role so switching forms starts with empty fields */}
+      <Route
+        path={PATHS.patientLogin}
+        element={signedOutOnly(<LoginPage key="patient" role="patient" onSignedIn={signedIn} />)}
+      />
+      <Route
+        path={PATHS.departmentLogin}
+        element={signedOutOnly(
+          <LoginPage key="department" role="department" onSignedIn={signedIn} />,
+        )}
+      />
+      {me && (
+        <Route element={<PortalLayout me={me} onSignOut={signOut} />}>
+          <Route path={PATHS.booking} element={only('patient', <BookingPage />)} />
+          <Route path={PATHS.appointments} element={only('patient', <AppointmentsPage />)} />
+          <Route path={PATHS.panel} element={only('department', <PanelPage />)} />
+          <Route path={PATHS.schedule} element={only('department', <SchedulePage />)} />
+        </Route>
+      )}
+      {!me &&
+        [PATHS.booking, PATHS.appointments].map((path) => (
+          <Route key={path} path={path} element={only('patient', null)} />
+        ))}
+      {!me &&
+        [PATHS.panel, PATHS.schedule].map((path) => (
+          <Route key={path} path={path} element={only('department', null)} />
+        ))}
+      {Object.entries(OLD_PATHS).map(([from, to]) => (
+        <Route key={from} path={from} element={<Navigate to={to} replace />} />
+      ))}
       <Route path="*" element={<Navigate to={PATHS.home} replace />} />
     </Routes>
   )
