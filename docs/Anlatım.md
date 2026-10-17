@@ -393,15 +393,16 @@ Soru: "Bu kural bekleme, boşta kalma ve mesai aşımını nasıl etkiler?" Kapa
 env = simpy.Environment()
 room = simpy.Resource(env, capacity=1)
 
+
 def patient(i, appt_time):
     arrival = max(0.0, appt_time + d.arrival_offset[i])
-    ready = max(appt_time, arrival)          # muayene randevu saatinden önce başlamaz
-    yield env.timeout(ready)                 # hazır olana kadar bekle
+    ready = max(appt_time, arrival)  # muayene randevu saatinden önce başlamaz
+    yield env.timeout(ready)  # hazır olana kadar bekle
     with room.request() as req:
-        yield req                            # odanın boşalmasını bekle (kuyruk)
+        yield req  # odanın boşalmasını bekle (kuyruk)
         start = env.now
-        waits.append(start - ready)          # BEKLEME = başlangıç − max(randevu, geliş)
-        yield env.timeout(d.service[i])      # muayene
+        waits.append(start - ready)  # BEKLEME = başlangıç − max(randevu, geliş)
+        yield env.timeout(d.service[i])  # muayene
         busy.append((start, env.now))
 ```
 
