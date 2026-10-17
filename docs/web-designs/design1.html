@@ -44,7 +44,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:9px 10px;
 .scroll{max-height:62vh;overflow:auto;padding-right:6px}.barrow{display:grid;grid-template-columns:150px 1fr 70px;gap:10px;align-items:center;margin:7px 0;font-size:13px}.barrow .t{height:16px;background:var(--soft);border-radius:6px;overflow:hidden}.barrow .t i{display:block;height:100%;background:var(--brand)}
 tr.hl td{background:var(--soft);font-weight:700}
 .ok-card{border-left:5px solid var(--ok)}
-</style></head><body data-role="hasta">
+.sc{max-height:420px;overflow:auto;padding-right:6px}.sc th{position:sticky;top:0;background:var(--card);z-index:1}</style></head><body data-role="hasta">
 <div class="ribbon"><span>Örnek tasarım 1 / 2 · demo: giriş türünü seçin</span><span id="roles"></span></div>
 <header><div class="bar"><div class="brand"><div class="logo" id="logo">✚</div><div><span id="hname"></span><small id="portal"></small></div></div>
 <nav id="nav"></nav></div></header>
@@ -245,8 +245,8 @@ function karar(){const all=AS.slots.flatMap(sl=>sl.patients.map(p=>({...p,time:s
    <td>${p.extra?'<span class="badge b-ob">Ek randevu verildi</span>':'Normal randevu'}</td><td>${p.showed?'Geldi':'Gelmedi'}</td></tr>`).join('')}</table>
   <div class="note"><b>Risk nasıl hesaplanır?</b> Yalnızca randevu alındığı anda bilinen bilgiler kullanılır (yaş, randevuya kalan gün, hasta geçmişi gibi); SMS bilgisi ve mahalle kullanılmaz. Modelin ayırt etme gücü AUC ${String(D.model.auc).replace('.',',')} (0,5 = şans). Bir slota ikinci hasta, slottaki hastanın riski %${THR} ve üstündeyse yazılır.</div></div>
   <div class="card" style="margin-top:16px"><h2>Veri günleri: gerçek randevular ve risk</h2><div class="scroll" style="max-height:340px">${dayStatsTable(ADAY)}</div><div class="note">Risk, modelin o güne hiç görmeden yaptığı tahmindir. Departman ekranında bu günler salt okunurdur.</div></div>
-  <div class="card" style="margin-top:16px"><h2>Hasta panelinden alınan randevular</h2><table><tr><th>Tarih</th><th>Saat</th><th>Hasta</th><th>Randevu no</th><th>Hasta riski (örnek)</th><th>Karar</th></tr>
-  ${BK.filter(b=>!b.old).map(b=>`<tr><td>${longDate(b.iso)}</td><td>${b.time}</td><td>${b.pid}</td><td>${b.no}</td><td>%${b.risk}</td><td>${b.kind==='extra'?'<span class="badge b-ob">Ek randevu</span> ':''}${decisionText(b)}</td></tr>`).join('')||'<tr><td colspan="6" style="color:var(--mute)">Henüz randevu alınmadı. Hasta ekranından randevu alınca burada görünür.</td></tr>'}</table>
+  <div class="card" style="margin-top:16px"><h2>Hasta panelinden alınan randevular</h2><div class="sc" style="max-height:300px"><table><tr><th>Tarih</th><th>Saat</th><th>Hasta</th><th>Randevu no</th><th>Hasta riski (örnek)</th><th>Karar</th></tr>
+  ${BK.filter(b=>!b.old).map(b=>`<tr><td>${longDate(b.iso)}</td><td>${b.time}</td><td>${b.pid}</td><td>${b.no}</td><td>%${b.risk}</td><td>${b.kind==='extra'?'<span class="badge b-ob">Ek randevu</span> ':''}${decisionText(b)}</td></tr>`).join('')||'<tr><td colspan="6" style="color:var(--mute)">Henüz randevu alınmadı. Hasta ekranından randevu alınca burada görünür.</td></tr>'}</table></div>
   <div class="note">Demo: gelmeme riski modelinin API'si bağlı olmadığından yeni randevuların riski gerçek risk dağılımından örneklenir. Aynı saate ikinci hasta, ilk hastanın riski %${THR} ve üstündeyse ve günlük ${LIM} ek randevu dolmadıysa yazılır.</div></div>`;}
 function draw(){document.body.dataset.role=state.role;
   document.querySelectorAll('#roles button').forEach(b=>b.classList.toggle('on',b.dataset.role===state.role));
