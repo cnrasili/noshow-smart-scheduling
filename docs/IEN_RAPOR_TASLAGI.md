@@ -67,7 +67,7 @@ Sabit aralık: 12,8 hasta, 0,2 dk bekleme, 144 dk boşta, 0,25 dk mesai aşımı
 | Maliyet kuralı r=0,5 | +2,1 | +0,7 | −15 | +0,3 |
 | Havayolu kuralı | +3,2 | +1,6 | −24 | +0,1 |
 
-Maliyet kuralı r=1,0 neredeyse hiç tetiklenmez (+0,02 hasta): modelin en yüksek riski yaklaşık %50 olduğundan bu kural işe yaramaz. Hasta kazancı eşik %30'dan %20'ye inerken yalnızca +2,8'den +3,2'ye çıkar; kazanç talep tavanıyla sınırlıdır (20 istek, 16 slot).
+Maliyet kuralı r=1,0 neredeyse hiç tetiklenmez (+0,02 hasta): modelin en yüksek riski yaklaşık %57 olduğundan bu kural işe yaramaz. Hasta kazancı eşik %30'dan %20'ye inerken yalnızca +2,8'den +3,2'ye çıkar; kazanç talep tavanıyla sınırlıdır (20 istek, 16 slot).
 
 ### 4.3 Şablonlar ve kısa slot
 

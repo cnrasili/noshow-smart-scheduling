@@ -34,3 +34,14 @@ python simulation/web_designs/build.py --reuse   # data.json'dan yalnızca sayfa
 ```
 
 Şablonlar ve ortak kod `simulation/web_designs/` içindedir (`design*.html`, `common.js`); `build.py` ayrıca `records.js` üretir; `/*__DATA__*/null` yerine veri gömülür.
+
+## İki hesap yöntemi: neden %38,0 → %47,8 ve neden ≈%40 → %49 değil?
+
+Bu sayfalardaki KPI kartları ile `docs/SONUC_OZETI.md` aynı motoru ve aynı kararları (`docs/decisions.json`: eşik 0,30, günlük sınır 4, oturum başı en fazla 2, 16 slot × 15 dk, muayene ort. 7,5 dk) kullanır; fark **oturumların nasıl kurulduğundan** gelir:
+
+| | Web tasarımları | SONUC_OZETI |
+|---|---|---|
+| Oturumlar | 27 gerçek gün, kayıtlar gerçek randevu alma sırasıyla (ScheduledDay) 20'şerli oturumlara bölünür (~5.536 oturum) | Risk havuzundan rastgele çekilen 2.000 oturum |
+| Doluluk (kural yok → kural var) | %38,0 → %47,8 | ≈%40 → %49 |
+
+Gerçek sırada erken randevu alanların (uzun bekleme süresi) gelmeme oranı yüksektir: her oturumun ilk 16 randevusunda %24,0, sonraki 4 talepte %5,1 (genel %20,2). Bu yüzden gerçek sırada kural yokken görülen hasta/oturum 12,17 (rastgelede 12,77) olur; doluluk daha düşük, overbooking kazancı biraz daha büyük çıkar. İki sonuç çelişmez; ikisi de aynı verinin farklı oturum dizilişidir.
