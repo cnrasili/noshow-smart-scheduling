@@ -45,3 +45,15 @@ Bu sayfalardaki KPI kartları ile `docs/SONUC_OZETI.md` aynı motoru ve aynı ka
 | Doluluk (kural yok → kural var) | %38,0 → %47,8 | ≈%40 → %49 |
 
 Gerçek sırada erken randevu alanların (uzun bekleme süresi) gelmeme oranı yüksektir: her oturumun ilk 16 randevusunda %24,0, sonraki 4 talepte %5,1 (genel %20,2). Bu yüzden gerçek sırada kural yokken görülen hasta/oturum 12,17 (rastgelede 12,77) olur; doluluk daha düşük, overbooking kazancı biraz daha büyük çıkar. İki sonuç çelişmez; ikisi de aynı verinin farklı oturum dizilişidir.
+
+## Giriş sayfası (demo)
+
+Her iki tasarım da bir giriş sayfasıyla açılır: **Randevu Oluştur**, **Doktor Girişi**, **Yönetici Girişi**. Gerçek kimlik doğrulama yoktur; hesaplar sahte demo verisidir.
+
+| Giriş | İstenen bilgi | Yönlendirme |
+|---|---|---|
+| Randevu Oluştur | isim soyisim, bilinen hastalık (evet ise metin), doğum tarihi, mahalle | yalnızca hasta sayfası |
+| Doktor Girişi | kullanıcı adı, şifre, doktor ünvan kodu (demo: `doktor` / `doktor123` / `DR-001`) | yalnızca departman sayfası |
+| Yönetici Girişi | erişim kodu (demo: `YON-2026`) | üç sayfanın hepsi |
+
+Üstteki şeritte "Çıkış" ile giriş sayfasına dönülür. Kodu `simulation/web_designs/common.js` içindeki `Gate` bölümündedir.
