@@ -1,17 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router'
 import { api, errorText } from '../../api'
+import { DEPARTMENT_NAME } from '../../config'
 import {
   appointmentNumber,
-  branchLabel,
   dayKey,
   dayParts,
   formatLongDate,
   formatTime,
   formatTimeRange,
 } from '../../format'
-import type { Appointment, Doctor, Slot } from '../../types'
-import { BOOKING_PARAMS } from '../../routes'
+import type { Appointment, Slot } from '../../types'
 import { Notice, PageHeader, type NoticeState } from '../../ui'
 
 type SlotState = 'free' | 'extra' | 'taken' | 'mine'
@@ -71,8 +69,7 @@ function AppointmentSlip({
       <div className="panel-body">
         <dl className="fields">
           <Field label="Randevu no" value={appointmentNumber(appointment.id)} />
-          <Field label="Branş" value={branchLabel(appointment.doctor_specialty)} />
-          <Field label="Hekim" value={appointment.doctor_name} />
+          <Field label="Bölüm" value={DEPARTMENT_NAME} />
           <Field label="Tarih" value={formatLongDate(appointment.appointment_date)} />
           <Field label="Saat" value={formatTimeRange(appointment.start_at, appointment.end_at)} />
         </dl>
@@ -93,22 +90,7 @@ function AppointmentSlip({
   )
 }
 
-/** The doctor to start with: the one asked for, else the first of the department asked for. */
-function initialDoctor(doctors: Doctor[], department: string | null, doctorId: string | null) {
-  return (
-    doctors.find((d) => String(d.id) === doctorId) ??
-    doctors.find((d) => branchLabel(d.specialty) === department) ??
-    doctors[0]
-  )
-}
-
 export function BookingPage({ onShowAppointments }: { onShowAppointments: () => void }) {
-  const [params] = useSearchParams()
-  const preselectedDepartment = params.get(BOOKING_PARAMS.department)
-  const preselectedDoctor = params.get(BOOKING_PARAMS.doctor)
-  const [doctors, setDoctors] = useState<Doctor[]>([])
-  const [branch, setBranch] = useState<string | null>(null)
-  const [doctorId, setDoctorId] = useState<number | null>(null)
   const [slots, setSlots] = useState<Slot[] | null>(null)
   const [day, setDay] = useState<string | null>(null)
   const [selected, setSelected] = useState<Slot | null>(null)
@@ -119,62 +101,15 @@ export function BookingPage({ onShowAppointments }: { onShowAppointments: () => 
   const closeNotice = useCallback(() => setNotice(null), [])
   const showError = (error: unknown) => setNotice({ kind: 'error', text: errorText(error) })
 
+  // The department's slots; there is only one department
   useEffect(() => {
-    api
-      .doctors()
-      .then((list) => {
-        setDoctors(list)
-        // A department or doctor chosen on the hospital site is selected; it can be changed
-        const first = initialDoctor(list, preselectedDepartment, preselectedDoctor)
-        if (first) {
-          setBranch(branchLabel(first.specialty))
-          setDoctorId(first.id)
-        }
-      })
-      .catch(showError)
-  }, [preselectedDepartment, preselectedDoctor])
+    api.slots().then(setSlots).catch(showError)
+  }, [])
 
-  useEffect(() => {
-    if (doctorId === null) return
-    // Ignore a late response after the doctor has changed
-    let current = true
-    api
-      .slots(doctorId)
-      .then((next) => {
-        if (current) setSlots(next)
-      })
-      .catch(showError)
-    return () => {
-      current = false
-    }
-  }, [doctorId])
-
-  const branches = useMemo(
-    // Turkish collation puts "Çocuk…" between "C" and "D", as on the Poliklinikler page
-    () =>
-      [...new Set(doctors.map((d) => branchLabel(d.specialty)))].sort((a, b) =>
-        a.localeCompare(b, 'tr'),
-      ),
-    [doctors],
-  )
-  const branchDoctors = doctors.filter((d) => branchLabel(d.specialty) === branch)
-  const doctor = doctors.find((d) => d.id === doctorId)
   const days = useMemo(() => groupByDay(slots ?? []), [slots])
   const firstOpenDay = [...days].find(([, list]) => list.some((s) => s.available))?.[0]
   const activeDay = day !== null && days.has(day) ? day : (firstOpenDay ?? null)
   const daySlots = activeDay ? (days.get(activeDay) ?? []) : []
-
-  function chooseBranch(next: string) {
-    setBranch(next)
-    chooseDoctor(doctors.find((d) => branchLabel(d.specialty) === next)?.id ?? null)
-  }
-
-  function chooseDoctor(id: number | null) {
-    setDoctorId(id)
-    setSlots(null)
-    setDay(null)
-    setSelected(null)
-  }
 
   function chooseDay(key: string) {
     setDay(key)
@@ -182,7 +117,7 @@ export function BookingPage({ onShowAppointments }: { onShowAppointments: () => 
   }
 
   async function book() {
-    if (!selected || doctorId === null) return
+    if (!selected) return
     setBusy(true)
     try {
       setBooked(await api.book(selected.id))
@@ -193,7 +128,7 @@ export function BookingPage({ onShowAppointments }: { onShowAppointments: () => 
       setSelected(null)
       setBusy(false)
     }
-    setSlots(await api.slots(doctorId).catch(() => slots))
+    setSlots(await api.slots().catch(() => slots))
   }
 
   return (
@@ -201,49 +136,18 @@ export function BookingPage({ onShowAppointments }: { onShowAppointments: () => 
       <Notice notice={notice} onClose={closeNotice} />
       <PageHeader
         title="Online Randevu"
-        description="Branş ve hekim seçip uygun gün ve saati belirleyin."
+        description={`${DEPARTMENT_NAME} için uygun gün ve saati seçin.`}
       />
 
       <div className="booking">
         <section className="panel">
           <div className="panel-body stack">
-            <div className="filters">
-              <label>
-                Branş
-                <select
-                  value={branch ?? ''}
-                  onChange={(event) => chooseBranch(event.target.value)}
-                  disabled={branches.length === 0}
-                >
-                  {branches.map((name) => (
-                    <option key={name} value={name}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Hekim
-                <select
-                  value={doctorId ?? ''}
-                  onChange={(event) => chooseDoctor(Number(event.target.value))}
-                  disabled={branchDoctors.length === 0}
-                >
-                  {branchDoctors.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.full_name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
             <div>
               <h2 className="section-title">Gün</h2>
               {slots === null ? (
                 <p className="muted">Yükleniyor…</p>
               ) : days.size === 0 ? (
-                <p className="muted">Bu hekim için önümüzdeki iki haftada açık gün yok.</p>
+                <p className="muted">Önümüzdeki iki haftada açık gün yok.</p>
               ) : (
                 <div className="day-strip" role="listbox" aria-label="Gün seçimi">
                   {[...days].map(([key, list]) => {
@@ -326,8 +230,7 @@ export function BookingPage({ onShowAppointments }: { onShowAppointments: () => 
               </div>
               <div className="panel-body">
                 <dl className="fields">
-                  <Field label="Branş" value={branch ?? undefined} />
-                  <Field label="Hekim" value={doctor?.full_name} />
+                  <Field label="Bölüm" value={DEPARTMENT_NAME} />
                   <Field
                     label="Tarih"
                     value={selected ? formatLongDate(dayKey(selected.start_at)) : undefined}

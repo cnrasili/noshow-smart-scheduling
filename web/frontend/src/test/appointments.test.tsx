@@ -8,10 +8,8 @@ const START = clinicTime(3, '10:00')
 const UPCOMING: Appointment = {
   id: 5,
   slot_id: 11,
-  doctor_name: 'Dr. Leyla Aksoy',
-  doctor_specialty: 'Kardiyoloji',
   start_at: START,
-  end_at: plusMinutes(START, 20),
+  end_at: plusMinutes(START, 15),
   appointment_date: START.slice(0, 10),
   booking_date: new Date().toISOString().slice(0, 10),
   attended: null,
@@ -31,7 +29,8 @@ describe('my appointments', () => {
     renderApp('/randevularim')
     const user = userEvent.setup()
 
-    expect(await screen.findByText('Dr. Leyla Aksoy')).toBeInTheDocument()
+    expect(await screen.findByText('R-000005')).toBeInTheDocument()
+    expect(screen.queryByRole('columnheader', { name: /Hekim|Branş/ })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'İptal et' }))
     expect(screen.getByText('İptal edilsin mi?')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Evet, iptal et' }))
@@ -54,7 +53,7 @@ describe('my appointments', () => {
     await user.click(await screen.findByRole('button', { name: 'İptal et' }))
     await user.click(screen.getByRole('button', { name: 'Vazgeç' }))
 
-    expect(screen.getByText('Dr. Leyla Aksoy')).toBeInTheDocument()
+    expect(screen.getByText('R-000005')).toBeInTheDocument()
     expect(calls.some((c) => c.method === 'DELETE')).toBe(false)
   })
 })

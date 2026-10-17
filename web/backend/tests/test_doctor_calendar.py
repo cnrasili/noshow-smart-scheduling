@@ -7,13 +7,13 @@ from web_backend.clinic import CLINIC_TZ, today
 
 
 @pytest.fixture
-def doctor(make_doctor):
-    return make_doctor()
+def doctor(make_department):
+    return make_department()
 
 
 @pytest.fixture
 def doctor_headers(doctor, login):
-    return login("doctor@example.com")
+    return login("aile.hekimligi")
 
 
 def _slot(db, doctor_id: int, start: datetime) -> Slot:
@@ -61,8 +61,8 @@ def test_calendar_lists_the_days_slots_with_patients(
     assert entry["attended"] is None
 
 
-def test_calendar_shows_only_own_slots(db, client, doctor_headers, make_doctor):
-    other = make_doctor(email="other@example.com")
+def test_calendar_shows_only_own_slots(db, client, doctor_headers, make_department):
+    other = make_department(username="other.department")
     _slot(db, other.id, datetime.combine(today(), time(9, 0), CLINIC_TZ))
 
     assert client.get("/doctors/me/calendar", headers=doctor_headers).json() == []
@@ -109,9 +109,9 @@ def test_attendance_cannot_be_marked_before_start(db, client, doctor, doctor_hea
 
 
 def test_doctor_cannot_mark_other_doctors_appointments(
-    db, client, doctor_headers, make_doctor, make_patient
+    db, client, doctor_headers, make_department, make_patient
 ):
-    other = make_doctor(email="other@example.com")
+    other = make_department(username="other.department")
     slot = _slot(db, other.id, datetime.now(UTC) - timedelta(minutes=30))
     appointment = _appointment(db, make_patient().id, slot)
 
@@ -182,8 +182,8 @@ def test_agenda_lists_every_day_with_slots_and_appointments(
     assert "email" not in str(busy_day)
 
 
-def test_agenda_shows_only_own_slots(db, client, doctor_headers, make_doctor, make_patient):
-    other = make_doctor(email="other@example.com", name="Dr. Other")
+def test_agenda_shows_only_own_slots(db, client, doctor_headers, make_department, make_patient):
+    other = make_department(username="other.department", name="Other Department")
     day = today() + timedelta(days=2)
     _appointment(
         db, make_patient().id, _slot(db, other.id, datetime.combine(day, time(9), CLINIC_TZ))

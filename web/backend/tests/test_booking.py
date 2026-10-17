@@ -8,8 +8,8 @@ from web_backend.clinic import CLINIC_TZ, today
 
 
 @pytest.fixture
-def doctor(make_doctor):
-    return make_doctor()
+def doctor(make_department):
+    return make_department()
 
 
 @pytest.fixture
@@ -34,12 +34,8 @@ def _book(client, headers, slot_id):
     return client.post("/appointments", json={"slot_id": slot_id}, headers=headers)
 
 
-def test_doctors_are_listed_for_signed_in_users(client, doctor, patient_headers) -> None:
-    response = client.get("/doctors", headers=patient_headers)
-
-    assert response.status_code == 200
-    assert response.json() == [{"id": doctor.id, "full_name": "Dr. Test", "specialty": "General"}]
-    assert client.get("/doctors").status_code == 401
+def test_no_doctor_list_is_served(client, doctor, patient_headers) -> None:
+    assert client.get("/doctors", headers=patient_headers).status_code == 404
 
 
 def test_patient_books_an_empty_slot(client, db, make_slot, patient_headers) -> None:
@@ -49,8 +45,7 @@ def test_patient_books_an_empty_slot(client, db, make_slot, patient_headers) -> 
 
     assert response.status_code == 201
     body = response.json()
-    assert body["doctor_name"] == "Dr. Test"
-    assert body["doctor_specialty"] == "General"
+    assert not [field for field in body if field.startswith("doctor")]
     assert body["attended"] is None
     assert body["booking_date"] == today().isoformat()
     expected_day = slot.start_at.replace(tzinfo=UTC).astimezone(CLINIC_TZ).date()
@@ -98,7 +93,7 @@ def test_unknown_and_past_slots_cannot_be_booked(client, make_slot, patient_head
 def test_doctors_cannot_book(client, make_slot, login) -> None:
     slot = make_slot(hours_from_now=24)
 
-    assert _book(client, login("doctor@example.com"), slot.id).status_code == 403
+    assert _book(client, login("aile.hekimligi"), slot.id).status_code == 403
 
 
 def test_patient_lists_and_cancels_own_appointment(client, db, make_slot, patient_headers):

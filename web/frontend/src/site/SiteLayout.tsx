@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet } from 'react-router'
-import { INSTITUTION_NAME } from '../config'
+import { DEPARTMENT_NAME, INSTITUTION_NAME } from '../config'
 import { CONTACT, DISCLAIMER } from '../content/site'
 import { PATHS } from '../routes'
 import type { Me, Role } from '../types'
@@ -14,9 +14,7 @@ interface MenuItem {
 const MAIN_MENU: MenuItem[] = [
   { to: PATHS.home, label: 'Anasayfa' },
   { to: PATHS.about, label: 'Hastanemiz' },
-  { to: PATHS.departments, label: 'Poliklinikler' },
-  { to: PATHS.doctors, label: 'Hekimlerimiz' },
-  { to: PATHS.workingList, label: 'Hekim Çalışma Listesi' },
+  { to: PATHS.department, label: DEPARTMENT_NAME },
   { to: PATHS.announcements, label: 'Duyurular' },
   { to: PATHS.guide, label: 'Hasta Rehberi' },
   { to: PATHS.contact, label: 'İletişim ve Ulaşım' },
@@ -28,7 +26,7 @@ const ACCOUNT_MENU: Record<Role, MenuItem[]> = {
     { to: PATHS.booking, label: 'Online Randevu' },
     { to: PATHS.appointments, label: 'Randevularım' },
   ],
-  doctor: [
+  department: [
     { to: PATHS.worklist, label: 'Hasta Listesi' },
     { to: PATHS.schedule, label: 'Çalışma Takvimi' },
   ],
@@ -36,7 +34,7 @@ const ACCOUNT_MENU: Record<Role, MenuItem[]> = {
 
 const QUICK_LINKS: MenuItem[] = [
   { to: PATHS.booking, label: 'Online Randevu' },
-  { to: PATHS.workingList, label: 'Hekim Çalışma Listesi' },
+  { to: PATHS.department, label: 'Çalışma saatleri' },
   { to: PATHS.guide, label: 'Hasta Rehberi' },
   { to: PATHS.contact, label: 'Nasıl Giderim?' },
 ]
@@ -58,11 +56,11 @@ function Header({ me, onSignOut }: { me: Me | null; onSignOut: () => void }) {
           {me ? (
             <div className="user">
               <div className="user-text">
-                <span className="user-name">{me.name}</span>
+                <span className="user-name">
+                  {me.role === 'department' ? DEPARTMENT_NAME : me.name}
+                </span>
                 <span className="user-role">
-                  {me.role === 'doctor'
-                    ? `Hekim${me.specialty ? ` · ${me.specialty}` : ''}`
-                    : 'Hasta'}
+                  {me.role === 'department' ? 'Departman' : 'Hasta'}
                 </span>
               </div>
               <button type="button" onClick={onSignOut}>
@@ -74,8 +72,8 @@ function Header({ me, onSignOut }: { me: Me | null; onSignOut: () => void }) {
               <Link to={PATHS.patientLogin} className="button">
                 Hasta Girişi
               </Link>
-              <Link to={PATHS.doctorLogin} className="button">
-                Hekim Girişi
+              <Link to={PATHS.departmentLogin} className="button">
+                Departman Girişi
               </Link>
             </>
           )}

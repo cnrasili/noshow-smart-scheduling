@@ -1,8 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router'
 import { api, getToken, onUnauthorized } from './api'
-import { SchedulePage } from './pages/doctor/SchedulePage'
-import { WorklistPage } from './pages/doctor/WorklistPage'
+import { SchedulePage } from './pages/department/SchedulePage'
+import { WorklistPage } from './pages/department/WorklistPage'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { AppointmentsPage } from './pages/patient/AppointmentsPage'
@@ -10,10 +10,8 @@ import { BookingPage } from './pages/patient/BookingPage'
 import { AboutPage } from './pages/site/AboutPage'
 import { AnnouncementPage, AnnouncementsPage } from './pages/site/AnnouncementsPage'
 import { ContactPage } from './pages/site/ContactPage'
-import { DepartmentPage, DepartmentsPage } from './pages/site/DepartmentsPage'
-import { DoctorsPage } from './pages/site/DoctorsPage'
+import { DepartmentPage } from './pages/site/DepartmentPage'
 import { GuidePage } from './pages/site/GuidePage'
-import { WorkingListPage } from './pages/site/WorkingListPage'
 import { PATHS, homeFor, loginFor, type LoginReturn } from './routes'
 import { SiteLayout } from './site/SiteLayout'
 import { PageHeader } from './ui'
@@ -21,14 +19,14 @@ import type { Me, Role } from './types'
 
 type Session = { status: 'loading' } | { status: 'signed-out' } | { status: 'signed-in'; me: Me }
 
-// A doctor opening Online Randevu learns that booking needs a patient account
+// The department's staff opening Online Randevu learn that booking needs a patient account
 function BookingNeedsPatient() {
   return (
     <>
       <PageHeader title="Online Randevu" />
       <section className="panel panel-body stack-tight">
         <p>
-          Online Randevu ile randevu almak için hasta hesabıyla giriş yapmanız gerekir. Hekim
+          Online Randevu ile randevu almak için hasta hesabıyla giriş yapmanız gerekir. Departman
           hesabıyla randevu alınamaz.
         </p>
         <Link to={PATHS.worklist}>Hasta Listesine dön</Link>
@@ -94,10 +92,7 @@ function App() {
       <Route element={<SiteLayout me={me} onSignOut={signOut} />}>
         <Route path={PATHS.home} element={<HomePage />} />
         <Route path={PATHS.about} element={<AboutPage />} />
-        <Route path={PATHS.departments} element={<DepartmentsPage />} />
-        <Route path={`${PATHS.departments}/:slug`} element={<DepartmentPage />} />
-        <Route path={PATHS.doctors} element={<DoctorsPage />} />
-        <Route path={PATHS.workingList} element={<WorkingListPage />} />
+        <Route path={PATHS.department} element={<DepartmentPage />} />
         <Route path={PATHS.announcements} element={<AnnouncementsPage />} />
         <Route path={`${PATHS.announcements}/:slug`} element={<AnnouncementPage />} />
         <Route path={PATHS.guide} element={<GuidePage />} />
@@ -107,13 +102,15 @@ function App() {
           element={signedOutOnly(<LoginPage key="patient" role="patient" onSignedIn={signedIn} />)}
         />
         <Route
-          path={PATHS.doctorLogin}
-          element={signedOutOnly(<LoginPage key="doctor" role="doctor" onSignedIn={signedIn} />)}
+          path={PATHS.departmentLogin}
+          element={signedOutOnly(
+            <LoginPage key="department" role="department" onSignedIn={signedIn} />,
+          )}
         />
         <Route
           path={PATHS.booking}
           element={
-            me?.role === 'doctor' ? (
+            me?.role === 'department' ? (
               <BookingNeedsPatient />
             ) : (
               only(
@@ -131,8 +128,8 @@ function App() {
           path={PATHS.appointments}
           element={only('patient', <AppointmentsPage onBook={() => navigate(PATHS.booking)} />)}
         />
-        <Route path={PATHS.worklist} element={only('doctor', <WorklistPage />)} />
-        <Route path={PATHS.schedule} element={only('doctor', <SchedulePage />)} />
+        <Route path={PATHS.worklist} element={only('department', <WorklistPage />)} />
+        <Route path={PATHS.schedule} element={only('department', <SchedulePage />)} />
       </Route>
       <Route path="*" element={<Navigate to={PATHS.home} replace />} />
     </Routes>

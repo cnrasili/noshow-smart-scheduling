@@ -78,5 +78,3 @@ export const appointmentNumber = (id: number) => `R-${String(id).padStart(6, '0'
 
 export const genderLabel = (gender: string) =>
   gender === 'F' ? 'Kadın' : gender === 'M' ? 'Erkek' : '—'
-
-export const branchLabel = (specialty: string | null) => specialty ?? 'Genel'

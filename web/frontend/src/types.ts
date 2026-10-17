@@ -1,30 +1,23 @@
-export type Role = 'patient' | 'doctor'
+// The department's staff sign in with the department role; there is no doctor
+export type Role = 'patient' | 'department'
 
 export interface Me {
   role: Role
+  // "Hasta <PatientId>" for patients
   name: string
-  email: string
-  specialty: string | null
 }
 
-// Patients sign in with their national ID number, doctors with their e-mail address
+// Patients sign in with their dataset patient number, the department with its username
 export type LoginCredentials =
-  | { role: 'patient'; national_id: string; password: string }
-  | { role: 'doctor'; email: string; password: string }
+  | { role: 'patient'; patient_number: string; password: string }
+  | { role: 'department'; username: string; password: string }
 
 export interface LoginResponse extends Me {
   token: string
 }
 
-export interface Doctor {
-  id: number
-  full_name: string
-  specialty: string | null
-}
-
 export interface Slot {
   id: number
-  doctor_id: number
   start_at: string
   end_at: string
   max_patients: number
@@ -36,8 +29,6 @@ export interface Slot {
 export interface Appointment {
   id: number
   slot_id: number
-  doctor_name: string
-  doctor_specialty: string | null
   start_at: string
   end_at: string
   appointment_date: string
@@ -47,6 +38,7 @@ export interface Appointment {
 
 export interface CalendarAppointment {
   id: number
+  // "Hasta <PatientId>"
   patient_name: string
   patient_age: number
   patient_gender: string
@@ -80,7 +72,7 @@ export interface AgendaAppointment {
 
 export interface AgendaDay {
   date: string
-  // 0 when the doctor has no slots that day
+  // 0 when the department has no slots that day
   slot_count: number
   appointments: AgendaAppointment[]
 }
@@ -91,7 +83,7 @@ export interface PublicWorkingHours {
   end_time: string
 }
 
-// A doctor as shown on the public hospital site; no account data
+// The department's record as shown on the public hospital site; no account data
 export interface PublicDoctor {
   id: number
   full_name: string

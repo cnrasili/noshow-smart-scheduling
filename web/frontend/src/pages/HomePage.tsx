@@ -9,7 +9,7 @@ const QUICK_ACTIONS = [
   {
     to: PATHS.booking,
     title: 'Online Randevu',
-    text: 'Branş, hekim, gün ve saat seçerek randevunuzu alın.',
+    text: 'Aile Hekimliği için gün ve saat seçerek randevunuzu alın.',
   },
   {
     to: `${PATHS.contact}#ulasim`,
@@ -17,9 +17,9 @@ const QUICK_ACTIONS = [
     text: 'Adres, toplu taşıma ve otopark bilgileri.',
   },
   {
-    to: PATHS.workingList,
-    title: 'Hekim Çalışma Listesi',
-    text: 'Hekimlerimizin haftalık poliklinik çalışma saatleri.',
+    to: PATHS.department,
+    title: 'Çalışma Saatleri',
+    text: 'Aile Hekimliği polikliniğinin haftalık çalışma saatleri.',
   },
   {
     to: PATHS.guide,

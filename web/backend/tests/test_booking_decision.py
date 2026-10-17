@@ -10,8 +10,8 @@ from web_backend.clinic import today
 
 
 @pytest.fixture
-def slot(db, make_doctor) -> Slot:
-    doctor = make_doctor()
+def slot(db, make_department) -> Slot:
+    doctor = make_department()
     start = datetime.now(UTC).replace(microsecond=0) + timedelta(days=2)
     slot = Slot(doctor_id=doctor.id, start_at=start, end_at=start + timedelta(minutes=20))
     db.add(slot)

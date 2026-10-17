@@ -14,8 +14,9 @@ from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from noshow_db.models.core import Patient
 from web_backend import accounts
-from web_backend.accounts import NewDoctor, NewPatient, Password
+from web_backend.accounts import NewDoctor, Password, PatientNumber
 from web_backend.clinic import today
 from web_backend.db import get_db
 from web_backend.slots import DEFAULT_LISTING_DAYS, generate_slots
@@ -42,10 +43,15 @@ router = APIRouter(
 DbSession = Annotated[Session, Depends(get_db)]
 
 
-class PatientCreated(BaseModel):
+class PatientAccountRequest(BaseModel):
+    patient_number: PatientNumber
+    password: Password
+
+
+class PatientAccountOpened(BaseModel):
     account_id: int
     patient_id: int
-    national_id: str
+    patient_number: str
     full_name: str
     email: str
 
@@ -69,21 +75,25 @@ def _conflict(error: Exception) -> HTTPException:
 
 
 @router.post("/patients", status_code=status.HTTP_201_CREATED)
-def create_patient(body: NewPatient, db: DbSession) -> PatientCreated:
+def open_patient_account(body: PatientAccountRequest, db: DbSession) -> PatientAccountOpened:
+    """Open the login account of an existing dataset patient; never creates a patient."""
     try:
-        account = accounts.create_patient(db, body)
+        account = accounts.open_patient_account(db, body.patient_number, body.password)
+        patient = db.get(Patient, account.patient_id)
         db.commit()
+    except accounts.PatientNotFoundError as error:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(error)) from error
     except accounts.DuplicateAccountError as error:
         raise _conflict(error) from error
     except IntegrityError as error:
-        # Another request created the same national ID number or e-mail meanwhile
+        # Another request opened an account for the same patient meanwhile
         db.rollback()
-        raise _conflict(accounts.DuplicateAccountError("Account already exists")) from error
-    return PatientCreated(
+        raise _conflict(accounts.DuplicateAccountError("Patient already has an account")) from error
+    return PatientAccountOpened(
         account_id=account.id,
-        patient_id=account.patient_id,
-        national_id=body.national_id,
-        full_name=body.full_name,
+        patient_id=patient.id,
+        patient_number=patient.patient_number,
+        full_name=patient.full_name,
         email=account.email,
     )
 

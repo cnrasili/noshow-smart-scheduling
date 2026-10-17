@@ -1,35 +1,17 @@
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
-import { PATHS, bookingPath, departmentPath } from '../routes'
-import type { Doctor, PublicDoctor } from '../types'
-import { DOCTOR, PATIENT, fakeBackend, renderApp, signIn } from './backend'
-
-const DOCTORS: Doctor[] = [
-  { id: 1, full_name: 'Dr. Deniz Yıldız', specialty: 'Dahiliye' },
-  { id: 2, full_name: 'Dr. Can Özkan', specialty: 'Dahiliye' },
-  { id: 3, full_name: 'Dr. Leyla Aksoy', specialty: 'Kardiyoloji' },
-  { id: 4, full_name: 'Dr. Selim Karataş', specialty: 'Kardiyoloji' },
-]
-
-const PUBLIC: PublicDoctor[] = DOCTORS.map((doctor) => ({ ...doctor, working_hours: [] }))
+import { PATHS } from '../routes'
+import { DEPARTMENT, PATIENT, PATIENT_NUMBER, fakeBackend, renderApp, signIn } from './backend'
 
 const booking = {
-  'GET /doctors': () => DOCTORS,
   'GET /slots': () => [],
-  'GET /public/doctors': () => PUBLIC,
-}
-
-async function expectSelection(department: string, doctorId: string) {
-  expect(await screen.findByRole('heading', { level: 1, name: 'Online Randevu' })).toBeVisible()
-  await screen.findByRole('option', { name: 'Kardiyoloji' })
-  expect(screen.getByLabelText('Branş')).toHaveValue(department)
-  expect(screen.getByLabelText('Hekim')).toHaveValue(doctorId)
+  'GET /public/doctors': () => [],
 }
 
 async function signInAsPatient(user: ReturnType<typeof userEvent.setup>) {
   expect(await screen.findByRole('heading', { name: 'Hasta girişi' })).toBeVisible()
-  await user.type(screen.getByLabelText('T.C. kimlik numarası'), '99999000184')
+  await user.type(screen.getByLabelText('Hasta numarası'), PATIENT_NUMBER)
   await user.type(screen.getByLabelText('Şifre'), 'demo1234')
   await user.click(screen.getByRole('button', { name: 'Giriş yap' }))
 }
@@ -45,48 +27,37 @@ describe('Online Randevu', () => {
     )
     await signInAsPatient(user)
 
-    await expectSelection('Dahiliye', '1')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Online Randevu' })).toBeVisible()
+    expect(screen.getByText('Aile Hekimliği için uygun gün ve saati seçin.')).toBeInTheDocument()
   })
 
-  it('keeps the department chosen on its page through the login', async () => {
+  it('opens the booking from the department page through the login', async () => {
     fakeBackend({ ...booking, 'POST /auth/login': () => ({ ...PATIENT, token: 't' }) })
-    renderApp(departmentPath('Kardiyoloji'))
+    renderApp(PATHS.department)
     const user = userEvent.setup()
 
-    await screen.findByRole('heading', { level: 1, name: 'Kardiyoloji' })
+    await screen.findByRole('heading', { level: 1, name: 'Aile Hekimliği' })
     await user.click(
       within(screen.getByRole('main')).getAllByRole('link', { name: 'Online Randevu' })[0],
     )
     await signInAsPatient(user)
 
-    await expectSelection('Kardiyoloji', '3')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Online Randevu' })).toBeVisible()
   })
 
-  it('opens the booking with the doctor of a card selected, and the patient can change it', async () => {
-    fakeBackend({ ...signIn(PATIENT), ...booking })
-    renderApp(PATHS.doctors)
-    const user = userEvent.setup()
-
-    await user.click(await screen.findByRole('link', { name: 'Dr. Selim Karataş: Online Randevu' }))
-
-    await expectSelection('Kardiyoloji', '4')
-    await user.selectOptions(screen.getByLabelText('Branş'), 'Dahiliye')
-    expect(screen.getByLabelText('Hekim')).toHaveValue('1')
-  })
-
-  it('tells a signed-in doctor that booking needs a patient account', async () => {
-    const calls = fakeBackend({ ...signIn(DOCTOR), ...booking })
-    renderApp(bookingPath({ department: 'Kardiyoloji' }))
+  it('tells the signed-in department that booking needs a patient account', async () => {
+    const calls = fakeBackend({ ...signIn(DEPARTMENT), ...booking })
+    renderApp(PATHS.booking)
 
     expect(await screen.findByText(/hasta hesabıyla giriş yapmanız gerekir/)).toBeVisible()
     expect(calls.some((c) => c.path === '/slots')).toBe(false)
   })
 
-  it('redirects the old booking address and keeps the preselection', async () => {
+  it('redirects the old booking address', async () => {
     fakeBackend({ ...signIn(PATIENT), ...booking })
-    renderApp('/randevu-al?hekim=3')
+    renderApp('/randevu-al')
 
-    await expectSelection('Kardiyoloji', '3')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Online Randevu' })).toBeVisible()
   })
 
   it('names the booking Online Randevu in the account menu', async () => {
@@ -99,34 +70,5 @@ describe('Online Randevu', () => {
       PATHS.booking,
     )
     expect(screen.queryByText('Randevu Al')).not.toBeInTheDocument()
-  })
-
-  it('lists the departments in Turkish alphabetical order', async () => {
-    fakeBackend({
-      ...signIn(PATIENT),
-      ...booking,
-      'GET /doctors': () => [
-        ...DOCTORS,
-        { id: 5, full_name: 'Dr. Gökhan Tekin', specialty: 'Çocuk Sağlığı ve Hastalıkları' },
-        { id: 6, full_name: 'Dr. Ece Can', specialty: 'Cildiye' },
-      ],
-    })
-    renderApp(PATHS.booking)
-
-    await screen.findByRole('option', { name: 'Kardiyoloji' })
-    const options = within(screen.getByLabelText('Branş')).getAllByRole('option')
-    expect(options.map((option) => option.textContent)).toEqual([
-      'Cildiye',
-      'Çocuk Sağlığı ve Hastalıkları',
-      'Dahiliye',
-      'Kardiyoloji',
-    ])
-  })
-
-  it('ignores an unknown preselection', async () => {
-    fakeBackend({ ...signIn(PATIENT), ...booking })
-    renderApp(bookingPath({ department: 'Yok', doctorId: 99 }))
-
-    await expectSelection('Dahiliye', '1')
   })
 })

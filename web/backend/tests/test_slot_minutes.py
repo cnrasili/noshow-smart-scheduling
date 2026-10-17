@@ -7,6 +7,7 @@ import pytest
 from sqlalchemy import select
 
 from noshow_db.models.core import DoctorSchedule, Slot
+from web_backend import seed as seed_module
 from web_backend import slots
 from web_backend.clinic import as_utc, today
 from web_backend.seed import seed
@@ -19,7 +20,7 @@ def _lengths(db) -> set[timedelta]:
 
 @pytest.mark.parametrize("value", [None, "", "  "])
 def test_default_slot_length(value) -> None:
-    assert read_slot_minutes(value) == DEFAULT_SLOT_MINUTES == 20
+    assert read_slot_minutes(value) == DEFAULT_SLOT_MINUTES == 15
 
 
 @pytest.mark.parametrize(("value", "minutes"), [("15", 15), (" 30 ", 30), ("5", 5), ("120", 120)])
@@ -65,9 +66,15 @@ def thirty_minute_slots(monkeypatch) -> None:
     monkeypatch.setattr(slots, "SLOT_MINUTES", 30)
 
 
+@pytest.fixture
+def without_demo_patients(monkeypatch) -> None:
+    """The seed's department only; demo patient accounts need the dataset."""
+    monkeypatch.setattr(seed_module, "DEMO_PATIENTS", [])
+
+
 @pytest.mark.usefixtures("thirty_minute_slots")
-def test_generated_slots_use_the_configured_length(db, make_doctor) -> None:
-    doctor = make_doctor()
+def test_generated_slots_use_the_configured_length(db, make_department) -> None:
+    doctor = make_department()
     db.add(DoctorSchedule(doctor_id=doctor.id, weekday=0, start_time=time(9), end_time=time(12)))
     db.commit()
     monday = today() + timedelta(days=7 - today().weekday())
@@ -80,8 +87,8 @@ def test_generated_slots_use_the_configured_length(db, make_doctor) -> None:
 
 
 @pytest.mark.usefixtures("thirty_minute_slots")
-def test_doctor_generation_uses_the_configured_length(client, db, make_doctor, login) -> None:
-    doctor = make_doctor()
+def test_doctor_generation_uses_the_configured_length(client, db, make_department, login) -> None:
+    doctor = make_department()
     db.add(DoctorSchedule(doctor_id=doctor.id, weekday=0, start_time=time(9), end_time=time(12)))
     db.commit()
     monday = (today() + timedelta(days=7 - today().weekday())).isoformat()
@@ -89,21 +96,21 @@ def test_doctor_generation_uses_the_configured_length(client, db, make_doctor, l
     response = client.post(
         "/doctors/me/slots/generate",
         json={"date_from": monday, "date_to": monday},
-        headers=login("doctor@example.com"),
+        headers=login("aile.hekimligi"),
     )
 
     assert response.json() == {"created": 6}
     assert _lengths(db) == {timedelta(minutes=30)}
 
 
-@pytest.mark.usefixtures("thirty_minute_slots")
+@pytest.mark.usefixtures("thirty_minute_slots", "without_demo_patients")
 def test_seeded_slots_use_the_configured_length(db) -> None:
     seed(db)
 
     assert _lengths(db) == {timedelta(minutes=30)}
 
 
-@pytest.mark.usefixtures("thirty_minute_slots")
+@pytest.mark.usefixtures("thirty_minute_slots", "without_demo_patients")
 def test_existing_slots_keep_their_length(db) -> None:
     seed(db)
     before = _lengths(db)

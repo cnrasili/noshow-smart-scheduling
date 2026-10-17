@@ -1,13 +1,13 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { ApiError, api, errorText } from '../api'
-import { isValidNationalId } from '../nationalId'
+import { DEPARTMENT_NAME } from '../config'
 import { PATHS, loginFor } from '../routes'
 import { usePageTitle } from '../site/title'
 import type { LoginCredentials, Me, Role } from '../types'
 
 // Backend answers for wrong credentials; both are shown with the form's own message
-const WRONG_CREDENTIALS = ['Wrong national ID number or password', 'Wrong email or password']
+const WRONG_CREDENTIALS = ['Wrong patient number or password', 'Wrong username or password']
 // Shown when the backend refuses logins after too many failures (429)
 const TOO_MANY_ATTEMPTS =
   'Çok fazla başarısız giriş denemesi yapıldı. Lütfen 15 dakika sonra tekrar deneyin.'
@@ -18,20 +18,20 @@ const COPY: Record<
 > = {
   patient: {
     title: 'Hasta girişi',
-    description: 'Randevu almak ve randevularınızı görmek için giriş yapın.',
-    other: 'Hekim misiniz? Hekim girişi',
-    wrongCredentials: 'T.C. kimlik numarası veya şifre hatalı.',
+    description: 'Hasta numaranız ve şifrenizle giriş yapın.',
+    other: 'Departman girişi',
+    wrongCredentials: 'Hasta numarası veya şifre hatalı.',
   },
-  doctor: {
-    title: 'Hekim girişi',
-    description: 'Günlük hasta listenize ve çalışma takviminize ulaşmak için giriş yapın.',
+  department: {
+    title: 'Departman girişi',
+    description: `${DEPARTMENT_NAME} departman paneli: günlük hasta listesi ve çalışma takvimi.`,
     other: 'Hasta mısınız? Hasta girişi',
-    wrongCredentials: 'E-posta adresi veya şifre hatalı.',
+    wrongCredentials: 'Kullanıcı adı veya şifre hatalı.',
   },
 }
 
 export function LoginPage({ role, onSignedIn }: { role: Role; onSignedIn: (me: Me) => void }) {
-  // National ID number on the patient form, e-mail address on the doctor form
+  // Patient number on the patient form, username on the department form
   const [login, setLogin] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -42,12 +42,10 @@ export function LoginPage({ role, onSignedIn }: { role: Role; onSignedIn: (me: M
   async function submit(event: FormEvent) {
     event.preventDefault()
     const name = login.trim()
-    if (role === 'patient' && !isValidNationalId(name)) {
-      setError('Geçerli bir T.C. kimlik numarası girin (11 hane).')
-      return
-    }
     const credentials: LoginCredentials =
-      role === 'patient' ? { role, national_id: name, password } : { role, email: name, password }
+      role === 'patient'
+        ? { role, patient_number: name, password }
+        : { role, username: name, password }
     setBusy(true)
     setError(null)
     try {
@@ -71,23 +69,26 @@ export function LoginPage({ role, onSignedIn }: { role: Role; onSignedIn: (me: M
         <div className="panel-body stack-tight">
           {role === 'patient' ? (
             <label>
-              T.C. kimlik numarası
+              Hasta numarası
               <input
                 type="text"
-                inputMode="numeric"
+                inputMode="decimal"
                 autoComplete="username"
-                maxLength={11}
+                maxLength={20}
                 value={login}
-                onChange={(event) => setLogin(event.target.value.replace(/\D/g, ''))}
+                // Patient numbers are digits; a few dataset numbers also contain a dot
+                onChange={(event) => setLogin(event.target.value.replace(/[^\d.]/g, ''))}
                 required
               />
             </label>
           ) : (
             <label>
-              E-posta adresi
+              Kullanıcı adı
               <input
-                type="email"
+                type="text"
                 autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
                 value={login}
                 onChange={(event) => setLogin(event.target.value)}
                 required
@@ -115,7 +116,7 @@ export function LoginPage({ role, onSignedIn }: { role: Role; onSignedIn: (me: M
         </div>
         <div className="login-links">
           <Link to={PATHS.home}>‹ Anasayfa</Link>
-          <Link to={loginFor(role === 'patient' ? 'doctor' : 'patient')}>{copy.other}</Link>
+          <Link to={loginFor(role === 'patient' ? 'department' : 'patient')}>{copy.other}</Link>
         </div>
       </form>
     </div>

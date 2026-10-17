@@ -11,8 +11,6 @@ import pytest
 from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.exc import IntegrityError
 
-from web_backend.national_id import fictional_national_id
-
 TEST_DATABASE_URL = os.getenv("NOSHOW_TEST_DATABASE_URL")
 DB_DIR = Path(__file__).resolve().parents[3] / "db"
 
@@ -49,16 +47,16 @@ def slot_id(engine: Engine) -> int:
         for number in (1, 2, 3):
             conn.execute(
                 text(
-                    "INSERT INTO patients (national_id, full_name, email, age, gender) "
-                    "VALUES (:national_id, :name, :email, 30, 'F')"
+                    "INSERT INTO patients (patient_number, full_name, email, age, gender) "
+                    "VALUES (:number, :name, :email, 30, 'F')"
                 ),
                 {
-                    "national_id": fictional_national_id(number),
-                    "name": f"Patient {number}",
+                    "number": str(number),
+                    "name": f"Hasta {number}",
                     "email": f"p{number}@example.com",
                 },
             )
-        conn.execute(text("INSERT INTO doctors (full_name) VALUES ('Dr. Test')"))
+        conn.execute(text("INSERT INTO doctors (full_name) VALUES ('General Practice')"))
         return conn.execute(
             text(
                 "INSERT INTO slots (doctor_id, start_at, end_at) "
@@ -137,11 +135,11 @@ def test_slot_date_uses_clinic_timezone(engine: Engine) -> None:
         )
         conn.execute(
             text(
-                "INSERT INTO patients (national_id, full_name, email, age, gender) "
-                "VALUES ('99999000184', 'Patient', 'p@example.com', 30, 'F')"
+                "INSERT INTO patients (patient_number, full_name, email, age, gender) "
+                "VALUES ('1', 'Hasta 1', 'p@example.com', 30, 'F')"
             )
         )
-        conn.execute(text("INSERT INTO doctors (full_name) VALUES ('Dr. Test')"))
+        conn.execute(text("INSERT INTO doctors (full_name) VALUES ('General Practice')"))
         # 22:30 UTC on 9 November is 01:30 on 10 November in Istanbul
         late_slot = conn.execute(
             text(

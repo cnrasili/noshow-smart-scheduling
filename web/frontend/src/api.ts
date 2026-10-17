@@ -3,7 +3,6 @@ import type {
   Appointment,
   CalendarAppointment,
   CalendarSlot,
-  Doctor,
   LoginCredentials,
   LoginResponse,
   Me,
@@ -106,8 +105,7 @@ export const api = {
   },
   me: () => request<Me>('/auth/me'),
   publicDoctors: () => request<PublicDoctor[]>('/public/doctors'),
-  doctors: () => request<Doctor[]>('/doctors'),
-  slots: (doctorId: number) => request<Slot[]>(`/slots?doctor_id=${doctorId}`),
+  slots: () => request<Slot[]>('/slots'),
   myAppointments: () => request<Appointment[]>('/patients/me/appointments'),
   book: (slotId: number) =>
     request<Appointment>('/appointments', json('POST', { slot_id: slotId })),

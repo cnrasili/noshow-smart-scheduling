@@ -2,7 +2,7 @@
 import { INSTITUTION_NAME } from '../config'
 
 export const DISCLAIMER =
-  'Bu site bir ders projesidir; gerçek bir hastaneye ait değildir. Hekim ve hasta bilgileri kurgusaldır.'
+  'Bu site bir ders projesidir; gerçek bir hastaneye ait değildir. Hastalar herkese açık bir veri setinden alınmıştır ve yalnızca numarayla gösterilir.'
 
 export const CONTACT = {
   address: 'Şifa Mahallesi, Sağlık Caddesi No: 1, Merkez',
@@ -10,7 +10,7 @@ export const CONTACT = {
   email: 'iletisim@sehirhastanesi.example',
   appointmentEmail: 'randevu@sehirhastanesi.example',
   hours: [
-    ['Poliklinikler', 'Hafta içi 08:00–17:00'],
+    ['Aile Hekimliği', 'Hafta içi 08:00–12:00'],
     ['Acil servis', '7 gün 24 saat'],
     ['Hasta kabul', 'Hafta içi 07:30–17:00'],
   ],
@@ -36,10 +36,10 @@ export const ANNOUNCEMENTS: Announcement[] = [
     slug: 'online-randevu-yenilendi',
     date: '2026-10-06',
     title: 'Online Randevu sistemimiz yenilendi',
-    summary: 'Randevularınızı artık branş, hekim, gün ve saat seçerek birkaç adımda alabilirsiniz.',
+    summary: 'Aile Hekimliği randevunuzu artık gün ve saat seçerek birkaç adımda alabilirsiniz.',
     body: [
-      'Online Randevu sistemimiz yenilendi. Hasta girişi yaptıktan sonra önce branşı, sonra hekimi, ardından uygun gün ve saati seçerek randevunuzu alabilirsiniz.',
-      'Randevunuz alındığında kayıtlı e-posta adresinize bir onay e-postası gönderilir. Randevularınızı "Randevularım" sayfasından görebilir, gelemeyecekseniz iptal edebilirsiniz.',
+      'Online Randevu sistemimiz yenilendi. Hasta numaranız ve şifrenizle giriş yaptıktan sonra uygun gün ve saati seçerek Aile Hekimliği randevunuzu alabilirsiniz.',
+      'Randevunuz alındığında bir onay SMS\'i gönderilir. Randevularınızı "Randevularım" sayfasından görebilir, gelemeyecekseniz iptal edebilirsiniz.',
     ],
   },
   {
@@ -74,7 +74,7 @@ export const ANNOUNCEMENTS: Announcement[] = [
 ]
 
 export const ABOUT = {
-  intro: `${INSTITUTION_NAME}, birçok branşta poliklinik hizmeti veren kurgusal bir şehir hastanesidir. Hastalarımız randevularını Online Randevu üzerinden alır; hekimlerimiz günlük hasta listelerini aynı sistemden yönetir.`,
+  intro: `${INSTITUTION_NAME}, Aile Hekimliği polikliniğiyle hizmet veren kurgusal bir şehir hastanesidir. Hastalarımız randevularını Online Randevu üzerinden alır; Aile Hekimliği departmanı günlük hasta listesini aynı sistemden yönetir.`,
   sections: [
     {
       title: 'Misyonumuz',
@@ -97,8 +97,7 @@ export const GUIDE = [
     title: 'Randevu nasıl alınır?',
     steps: [
       'Sayfanın üst kısmındaki "Online Randevu" bağlantısını seçin.',
-      'T.C. kimlik numaranız ve şifrenizle hasta girişi yapın.',
-      'Branşı ve hekimi seçin.',
+      'Hasta numaranız ve şifrenizle hasta girişi yapın.',
       'Uygun günü ve saati seçip randevuyu onaylayın.',
       'Randevu numaranızı not alın; randevularınızı "Randevularım" sayfasından izleyin.',
     ],
