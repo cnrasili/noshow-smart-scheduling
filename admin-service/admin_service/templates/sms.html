@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}SMS kutusu{% endblock %}
+{% block content %}
+<header>
+  <h1>SMS kutusu</h1>
+  <form method="get" action="{{ url_for('sms_page') }}">
+    <label>
+      Hasta numarası
+      <input type="search" name="q" value="{{ q }}" maxlength="20" />
+    </label>
+    <button type="submit">Ara</button>
+  </form>
+</header>
+<p class="muted">
+  Onay ve hatırlatma mesajları demo SMS'tir: hasta numarasına gönderilmiş sayılır, gerçek bir
+  telefona gitmez. Bir randevunun hatırlatma SMS'i gönderildiyse veri setindeki SMS_received
+  karşılığı 1, gönderilmediyse 0'dır; kontrol grubu hatırlatma almaz.
+</p>
+<section aria-label="SMS mesajları">
+  {% if rows %}
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Hasta</th>
+        <th scope="col">Tür</th>
+        <th scope="col">Gönderim zamanı</th>
+        <th scope="col">Durum</th>
+        <th scope="col">Metin</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for message, patient_number in rows %}
+      <tr>
+        <td>{% if patient_number %}Hasta {{ patient_number }}{% else %}—{% endif %}</td>
+        <td>{{ message_kinds.get(message.kind, message.kind) }}</td>
+        <td>{{ (message.sent_at or message.send_at) | clinic_time }}</td>
+        <td>{{ message_statuses.get(message.status, message.status) }}</td>
+        <td>{{ message.body }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted">
+    En fazla {{ limit }} mesaj listelenir, en yenisi üstte; saatler klinik saatiyle. Bekleyen
+    mesajlarda planlanan gönderim zamanı gösterilir.
+  </p>
+  {% else %}
+  <p class="empty">SMS bulunamadı.</p>
+  {% endif %}
+</section>
+{% endblock %}
