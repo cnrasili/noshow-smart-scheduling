@@ -259,7 +259,9 @@ code {
 }
 
 table.decisions th,
-table.decisions td {
+table.decisions td,
+table.messages th,
+table.messages td {
   text-align: left;
   vertical-align: top;
 }
