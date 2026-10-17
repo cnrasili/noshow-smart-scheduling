@@ -45,7 +45,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:9px 10px;
 tr.hl td{background:var(--soft);font-weight:700}
 .ok-card{border-left:5px solid var(--ok)}
 .sc{max-height:420px;overflow:auto;padding-right:6px}.sc th{position:sticky;top:0;background:var(--card);z-index:1}</style></head><body data-role="hasta">
-<div class="ribbon"><span>Örnek tasarım 1 / 2 · demo: giriş türünü seçin</span><span id="roles"></span></div>
+<div class="ribbon"><span>Örnek tasarım 1 / 2 · demo</span><span id="roles"></span></div>
 <header><div class="bar"><div class="brand"><div class="logo" id="logo">✚</div><div><span id="hname"></span><small id="portal"></small></div></div>
 <nav id="nav"></nav></div></header>
 <main id="app"></main>
@@ -157,4 +157,9 @@ function draw(){document.body.dataset.role=state.role;
   document.querySelectorAll('[data-dn]').forEach(b=>b.onclick=()=>{const n=+b.dataset.dn;state.dshow=200;state.dday=n===0?TODAY:addDays(state.dday,n);state.dmonth=+state.dday.slice(5,7)-1;draw();});
   document.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{state.kural=b.dataset.r;draw();});}
 draw();
+Gate.start({hospital:D.hospital,
+  roleButtons:()=>[...document.querySelectorAll('#roles button')].map(el=>({el,role:el.dataset.role})),
+  setUser:(name,role,out)=>{const r=document.querySelector('.ribbon');let u=document.getElementById('usr');if(!u){u=document.createElement('span');u.id='usr';r.appendChild(u);}
+    u.innerHTML='Giriş: <b></b> <button type="button">Çıkış</button>';u.querySelector('b').textContent=name;u.querySelector('button').onclick=out;},
+  enter:role=>{state.role=role;state.tab=TABS[role][0][0];state.day=null;state.slot=null;state.confirmed=null;draw();}});
 </script></body></html>
