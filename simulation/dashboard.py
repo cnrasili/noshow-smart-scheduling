@@ -26,7 +26,7 @@ OUT = Path(__file__).parent / "output"
 METRICS = {  # key: (label, unit, higher_is_better)
     "seen": ("Patients seen", "per session", True),
     "mean_wait": ("Mean waiting time", "min", False),
-    "idle": ("Physician idle time", "min", False),
+    "idle": ("Idle time", "min", False),
     "overtime": ("Overtime", "min", False),
     "utilization": ("Utilization", "of session", True),
     "overbooked_slots": ("Overbooked slots", "per session", None),
@@ -135,7 +135,7 @@ function render(){
  const x=d[p]; let v='';
  if(p===BASE) v='Baseline: one patient per slot, no overbooking.';
  else{const s=x.seen.delta, w=x.mean_wait.delta, i=x.idle.delta;
-  v=`Compared with fixed-interval booking, this policy sees ${s.toFixed(1)} more patients and cuts physician idle time by ${Math.abs(i).toFixed(0)} min, at the price of ${w.toFixed(1)} min more average waiting${s>0.05?` (${(w/s).toFixed(2)} min of waiting per extra patient)`:''}.`;}
+  v=`Compared with fixed-interval booking, this policy sees ${s.toFixed(1)} more patients and cuts idle time by ${Math.abs(i).toFixed(0)} min, at the price of ${w.toFixed(1)} min more average waiting${s>0.05?` (${(w/s).toFixed(2)} min of waiting per extra patient)`:''}.`;}
  document.getElementById('verdict').textContent=v;
  let h='<tr><th>Policy</th>'+Object.values(METRICS).map(m=>`<th>${m[0]}</th>`).join('')+'</tr>';
  for(const name in d){h+=`<tr><td>${name}</td>`+Object.keys(METRICS).map(m=>{const y=d[name][m];return `<td>${f(y.mean,m)}${name===BASE?'':` <span class="${cls(m,y.delta,y.dci)}">(${fd(y.delta,m)})</span>`}</td>`}).join('')+'</tr>';}
@@ -172,7 +172,7 @@ def main() -> None:
     )
     config = (
         f"{args.reps} simulated sessions per policy · {cfg.n_slots} slots × {cfg.slot_min:.0f} min · "
-        f"mean consultation {cfg.service_mean:.0f} min · {cfg.n_slots + cfg.extra_requests} booking requests per session · "
+        f"mean consultation {cfg.service_mean:g} min · {cfg.n_slots + cfg.extra_requests} booking requests per session · "
         "parameters are assumptions"
     )
     html = (

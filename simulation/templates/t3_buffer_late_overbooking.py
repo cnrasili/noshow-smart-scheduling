@@ -1,6 +1,6 @@
 """Template 3: a buffer slot in the middle, overbooking only after it and not in the last slot.
 
-Idea: delays caused by overbooking spread to all later patients. A buffer slot lets the physician
+Idea: delays caused by overbooking spread to all later patients. A buffer slot lets the clinic room
 catch up, and keeping overbooking away from the first half and the last slot limits cascades and
 overtime.
 """

@@ -5,7 +5,7 @@
     python live_day.py --day 3 --trace # trace day 3
     python live_day.py --risks ../ml/data/processed/risks_random_forest.csv
 
-Each day is one SimPy run (simpy.Environment + a Resource for the physician). The two panels use the same
+Each day is one SimPy run (simpy.Environment + a Resource for the clinic room). The two panels use the same
 patients, show-ups, arrival times and consultation lengths; only the booking policy differs.
 """
 
@@ -89,9 +89,9 @@ def print_trace(name: str, day: dict) -> None:
             ),
             (
                 p["start"],
-                f"doctor starts patient {p['id']:>2}  (waited {p['start'] - p['ready']:.1f} min)",
+                f"clinic room starts patient {p['id']:>2}  (waited {p['start'] - p['ready']:.1f} min)",
             ),
-            (p["end"], f"doctor finishes patient {p['id']:>2}"),
+            (p["end"], f"clinic room finishes patient {p['id']:>2}"),
         ]
     events += [
         (
@@ -163,7 +163,7 @@ function draw(cv,p,title,t){
   const wait=p.patients.filter(x=>x.ready<=t&&t<x.start).sort((a,b)=>a.ready-b.ready);
   wait.forEach((x,i)=>{const cx=34+i*40;g.beginPath();g.arc(cx,152,15,0,7);g.fillStyle='#f2a93b';g.fill();g.fillStyle='#fff';g.font='600 12px system-ui,sans-serif';g.textAlign='center';g.fillText(x.id,cx,156);g.font='10px system-ui,sans-serif';g.fillStyle=MUTE;g.fillText((t-x.ready).toFixed(0)+'m',cx,184);g.textAlign='left';});
   const cur=p.patients.find(x=>x.start<=t&&t<x.end);
-  g.fillStyle=MUTE;g.font='12px system-ui,sans-serif';g.fillText('Physician',650,122);
+  g.fillStyle=MUTE;g.font='12px system-ui,sans-serif';g.fillText('Clinic room',650,122);
   g.fillStyle=cur?'#2a6f97':(dark?'#374151':'#d0d5dd');g.beginPath();g.roundRect(650,128,190,64,10);g.fill();
   g.fillStyle='#fff';g.font='600 14px system-ui,sans-serif';g.fillText(cur?'Patient '+cur.id+(cur.ob?' (overbooked)':''):'Idle',664,155);
   if(cur){g.fillStyle='rgba(255,255,255,.35)';g.fillRect(664,168,162*(t-cur.start)/(cur.end-cur.start),8);}

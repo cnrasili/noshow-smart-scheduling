@@ -20,6 +20,7 @@ from sklearn.inspection import permutation_importance
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import brier_score_loss, log_loss, roc_auc_score
 from sklearn.preprocessing import StandardScaler
+from sklearn.tree import DecisionTreeClassifier
 
 DATA = Path(__file__).parent / "data" / "processed"
 SRC = DATA / "appointments_clean.xlsx"
@@ -74,6 +75,26 @@ def r4_predict(train, test):
     n = test["PriorApptCount"].to_numpy()
     shows = n - test["PriorNoShowCount"].to_numpy()
     return 1 - (shows + K_P * pi0) / (n + K_P), {"s_bar": s_bar, "gender": s_gender, "age": s_age}
+
+
+def single_rule_risks(train, test):
+    """Rules R1-R3 of docs/formulas/rules.md on their own (no-show probabilities).
+
+    Rates are learned on `train`. R1 patient history, R2 gender (the data has no department),
+    R3 age band. R4 is the combination (r4_predict)."""
+    s_bar = train["ShowUp"].mean()
+
+    def smoothed(col):
+        g = train.groupby(col)["ShowUp"].agg(["sum", "count"])
+        return ((g["sum"] + K * s_bar) / (g["count"] + K)).to_dict()
+
+    n = test["PriorApptCount"].to_numpy()
+    shows = n - test["PriorNoShowCount"].to_numpy()
+    return {
+        "p_r1": 1 - (shows + K_P * s_bar) / (n + K_P),
+        "p_r2": 1 - test["Gender"].map(smoothed("Gender")).fillna(s_bar).to_numpy(),
+        "p_r3": 1 - test["AgeBand"].astype(str).map(smoothed("AgeBand")).fillna(s_bar).to_numpy(),
+    }
 
 
 def metrics(y, p):
@@ -388,6 +409,20 @@ def comparison_report(train, test, cut, preds, r4info):
     wb.save(DATA / "auc_calibration.xlsx")
 
 
+def paper_classifier(train: pd.DataFrame) -> DecisionTreeClassifier:
+    """Classifier in the style of Batool et al. (2020).
+
+    The training set is rebalanced to 50/50 by undersampling the majority class and a decision tree
+    (min_samples_split=1400) is fitted. Its probabilities are NOT calibrated: they are far too high
+    for the real 20 % no-show rate. The paper used instance-hardness undersampling, which has the
+    same effect."""
+    miss = train[train["NoShow"] == 1]
+    kept = pd.concat([miss, train[train["NoShow"] == 0].sample(len(miss), random_state=0)])
+    return DecisionTreeClassifier(min_samples_split=1400, random_state=0).fit(
+        kept[FEATURES], kept["NoShow"]
+    )
+
+
 def cv_risks(df, folds: int = 5) -> pd.DataFrame:
     """Out-of-sample risks for EVERY appointment day.
 
@@ -407,6 +442,7 @@ def cv_risks(df, folds: int = 5) -> pd.DataFrame:
             n_estimators=300, min_samples_leaf=50, n_jobs=-1, random_state=42
         ).fit(tr[FEATURES], tr["NoShow"])
         p_r4, _ = r4_predict(tr, te)
+        p_paper = paper_classifier(tr).predict_proba(te[FEATURES])[:, 1]
         part = te[
             ["AppointmentID", "ScheduledDay", "AppointmentDay", "Age", "LeadDays", "PriorApptCount"]
         ].copy()
@@ -416,6 +452,9 @@ def cv_risks(df, folds: int = 5) -> pd.DataFrame:
             p_r4,
             k,
         )
+        part["p_paper"] = p_paper
+        for col, values in single_rule_risks(tr, te).items():
+            part[col] = values
         parts.append(part)
     out = pd.concat(parts).sort_values(["AppointmentDay", "ScheduledDay"])
     out.to_csv(DATA / "risks_all_days.csv", index=False)
@@ -423,8 +462,15 @@ def cv_risks(df, folds: int = 5) -> pd.DataFrame:
         f"All-days out-of-sample risks: {len(out)} appointments, {len(days)} days, AUC "
         + ", ".join(
             f"{n} {roc_auc_score(out['y'], out[c]):.3f}"
-            for n, c in (("RF", "p"), ("LR", "p_lr"), ("R4", "p_r4"))
+            for n, c in (("RF", "p"), ("LR", "p_lr"), ("R4", "p_r4"), ("paper-style", "p_paper"))
         )
+    )
+    print(
+        "Paper-style classifier (trained on rebalanced data): mean predicted risk "
+        f"{out['p_paper'].mean():.3f} (true no-show rate {out['y'].mean():.3f}), "
+        f"share flagged p >= 0.5: {(out['p_paper'] >= 0.5).mean():.3f}; "
+        f"calibrated random forest: mean {out['p'].mean():.3f}, "
+        f"share flagged p >= 0.5: {(out['p'] >= 0.5).mean():.4f}"
     )
     return out
 
