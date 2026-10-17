@@ -139,13 +139,15 @@ def generate_my_slots(
 
 
 class SlotOut(BaseModel):
+    """A slot as the patient sees it: free ("Müsait") or full ("Dolu"), nothing more.
+
+    A booked slot below capacity counts as free; the overbooking service decides at booking
+    time whether the patient may join it. Neither the number of patients nor any risk is sent.
+    """
+
     id: int
     start_at: datetime
     end_at: datetime
-    max_patients: int
-    booked_count: int
-    # Bookable while below capacity; for an already booked slot the overbooking service
-    # makes the final decision at booking time
     available: bool
     booked_by_me: bool
 
@@ -187,9 +189,7 @@ def list_slots(
             id=slot.id,
             start_at=as_utc(slot.start_at),
             end_at=as_utc(slot.end_at),
-            max_patients=slot.max_patients,
-            booked_count=booked_count,
-            available=booked_count < slot.max_patients,
+            available=booked_count < slot.max_patients and slot.id not in mine,
             booked_by_me=slot.id in mine,
         )
         for slot, booked_count in rows
