@@ -122,7 +122,7 @@ def test_default_settings_come_from_config():
 def seed_outcomes(session: Session, outcomes: dict[str, list[bool | None]]) -> None:
     session.add_all(
         [
-            Doctor(id=1, full_name="Doctor"),
+            Doctor(id=1, full_name="General Practice"),
             Slot(
                 id=1,
                 doctor_id=1,
@@ -201,7 +201,7 @@ def test_patient_unit_counts_each_patient_once(
         3: [("reminder", True)],
     }
     with session_factory() as session:
-        session.add(Doctor(id=1, full_name="Doctor"))
+        session.add(Doctor(id=1, full_name="General Practice"))
         appointment_id = 0
         for patient_id, visits in history.items():
             session.add(

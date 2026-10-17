@@ -33,13 +33,12 @@ class FakeSender:
         self.sent.append((patient_number, text))
 
 
-def empty_slot(session: Session, doctor_id: int, day: date) -> Slot:
+def empty_slot(session: Session, day: date) -> Slot:
     start = datetime.combine(day, datetime.min.time(), CLINIC).astimezone(UTC)
     booked = select(Appointment.slot_id)
     return session.scalars(
         select(Slot)
         .where(
-            Slot.doctor_id == doctor_id,
             Slot.start_at >= start,
             Slot.start_at < start + timedelta(days=1),
             Slot.id.not_in(booked),
@@ -79,7 +78,7 @@ def test_booking_flow(client: TestClient, session_factory: sessionmaker[Session]
             ]
         )
         session.commit()
-        slot = empty_slot(session, 1, DAY)
+        slot = empty_slot(session, DAY)
         slot_id, slot_start = slot.id, slot.start_at.replace(tzinfo=UTC)
     before = client.get("/ab/summary").json()
 
@@ -130,7 +129,7 @@ def test_booking_flow(client: TestClient, session_factory: sessionmaker[Session]
     local_start = slot_start.astimezone(CLINIC)
     assert sender.sent == [("999", render(Kind(kind), local_start)) for kind in kinds]
 
-    # 4. The doctor marks the patient as attended
+    # 4. The department marks the patient as attended
     with session_factory() as session:
         session.get(Appointment, appointment_id).attended = True
         session.commit()
@@ -141,5 +140,5 @@ def test_booking_flow(client: TestClient, session_factory: sessionmaker[Session]
     index = 0 if group == "reminder" else 1
     assert after["groups"][index]["appointments"] == before["groups"][index]["appointments"] + 1
 
-    kpi = client.get("/kpi", params={"doctor_id": 1, "date": DAY.isoformat()}).json()
+    kpi = client.get("/kpi", params={"date": DAY.isoformat()}).json()
     assert kpi["patients_seen"] == 1

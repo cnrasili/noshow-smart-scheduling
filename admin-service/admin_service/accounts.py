@@ -1,4 +1,4 @@
-"""Account management screens: patient and doctor lists, account creation, password reset.
+"""Account management screens: the patient list, the department, patient accounts, passwords.
 
 Lists are read from the database; creating accounts and resetting passwords go through the
 web backend's internal account API, which owns the account rules.
@@ -9,7 +9,6 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, Response
 from sqlalchemy import func, or_, select
-from starlette.datastructures import FormData
 
 from admin_service import audit
 from admin_service.accounts_client import AccountRejected, AccountsUnavailable
@@ -23,42 +22,24 @@ from admin_service.dependencies import (
 )
 from admin_service.security import generate_password
 from admin_service.templating import templates
-from admin_service.turkish import SHORT_WEEKDAYS, WEEKDAYS
-from noshow_db.models.admin import AdminUser
-from noshow_db.models.core import Doctor, DoctorSchedule, Patient, UserAccount
+from admin_service.turkish import DEPARTMENT_NAME, WEEKDAYS
+from noshow_db.models.core import DoctorSchedule, Patient, UserAccount
 
 router = APIRouter()
 
 LIST_LIMIT = 50
-PATIENT_FLAGS = {
-    "scholarship": "Sosyal yardım alıyor",
-    "hipertension": "Hipertansiyon",
-    "diabetes": "Diyabet",
-    "alcoholism": "Alkol bağımlılığı",
-}
 DISABLED = "Hesap yönetimi kapalı: INTERNAL_API_TOKEN ayarlanmamış ya da kabul edilmiyor."
-NATIONAL_ID = "T.C. kimlik numarası"
-EMAIL = "E-posta"
+NOT_IN_DATASET = "Bu hasta veri setinde yok; giriş hesabı yalnızca veri setindeki hastalara açılır."
+PATIENT_NUMBER = "Hasta numarası"
+LOGIN_NAME = "Giriş adı"
 
 PATIENT_CREATED = "patient_created"
-DOCTOR_CREATED = "doctor_created"
 PASSWORD_RESET = "password_reset"
 ACCOUNT_REJECTED = "account_rejected"
 
 
-async def form_data(request: Request) -> FormData:
-    return await request.form()
-
-
-Form = Annotated[FormData, Depends(form_data)]
-
-
 def render(request: Request, name: str, context: dict, status_code: int = 200) -> Response:
     return templates.TemplateResponse(request, name, context, status_code=status_code)
-
-
-def text(form: FormData, name: str) -> str:
-    return str(form.get(name, "")).strip()
 
 
 @router.get("/patients", response_class=HTMLResponse)
@@ -91,67 +72,47 @@ def patients_page(
     )
 
 
-@router.get("/doctors", response_class=HTMLResponse)
-def doctors_page(
+@router.get("/department", response_class=HTMLResponse)
+def department_page(
     request: Request, admin: CurrentAdmin, session: DbSession, accounts: Accounts
 ) -> Response:
-    rows = session.execute(
-        select(Doctor, UserAccount.id, UserAccount.email)
-        .outerjoin(UserAccount, UserAccount.doctor_id == Doctor.id)
-        .order_by(Doctor.specialty, Doctor.full_name)
-    ).all()
-    hours: dict[int, list[str]] = {}
-    for schedule in session.scalars(
-        select(DoctorSchedule).order_by(DoctorSchedule.doctor_id, DoctorSchedule.weekday)
-    ):
-        day = SHORT_WEEKDAYS[schedule.weekday]
-        hours.setdefault(schedule.doctor_id, []).append(
-            f"{day} {schedule.start_time:%H:%M}–{schedule.end_time:%H:%M}"
+    # The department's working hours and staff account belong to its record in doctors
+    hours = [
+        (WEEKDAYS[schedule.weekday], f"{schedule.start_time:%H:%M}–{schedule.end_time:%H:%M}")
+        for schedule in session.scalars(
+            select(DoctorSchedule).order_by(DoctorSchedule.weekday, DoctorSchedule.start_time)
         )
+    ]
+    staff = session.execute(
+        select(UserAccount.id, UserAccount.email)
+        .where(UserAccount.doctor_id.is_not(None))
+        .order_by(UserAccount.id)
+    ).all()
     return render(
         request,
-        "doctors.html",
-        {"admin": admin, "rows": rows, "hours": hours, "enabled": accounts.enabled},
+        "department.html",
+        {"admin": admin, "hours": hours, "staff": staff, "enabled": accounts.enabled},
     )
 
 
-def patient_form(request: Request, admin: AdminUser, values: dict, error: str | None = None):
-    return render(
-        request,
-        "patient_new.html",
-        {"admin": admin, "values": values, "flags": PATIENT_FLAGS, "error": error},
-        status_code=400 if error else 200,
-    )
-
-
-@router.get("/patients/new", response_class=HTMLResponse)
-def new_patient_page(request: Request, admin: CurrentAdmin, accounts: Accounts) -> Response:
-    return patient_form(request, admin, {}, None if accounts.enabled else DISABLED)
-
-
-@router.post("/patients/new", dependencies=[Depends(verify_csrf)])
-def create_patient(
+@router.post("/patients/{patient_id}/account", dependencies=[Depends(verify_csrf)])
+def open_patient_account(
     request: Request,
+    patient_id: int,
     admin: CurrentAdmin,
     session: DbSession,
     accounts: Accounts,
     now: Now,
-    form: Form,
 ) -> Response:
-    values = {name: text(form, name) for name in ["national_id", "full_name", "email", "age"]}
-    values |= {"gender": text(form, "gender"), "handcap": text(form, "handcap") or "0"}
-    values |= {flag: form.get(flag) == "on" for flag in PATIENT_FLAGS}
-    try:
-        age, handcap = int(values["age"]), int(values["handcap"])
-    except ValueError:
-        return patient_form(request, admin, values, "Yaş ve engellilik düzeyi tam sayı olmalıdır.")
+    patient = session.get(Patient, patient_id)
+    if patient is None or patient.patient_number is None:
+        return render(request, "message.html", {"admin": admin, "error": NOT_IN_DATASET}, 404)
 
     password = generate_password()
-    patient = {**values, "age": age, "handcap": handcap, "password": password}
     try:
-        created = accounts.create_patient(patient)
+        opened = accounts.open_patient_account(patient.patient_number, password)
     except AccountsUnavailable:
-        return patient_form(request, admin, values, DISABLED)
+        return render(request, "message.html", {"admin": admin, "error": DISABLED}, 400)
     except AccountRejected as exc:
         audit.record(
             session,
@@ -163,9 +124,9 @@ def create_patient(
             str(exc)[:255],
         )
         session.commit()
-        return patient_form(request, admin, values, str(exc))
+        return render(request, "message.html", {"admin": admin, "error": str(exc)}, 400)
 
-    detail = f"hesap {created['account_id']}, hasta {created['patient_id']}"
+    detail = f"hesap {opened['account_id']}, hasta {opened['patient_id']}"
     audit.record(session, PATIENT_CREATED, admin.email, client_ip(request), now, admin.id, detail)
     session.commit()
     return render(
@@ -173,105 +134,11 @@ def create_patient(
         "credentials.html",
         {
             "admin": admin,
-            "title": "Hasta hesabı açıldı",
-            "name": created["full_name"],
-            "login": created["national_id"],
-            "login_label": NATIONAL_ID,
+            "title": "Giriş hesabı açıldı",
+            "name": opened["full_name"],
+            "login": opened["patient_number"],
+            "login_label": PATIENT_NUMBER,
             "password": password,
-        },
-    )
-
-
-def doctor_form(
-    request: Request, admin: AdminUser, session, values: dict, error: str | None = None
-) -> Response:
-    specialties = session.scalars(
-        select(Doctor.specialty).where(Doctor.specialty.is_not(None)).distinct()
-    ).all()
-    return render(
-        request,
-        "doctor_new.html",
-        {
-            "admin": admin,
-            "values": values,
-            "weekdays": list(enumerate(WEEKDAYS)),
-            "specialties": sorted(specialties),
-            "error": error,
-        },
-        status_code=400 if error else 200,
-    )
-
-
-@router.get("/doctors/new", response_class=HTMLResponse)
-def new_doctor_page(
-    request: Request, admin: CurrentAdmin, session: DbSession, accounts: Accounts
-) -> Response:
-    return doctor_form(request, admin, session, {}, None if accounts.enabled else DISABLED)
-
-
-@router.post("/doctors/new", dependencies=[Depends(verify_csrf)])
-def create_doctor(
-    request: Request,
-    admin: CurrentAdmin,
-    session: DbSession,
-    accounts: Accounts,
-    now: Now,
-    form: Form,
-) -> Response:
-    values = {name: text(form, name) for name in ["full_name", "specialty", "email"]}
-    working_hours, missing = [], []
-    for weekday, day in enumerate(WEEKDAYS):
-        start, end = text(form, f"start_{weekday}"), text(form, f"end_{weekday}")
-        values[f"start_{weekday}"], values[f"end_{weekday}"] = start, end
-        if start and end:
-            working_hours.append({"weekday": weekday, "start_time": start, "end_time": end})
-        elif start or end:
-            missing.append(day)
-    if missing:
-        error = f"{', '.join(missing)} için başlangıç ve bitiş saatini birlikte girin."
-        return doctor_form(request, admin, session, values, error)
-    if not working_hours:
-        return doctor_form(request, admin, session, values, "En az bir çalışma günü girin.")
-
-    password = generate_password()
-    doctor = {
-        "full_name": values["full_name"],
-        "specialty": values["specialty"],
-        "email": values["email"],
-        "password": password,
-        "working_hours": working_hours,
-    }
-    try:
-        created = accounts.create_doctor(doctor)
-    except AccountsUnavailable:
-        return doctor_form(request, admin, session, values, DISABLED)
-    except AccountRejected as exc:
-        audit.record(
-            session,
-            ACCOUNT_REJECTED,
-            admin.email,
-            client_ip(request),
-            now,
-            admin.id,
-            str(exc)[:255],
-        )
-        session.commit()
-        return doctor_form(request, admin, session, values, str(exc))
-
-    detail = f"hesap {created['account_id']}, hekim {created['doctor_id']}"
-    audit.record(session, DOCTOR_CREATED, admin.email, client_ip(request), now, admin.id, detail)
-    session.commit()
-    return render(
-        request,
-        "credentials.html",
-        {
-            "admin": admin,
-            "title": "Hekim hesabı açıldı",
-            "name": created["full_name"],
-            "login": created["email"],
-            "login_label": EMAIL,
-            "password": password,
-            "note": f"Önümüzdeki iki hafta için {created['slots_created']} slot açıldı.",
         },
     )
 
@@ -286,14 +153,13 @@ def reset_password(
     now: Now,
 ) -> Response:
     row = session.execute(
-        select(UserAccount, Patient, Doctor)
+        select(UserAccount, Patient)
         .outerjoin(Patient, Patient.id == UserAccount.patient_id)
-        .outerjoin(Doctor, Doctor.id == UserAccount.doctor_id)
         .where(UserAccount.id == account_id)
     ).first()
     if row is None:
         return render(request, "message.html", {"admin": admin, "error": "Hesap bulunamadı."}, 404)
-    account, patient, doctor = row
+    account, patient = row
 
     password = generate_password()
     try:
@@ -319,9 +185,9 @@ def reset_password(
             "admin": admin,
             "title": "Şifre sıfırlandı",
             "password_label": "Yeni şifre",
-            "name": patient.full_name if patient else doctor.full_name,
-            "login": patient.national_id if patient else account.email,
-            "login_label": NATIONAL_ID if patient else EMAIL,
+            "name": patient.full_name if patient else DEPARTMENT_NAME,
+            "login": (patient.patient_number or "—") if patient else account.email,
+            "login_label": PATIENT_NUMBER if patient else LOGIN_NAME,
             "password": password,
             "note": "Hesabın açık oturumları kapatıldı.",
         },

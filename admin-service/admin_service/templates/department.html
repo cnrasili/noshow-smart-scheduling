@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Departman{% endblock %}
+{% block content %}
+<header>
+  <h1>{{ department_name }}</h1>
+</header>
+<p class="muted">
+  Bütün randevular tek bölüme aittir; hekim adı geçmez. Çalışma saatleri ve bölüm hesabı web sitesinde
+  tanımlıdır; burada bölüm hesabının şifresi sıfırlanır.
+</p>
+{% if not enabled %}
+<p class="error" role="alert">Hesap yönetimi kapalı: INTERNAL_API_TOKEN ayarlanmamış.</p>
+{% endif %}
+<section aria-label="Çalışma saatleri">
+  <h2>Çalışma saatleri</h2>
+  {% if hours %}
+  <table class="hours">
+    <tbody>
+      {% for day, interval in hours %}
+      <tr>
+        <th scope="row">{{ day }}</th>
+        <td>{{ interval }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">Çalışma saati tanımlı değil.</p>
+  {% endif %}
+</section>
+<section aria-label="Bölüm hesabı">
+  <h2>Bölüm hesabı</h2>
+  {% if staff %}
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Giriş adı</th>
+        <th scope="col">Şifre</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for account_id, login in staff %}
+      <tr>
+        <td>{{ login }}</td>
+        <td>
+          {% if enabled %}
+          <form method="post" action="{{ url_for('reset_password', account_id=account_id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf(request) }}" />
+            <button type="submit" class="secondary">Şifreyi sıfırla</button>
+          </form>
+          {% else %}
+          <span class="muted">—</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">Bölüm hesabı yok.</p>
+  {% endif %}
+</section>
+{% endblock %}

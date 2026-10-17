@@ -12,7 +12,11 @@ from noshow_db.models.service import BookingDecision
 
 DAY = date(2026, 11, 9)
 LATER = date(2026, 11, 11)
-DOCTOR = 1
+# The department's record in doctors
+DEPARTMENT = 1
+# Demo patients of the dataset
+RISKY, EXTRA = "1421986987763", "26886125921145"
+LOW_RISK, REFUSED = "1411446711177", "11241475371456"
 
 
 def utc(day: date, hour: int, minute: int) -> datetime:
@@ -40,21 +44,22 @@ def decision(patient: Patient, slot: Slot, p: float, **kwargs) -> BookingDecisio
 
 @pytest.fixture
 def clinic(session_factory: sessionmaker[Session]) -> None:
-    """Dr. Ada's day: a granted extra appointment, a refusal and a booking without a decision."""
+    """The department's day: an extra appointment, a refusal and a booking without a decision."""
     with session_factory() as session:
-        names = ["Ayşe Kaya", "Mehmet Demir", "Zeynep Çelik", "Ali Şahin"]
-        ayse, mehmet, zeynep, ali = patients = [
+        numbers = [RISKY, EXTRA, LOW_RISK, REFUSED]
+        risky, extra, low_risk, refused = patients = [
             Patient(
-                full_name=name,
-                email=f"p{i}@example.com",
+                patient_number=number,
+                full_name=f"Hasta {number}",
+                email=f"{number}@hasta.sehirhastanesi.example",
                 age=40,
                 gender="F",
             )
-            for i, name in enumerate(names, start=1)
+            for number in numbers
         ]
         first, second, empty, last, later = slots = [
             Slot(
-                doctor_id=DOCTOR,
+                doctor_id=DEPARTMENT,
                 start_at=utc(day, hour, minute),
                 end_at=utc(day, hour, minute) + timedelta(minutes=20),
             )
@@ -80,25 +85,25 @@ def clinic(session_factory: sessionmaker[Session]) -> None:
                 )
             )
 
-        book(ayse, first, False)
-        book(mehmet, first, True)
-        book(zeynep, second, True)
-        book(ali, last, None)
-        book(ayse, later, None)
+        book(risky, first, False)
+        book(extra, first, True)
+        book(low_risk, second, True)
+        book(refused, last, None)
+        book(risky, later, None)
         session.add_all(
             [
-                decision(ayse, first, 0.62),
-                decision(mehmet, first, 0.25, overbook=True, booked_p_noshow=0.62),
-                decision(zeynep, second, 0.12),
+                decision(risky, first, 0.62),
+                decision(extra, first, 0.25, overbook=True, booked_p_noshow=0.62),
+                decision(low_risk, second, 0.12),
                 decision(
-                    ali,
+                    refused,
                     second,
                     0.40,
                     allow=False,
                     booked_p_noshow=0.12,
                     reason="Slot is booked; booked patient risk 0.12 < 0.30",
                 ),
-                decision(ayse, later, 0.62),
+                decision(risky, later, 0.62),
             ]
         )
         session.commit()
@@ -117,13 +122,13 @@ def test_decisions_page_needs_login(client: TestClient):
 
 def test_day_view_shows_risks_decisions_and_outcomes(client: TestClient, log_in, clinic):
     log_in()
-    html = client.get(f"/decisions?doctor_id={DOCTOR}&date={DAY}").text
+    html = client.get(f"/decisions?date={DAY}").text
     assert '/decisions">Model kararları</a>' in html
-    assert "09:00–09:20" in html and "Ayşe Kaya" in html
+    assert "09:00–09:20" in html and f"Hasta {RISKY}" in html
     assert "%62,0" in html and "%25,0" in html
     assert 'class="badge extra"' in html
     assert "Saatteki hastanın riski %62,0, eşik %30,0" in html
-    # Ali was refused for Zeynep's slot and booked later without a logged decision
+    # The refused patient asked for the low-risk patient's slot and booked later without a decision
     assert "Reddedildi" in html
     assert "Saatteki hastanın riski eşiğin altında: %12,0, eşik %30,0" in html
     assert "Karar kaydı yok" in html
@@ -133,13 +138,13 @@ def test_day_view_shows_risks_decisions_and_outcomes(client: TestClient, log_in,
 
 def test_future_appointments_are_upcoming(client: TestClient, log_in, clinic):
     log_in()
-    html = client.get(f"/decisions?doctor_id={DOCTOR}&date={LATER}").text
+    html = client.get(f"/decisions?date={LATER}").text
     assert "Bekleniyor" in html
 
 
 def test_period_summary_counts_decisions(client: TestClient, log_in, clinic):
     log_in()
-    html = client.get(f"/decisions?doctor_id={DOCTOR}&date={DAY}").text
+    html = client.get(f"/decisions?date={DAY}").text
     assert "<span>Randevu talebi</span><strong>4</strong>" in html
     assert "<span>Normal randevu</span><strong>2</strong>" in html
     assert "<span>Ek randevu verildi</span><strong>1</strong>" in html
@@ -150,7 +155,7 @@ def test_period_summary_counts_decisions(client: TestClient, log_in, clinic):
 
 def test_risk_bands_compare_prediction_and_outcome(client: TestClient, log_in, clinic):
     log_in()
-    bands = chart(client.get(f"/decisions?doctor_id={DOCTOR}&date={DAY}").text)
+    bands = chart(client.get(f"/decisions?date={DAY}").text)
     assert len(bands) == 10
     assert bands[6] == {"label": "%60–70", "rate": 100.0, "predicted": 62.0, "count": 1}
     assert bands[2] == {"label": "%20–30", "rate": 0.0, "predicted": 25.0, "count": 1}
@@ -160,7 +165,7 @@ def test_risk_bands_compare_prediction_and_outcome(client: TestClient, log_in, c
 
 def test_extra_appointment_outcomes(client: TestClient, log_in, clinic):
     log_in()
-    html = client.get(f"/decisions?doctor_id={DOCTOR}&date={DAY}").text
+    html = client.get(f"/decisions?date={DAY}").text
     rows = re.findall(r"<td>([^<]+)</td>\s*<td>(\d+)</td>", html)
     assert ("En az bir hasta gelmedi; boşluk dolduruldu", "1") in rows
     assert ("Hepsi geldi; bekleme ya da fazla mesai oluştu", "0") in rows

@@ -37,7 +37,10 @@ def utc(value: datetime) -> datetime:
 
 
 def make_clinic(session: Session) -> None:
-    session.add_all([Doctor(id=1, full_name="Dr. Ada Demir"), Doctor(id=2, full_name="Dr. Bora")])
+    # A second schedule record lets two bookings start at the same time
+    session.add_all(
+        [Doctor(id=1, full_name="General Practice"), Doctor(id=2, full_name="Second schedule")]
+    )
     session.add_all(
         Patient(
             id=patient_id,

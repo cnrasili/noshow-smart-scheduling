@@ -5,16 +5,6 @@
   <h1>Randevu göstergeleri</h1>
   <form method="get" action="{{ url_for('kpi_page') }}">
     <label>
-      Hekim
-      <select name="doctor_id">
-        {% for doctor in doctors %}
-        <option value="{{ doctor.id }}" {% if selected and doctor.id == selected.id %}selected{% endif %}>
-          {{ doctor.full_name }}
-        </option>
-        {% endfor %}
-      </select>
-    </label>
-    <label>
       Tarih
       <input type="date" name="date" value="{{ day.isoformat() }}" />
     </label>
@@ -24,15 +14,13 @@
 
 {% if error %}
 <p class="error" role="alert">{{ error }}</p>
-{% elif not selected %}
-<p class="empty">Henüz hekim kaydı yok.</p>
 {% else %}
 <section aria-label="{{ day | long_date }} göstergeleri">
-  <h2>{{ selected.full_name }} · {{ day | long_date }}</h2>
+  <h2>{{ department_name }} · {{ day | long_date }}</h2>
   {% if today %}
   <div class="tiles">
     <div class="tile"><span>Doluluk</span><strong>{{ today.utilization | percent }}</strong></div>
-    <div class="tile"><span>Hekim boş süresi</span><strong>{{ today.idle_minutes | decimal(0) }} dk</strong></div>
+    <div class="tile"><span>Boş süre</span><strong>{{ today.idle_minutes | decimal(0) }} dk</strong></div>
     <div class="tile"><span>Fazla mesai</span><strong>{{ today.overtime_minutes | decimal(0) }} dk</strong></div>
     <div class="tile"><span>Ortalama bekleme</span><strong>{{ today.mean_wait_minutes | decimal }} dk</strong></div>
     <div class="tile"><span>Ek randevulu slot</span><strong>{{ today.overbooked_slots }}</strong></div>

@@ -9,7 +9,7 @@ from admin_service.dependencies import AppSettings, CurrentAdmin, DbSession, Now
 from admin_service.overbooking import OverbookingClient, OverbookingUnavailable
 from admin_service.templating import templates
 from noshow_db.models.admin import AdminAuditLog
-from noshow_db.models.core import Doctor, Patient
+from noshow_db.models.core import Patient
 from noshow_db.models.service import Message
 
 router = APIRouter()
@@ -31,20 +31,16 @@ def kpi_page(
     now: Now,
     app_settings: AppSettings,
     overbooking: Annotated[OverbookingClient, Depends(get_overbooking)],
-    doctor_id: Annotated[int | None, Query(gt=0)] = None,
     day: Annotated[date | None, Query(alias="date")] = None,
 ) -> Response:
-    doctors = list(session.scalars(select(Doctor).order_by(Doctor.full_name)))
-    selected = next((d for d in doctors if d.id == doctor_id), doctors[0] if doctors else None)
     day = day or now.astimezone(app_settings.clinic_timezone).date()
 
     days, ab, error = [], None, None
     try:
-        # Daily KPIs for the period ending on the selected date
-        if selected is not None:
-            for offset in range(app_settings.dashboard_days - 1, -1, -1):
-                current = day - timedelta(days=offset)
-                days.append({"date": current, "kpis": overbooking.kpi(selected.id, current)})
+        # The department's daily KPIs for the period ending on the selected date
+        for offset in range(app_settings.dashboard_days - 1, -1, -1):
+            current = day - timedelta(days=offset)
+            days.append({"date": current, "kpis": overbooking.kpi(current)})
         ab = overbooking.ab_summary()
     except OverbookingUnavailable:
         days, error = [], "Randevu karar servisine ulaşılamıyor; göstergeler gösterilemiyor."
@@ -54,8 +50,6 @@ def kpi_page(
         "kpi.html",
         {
             "admin": admin,
-            "doctors": doctors,
-            "selected": selected,
             "day": day,
             "today": days[-1]["kpis"] if days else None,
             "days": days,

@@ -37,12 +37,15 @@ def http_error(status: int, body: dict) -> HTTPError:
 def test_request_carries_the_service_token(monkeypatch):
     sent = answer(monkeypatch, {"account_id": 1})
     client = AccountsClient("http://web-backend:8000/", "secret")
-    assert client.create_patient({"full_name": "A"}) == {"account_id": 1}
+    assert client.open_patient_account("93779.52927", "initial password") == {"account_id": 1}
     request = sent[0]
     assert request.full_url == "http://web-backend:8000/internal/accounts/patients"
     assert request.get_method() == "POST"
     assert request.get_header("X-internal-token") == "secret"
-    assert json.loads(request.data) == {"full_name": "A"}
+    assert json.loads(request.data) == {
+        "patient_number": "93779.52927",
+        "password": "initial password",
+    }
 
 
 def test_password_reset_has_no_body_in_the_answer(monkeypatch):
@@ -57,7 +60,7 @@ def test_without_token_nothing_is_sent(monkeypatch):
     client = AccountsClient("http://web-backend:8000", "")
     assert not client.enabled
     with pytest.raises(AccountsUnavailable):
-        client.create_doctor({})
+        client.open_patient_account("93779.52927", "secret")
     assert sent == []
 
 
@@ -70,24 +73,21 @@ def test_without_token_nothing_is_sent(monkeypatch):
             "Bu e-posta adresi zaten kullanılıyor.",
         ),
         (
-            http_error(
-                422,
-                {
-                    "detail": [
-                        {
-                            "loc": ["body", "national_id"],
-                            "msg": "Value error, Invalid national ID number",
-                        }
-                    ]
-                },
-            ),
+            http_error(404, {"detail": "Patient not found"}),
             AccountRejected,
-            "T.C. kimlik numarası geçerli değil.",
+            "Bu hasta numarasıyla kayıtlı hasta yok.",
         ),
         (
-            http_error(422, {"detail": [{"loc": ["body", "age"], "msg": "Input should be valid"}]}),
+            http_error(409, {"detail": "Patient already has an account"}),
             AccountRejected,
-            "Yaş alanındaki değer geçersiz.",
+            "Bu hastanın zaten giriş hesabı var.",
+        ),
+        (
+            http_error(
+                422, {"detail": [{"loc": ["body", "patient_number"], "msg": "Field required"}]}
+            ),
+            AccountRejected,
+            "Hasta numarası alanındaki değer geçersiz.",
         ),
         (
             http_error(409, {"detail": "Something new"}),
@@ -102,4 +102,4 @@ def test_without_token_nothing_is_sent(monkeypatch):
 def test_errors(monkeypatch, error, expected, message):
     answer(monkeypatch, error)
     with pytest.raises(expected, match=message):
-        AccountsClient("http://web-backend:8000", "secret").create_patient({})
+        AccountsClient("http://web-backend:8000", "secret").open_patient_account("1", "x")

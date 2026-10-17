@@ -37,18 +37,18 @@ class FakeDataSource:
         return self.history.get(patient_id, [])
 
 
-CLINIC_DOCTORS = ["Dr. Ada Demir", "Dr. Bora Kaya"]
 CLINIC_PATIENTS = 8
 
 
 def make_clinic(session: Session, today: date) -> None:
-    """A small clinic like the web backend seed: doctors, patients, slots, seeded bookings.
+    """The department's schedule, patients, slots and bookings, like the web backend seed.
 
-    Doctors work on weekdays 09:00-12:00 in 20-minute slots, from three weeks before today
-    to two weeks after it. Doctor 1 has every other slot of the last past working day booked.
+    The department works on weekdays 08:00-12:00 in 16 slots of 15 minutes, from three weeks
+    before today to two weeks after it. Every other slot of the last past working day is booked.
     """
     tz = settings.clinic_timezone
-    session.add_all(Doctor(full_name=name) for name in CLINIC_DOCTORS)
+    # The department's schedule is its one record in doctors
+    session.add(Doctor(full_name="General Practice"))
     session.add_all(
         Patient(
             full_name=f"Patient {n}",
@@ -61,26 +61,22 @@ def make_clinic(session: Session, today: date) -> None:
     session.flush()
     days = [today + timedelta(days=d) for d in range(-21, 15)]
     days = [day for day in days if day.weekday() < 5]
-    for doctor_id in range(1, len(CLINIC_DOCTORS) + 1):
-        for day in days:
-            start = datetime.combine(day, time(9), tz)
-            session.add_all(
-                Slot(
-                    doctor_id=doctor_id,
-                    start_at=(start + timedelta(minutes=20 * k)).astimezone(UTC),
-                    end_at=(start + timedelta(minutes=20 * (k + 1))).astimezone(UTC),
-                )
-                for k in range(9)
+    for day in days:
+        start = datetime.combine(day, time(8), tz)
+        session.add_all(
+            Slot(
+                doctor_id=1,
+                start_at=(start + timedelta(minutes=15 * k)).astimezone(UTC),
+                end_at=(start + timedelta(minutes=15 * (k + 1))).astimezone(UTC),
             )
+            for k in range(16)
+        )
     session.flush()
 
     last_past = max(day for day in days if day < today)
-    first = datetime.combine(last_past, time(9), tz).astimezone(UTC)
+    first = datetime.combine(last_past, time(8), tz).astimezone(UTC)
     slots = session.scalars(
-        select(Slot)
-        .where(Slot.doctor_id == 1, Slot.start_at >= first)
-        .order_by(Slot.start_at)
-        .limit(9)
+        select(Slot).where(Slot.start_at >= first).order_by(Slot.start_at).limit(16)
     ).all()
     for patient_id, slot in enumerate(slots[::2], start=1):
         session.add(

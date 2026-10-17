@@ -55,7 +55,7 @@ def evaluate(
         if booked is None:
             raise DataSourceUnavailable(f"Booked patient {booking.patient_id} not found")
         booked_risks.append(booked[1])
-    daily_overbooks = slots.count_overbooks(slot.doctor_id, slot.slot_date) if slot.bookings else 0
+    daily_overbooks = slots.count_overbooks(slot.slot_date) if slot.bookings else 0
     return decide(booked_risks, slot.max_patients, daily_overbooks, rule), p_noshow, booked_risks
 
 

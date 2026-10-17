@@ -89,14 +89,14 @@ Slot state is read from the `slots` and `appointments` tables through the `SlotD
 
 - Slot capacity is the slot's `max_patients` column.
 - The slot date is the date of `start_at` in `clinic_timezone` (`config.yaml`, default `Europe/Istanbul`), the same time zone as the database triggers.
-- Daily overbooks are the appointments after the first one in each slot of the doctor on that date.
+- Daily overbooks are the appointments after the first one in each slot of the department on that date.
 
 Rule parameters are read from `config.yaml`. The current values are defaults until the simulation study sets the final ones.
 
 | Setting | Default | Meaning |
 |---|---|---|
 | `threshold` | 0.30 | Minimum `p_noshow` of the booked patient for an overbook |
-| `daily_overbook_limit` | 4 | Maximum overbooks per doctor per day |
+| `daily_overbook_limit` | 4 | Maximum overbooks per day of the department |
 
 Environment variables override the file, for example `OVERBOOKING__THRESHOLD=0.25`. With Docker Compose, rebuild the service after editing `config.yaml`.
 
@@ -155,11 +155,11 @@ Each appointment that can get a reminder is assigned to the `reminder` or `contr
 
 ## KPIs
 
-`GET /kpi` returns utilization, physician idle time, overtime, mean waiting time and overbooked slots for a doctor and a date (see the [API contract](../docs/api-contract.md#get-kpi) and [KPI definitions](../docs/kpi-definitions.md)). The KPI screen of the [admin service](../admin-service/) shows them for the selected date and the days before it, with a chart and a table.
+`GET /kpi` returns the department's utilization, idle time, overtime, mean waiting time and overbooked slots for a date (see the [API contract](../docs/api-contract.md#get-kpi) and [KPI definitions](../docs/kpi-definitions.md)). The KPI screen of the [admin service](../admin-service/) shows them for the selected date and the days before it, with a chart and a table.
 
 The booking application does not record consultation times, so the KPIs replay the day from the schedule:
 
-- The session runs from the doctor's first slot start to the last slot end (`kpi.session: slots`), or over the doctor's working hours of the weekday (`kpi.session: schedule`). With `schedule`, time within the working hours without slots counts as idle and work after the working hours as overtime; a day without working hours falls back to `slots`.
+- The session runs from the department's first slot start to the last slot end (`kpi.session: slots`), or over the department's working hours of the weekday (`kpi.session: schedule`). With `schedule`, time within the working hours without slots counts as idle and work after the working hours as overtime; a day without working hours falls back to `slots`.
 - Patients with `attended = true` are seen in slot order, each for `service_minutes`, and arrive on time.
 - Appointments without a recorded attendance are not counted as seen.
 
@@ -177,4 +177,4 @@ The service generates no demo data. It works on the dataset patients and on the 
 1. Start the stack, load the demo data and create an administrator (see [Getting Started](../README.md#getting-started)).
 2. Book an appointment in the web application with a demo patient account. The decision and the patient's predicted no-show risk appear on the decisions page of the admin service at http://localhost:8002/decisions; the risk counts the patient's past appointments in the dataset. The confirmation SMS appears in the SMS inbox of the admin service at http://localhost:8002/sms within a minute.
 3. Book the same time with another demo patient. The rule adds the patient as an overbook when the first patient's risk reaches the threshold, and otherwise rejects the booking; the decisions page shows the reason.
-4. Log in as the doctor and mark the appointments as attended or missed. The KPI screen of the admin service and http://localhost:8001/ab/summary count them.
+4. Log in with the department account and mark the appointments as attended or missed. The KPI screen of the admin service and http://localhost:8001/ab/summary count them.
