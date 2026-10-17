@@ -1,29 +1,53 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router'
 import { api, errorText } from '../../api'
-import { appointmentNumber, formatShortDate, formatTimeRange, hasStarted } from '../../format'
-import type { Appointment } from '../../types'
-import { Notice, PageHeader, Status, type NoticeState } from '../../ui'
+import {
+  appointmentNumber,
+  formatDateTime,
+  formatLongDate,
+  formatTime,
+  hasStarted,
+} from '../../format'
+import { PATHS } from '../../routes'
+import type { Appointment, SmsMessage } from '../../types'
+import { Notice, PageTop, type NoticeState } from '../../ui'
+import { PatientWho } from './PatientWho'
 
-type Tab = 'active' | 'past'
-
-function PastStatus({ attended }: { attended: boolean | null }) {
-  if (attended === true) return <Status tone="ok">Geldi</Status>
-  if (attended === false) return <Status tone="miss">Gelmedi</Status>
-  return <Status tone="neutral">Kayıt bekleniyor</Status>
+const SMS_KIND: Record<SmsMessage['kind'], string> = {
+  confirmation: 'Randevu onayı',
+  reminder: 'Randevu hatırlatması',
 }
 
-export function AppointmentsPage({ onBook }: { onBook: () => void }) {
+function SmsList({ messages }: { messages: SmsMessage[] | null }) {
+  if (messages === null) return <p className="muted">Yükleniyor…</p>
+  if (messages.length === 0) return <p className="muted">SMS yok.</p>
+  return (
+    <ul className="sms-list">
+      {messages.map((message) => (
+        <li key={`${message.kind}-${message.sent_at}`}>
+          <b>SMS · {SMS_KIND[message.kind]}</b>{' '}
+          <time dateTime={message.sent_at} className="muted">
+            {formatDateTime(message.sent_at)}
+          </time>
+          <p>“{message.body}”</p>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+export function AppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[] | null>(null)
-  const [tab, setTab] = useState<Tab>('active')
+  const [messages, setMessages] = useState<SmsMessage[] | null>(null)
   const [confirmId, setConfirmId] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<NoticeState | null>(null)
-
   const closeNotice = useCallback(() => setNotice(null), [])
   const showError = (error: unknown) => setNotice({ kind: 'error', text: errorText(error) })
 
   useEffect(() => {
     api.myAppointments().then(setAppointments).catch(showError)
+    api.myMessages().then(setMessages).catch(showError)
   }, [])
 
   async function cancel(appointment: Appointment) {
@@ -43,115 +67,101 @@ export function AppointmentsPage({ onBook }: { onBook: () => void }) {
     }
   }
 
-  const active = (appointments ?? []).filter((a) => !hasStarted(a.start_at))
-  const past = (appointments ?? []).filter((a) => hasStarted(a.start_at)).reverse()
-  const rows = tab === 'active' ? active : past
+  const upcoming = (appointments ?? []).filter((a) => !hasStarted(a.start_at))
 
   return (
     <>
-      <Notice notice={notice} onClose={closeNotice} />
-      <PageHeader title="Randevularım" description="Aktif ve geçmiş randevularınız.">
-        <button type="button" className="primary" onClick={onBook}>
-          Yeni randevu al
-        </button>
-      </PageHeader>
-
-      <section className="panel">
-        <div className="tabs" role="tablist">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === 'active'}
-            className={tab === 'active' ? 'is-active' : ''}
-            onClick={() => setTab('active')}
-          >
-            Aktif <span className="count">{active.length}</span>
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === 'past'}
-            className={tab === 'past' ? 'is-active' : ''}
-            onClick={() => setTab('past')}
-          >
-            Geçmiş <span className="count">{past.length}</span>
-          </button>
-        </div>
-
-        {appointments === null ? (
-          <p className="muted panel-body">Yükleniyor…</p>
-        ) : rows.length === 0 ? (
-          <p className="muted panel-body">
-            {tab === 'active' ? 'Aktif randevunuz bulunmuyor.' : 'Geçmiş randevunuz bulunmuyor.'}
-          </p>
-        ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Randevu no</th>
-                <th>Tarih</th>
-                <th>Saat</th>
-                <th>Durum</th>
-                {tab === 'active' && <th className="cell-actions">İşlem</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((appointment) => (
-                <tr key={appointment.id}>
-                  <td data-label="Randevu no" className="mono">
-                    {appointmentNumber(appointment.id)}
-                  </td>
-                  <td data-label="Tarih">{formatShortDate(appointment.appointment_date)}</td>
-                  <td data-label="Saat" className="mono">
-                    {formatTimeRange(appointment.start_at, appointment.end_at)}
-                  </td>
-                  <td data-label="Durum">
-                    {tab === 'active' ? (
-                      <Status tone="info">Aktif</Status>
-                    ) : (
-                      <PastStatus attended={appointment.attended} />
-                    )}
-                  </td>
-                  {tab === 'active' && (
-                    <td data-label="İşlem" className="cell-actions">
-                      {confirmId === appointment.id ? (
-                        <div className="actions">
-                          <span className="muted">İptal edilsin mi?</span>
-                          <button
-                            type="button"
-                            className="small"
-                            onClick={() => setConfirmId(null)}
-                            disabled={busy}
-                          >
-                            Vazgeç
-                          </button>
-                          <button
-                            type="button"
-                            className="small danger"
-                            onClick={() => cancel(appointment)}
-                            disabled={busy}
-                          >
-                            Evet, iptal et
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          className="small"
-                          onClick={() => setConfirmId(appointment.id)}
-                          disabled={busy}
-                        >
-                          İptal et
-                        </button>
-                      )}
-                    </td>
-                  )}
+      <main className="main">
+        <Notice notice={notice} onClose={closeNotice} />
+        <PageTop title="Randevularım" description="Alınan randevular ve SMS mesajları" />
+        <section className="card" aria-labelledby="appointments-title">
+          <h2 id="appointments-title">Randevular</h2>
+          {appointments === null ? (
+            <p className="muted">Yükleniyor…</p>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>Tarih</th>
+                  <th>Saat</th>
+                  <th>Randevu no</th>
+                  <th className="r">
+                    <span className="visually-hidden">İşlem</span>
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
+              </thead>
+              <tbody>
+                {upcoming.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="muted">
+                      Aktif randevunuz yok.
+                    </td>
+                  </tr>
+                ) : (
+                  upcoming.map((appointment) => (
+                    <tr key={appointment.id}>
+                      <td>{formatLongDate(appointment.appointment_date)}</td>
+                      <td>
+                        <b>{formatTime(appointment.start_at)}</b>
+                      </td>
+                      <td>{appointmentNumber(appointment.id)}</td>
+                      <td className="r">
+                        {confirmId === appointment.id ? (
+                          <span className="actions">
+                            <span className="muted">İptal edilsin mi?</span>{' '}
+                            <button
+                              type="button"
+                              className="btn small ghost"
+                              onClick={() => setConfirmId(null)}
+                              disabled={busy}
+                            >
+                              Vazgeç
+                            </button>{' '}
+                            <button
+                              type="button"
+                              className="btn small danger"
+                              onClick={() => cancel(appointment)}
+                              disabled={busy}
+                            >
+                              Evet, iptal et
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            className="btn small ghost"
+                            onClick={() => setConfirmId(appointment.id)}
+                            disabled={busy}
+                          >
+                            İptal
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
+          <p className="note">
+            Gelemeyecekseniz lütfen iptal edin: boşalan saat başka bir hastaya verilebilir.
+          </p>
+        </section>
+        <section className="card" aria-labelledby="sms-title">
+          <h2 id="sms-title">SMS mesajları</h2>
+          <SmsList messages={messages} />
+        </section>
+      </main>
+      <aside className="side" aria-label="Hesap">
+        <PatientWho />
+        <h2>Yeni randevu</h2>
+        <p className="muted">Haftalık takvimden müsait bir saat seçerek randevu alabilirsiniz.</p>
+        <p className="gate-row">
+          <Link to={PATHS.booking} className="btn">
+            Randevu al
+          </Link>
+        </p>
+      </aside>
     </>
   )
 }

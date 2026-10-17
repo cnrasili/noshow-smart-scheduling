@@ -3,12 +3,14 @@ import type {
   Appointment,
   CalendarAppointment,
   CalendarSlot,
+  DatasetDay,
+  DatasetRecord,
   LoginCredentials,
   LoginResponse,
   Me,
-  PublicDoctor,
   ScheduleDay,
   Slot,
+  SmsMessage,
 } from './types'
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -104,9 +106,12 @@ export const api = {
     }
   },
   me: () => request<Me>('/auth/me'),
-  publicDoctors: () => request<PublicDoctor[]>('/public/doctors'),
-  slots: () => request<Slot[]>('/slots'),
+  slots: (dateFrom: string, dateTo: string) =>
+    request<Slot[]>(
+      `/slots?date_from=${encodeURIComponent(dateFrom)}&date_to=${encodeURIComponent(dateTo)}`,
+    ),
   myAppointments: () => request<Appointment[]>('/patients/me/appointments'),
+  myMessages: () => request<SmsMessage[]>('/patients/me/messages'),
   book: (slotId: number) =>
     request<Appointment>('/appointments', json('POST', { slot_id: slotId })),
   cancel: (appointmentId: number) =>
@@ -117,11 +122,15 @@ export const api = {
     request<AgendaDay[]>(
       `/doctors/me/agenda?date_from=${encodeURIComponent(dateFrom)}&date_to=${encodeURIComponent(dateTo)}`,
     ),
-  markAttendance: (appointmentId: number, attended: boolean) =>
+  // null takes a mark back
+  markAttendance: (appointmentId: number, attended: boolean | null) =>
     request<CalendarAppointment>(
       `/appointments/${appointmentId}/attendance`,
       json('PATCH', { attended }),
     ),
+  datasetDays: () => request<DatasetDay[]>('/department/dataset-days'),
+  datasetDay: (day: string) =>
+    request<DatasetRecord[]>(`/department/dataset-days/${encodeURIComponent(day)}`),
   schedule: () => request<ScheduleDay[]>('/doctors/me/schedule'),
   generateSlots: (dateFrom: string, dateTo: string) =>
     request<{ created: number }>(

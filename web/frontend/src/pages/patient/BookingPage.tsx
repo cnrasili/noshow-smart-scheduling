@@ -1,25 +1,35 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router'
 import { api, errorText } from '../../api'
 import { DEPARTMENT_NAME } from '../../config'
 import {
+  addDays,
   appointmentNumber,
   dayKey,
   dayParts,
   formatLongDate,
   formatTime,
-  formatTimeRange,
+  todayKey,
+  weekLabel,
+  weekStart,
 } from '../../format'
+import { PATHS } from '../../routes'
 import type { Appointment, Slot } from '../../types'
-import { Notice, PageHeader, type NoticeState } from '../../ui'
+import { Notice, PageTop, type NoticeState } from '../../ui'
+import { PatientWho } from './PatientWho'
 
-type SlotState = 'free' | 'extra' | 'taken' | 'mine'
+// Monday to Friday
+const WORKDAYS = 5
+// Weeks ahead the patient can browse
+const WEEKS_AHEAD = 8
 
-// An already booked slot below capacity is offered as an extra appointment; the
-// overbooking service decides at booking time whether it is granted
-function slotState(slot: Slot): SlotState {
-  if (slot.booked_by_me) return 'mine'
-  if (!slot.available) return 'taken'
-  return slot.booked_count > 0 ? 'extra' : 'free'
+type CellState = 'open' | 'full' | 'mine' | 'closed'
+
+const CELL_TEXT: Record<CellState, string> = {
+  open: 'Müsait',
+  full: 'Dolu',
+  mine: 'Randevum',
+  closed: 'Kapalı',
 }
 
 const SLOT_UNAVAILABLE = 'Bu saat dolu, başka bir saat seçin.'
@@ -34,89 +44,72 @@ const BOOKING_ERRORS: Record<string, string> = {
   'Slot has already started': 'Bu saatin randevu zamanı geçti, başka bir saat seçin.',
 }
 
-function groupByDay(slots: Slot[]): Map<string, Slot[]> {
-  const days = new Map<string, Slot[]>()
-  for (const slot of slots) {
-    const key = dayKey(slot.start_at)
-    days.set(key, [...(days.get(key) ?? []), slot])
-  }
-  return days
+function cellState(slot: Slot | undefined): CellState {
+  if (!slot) return 'closed'
+  if (slot.booked_by_me) return 'mine'
+  return slot.available ? 'open' : 'full'
 }
 
-function Field({ label, value }: { label: string; value: string | undefined }) {
-  return (
-    <div className="field">
-      <dt>{label}</dt>
-      <dd>{value ?? '—'}</dd>
-    </div>
-  )
+/** The first week to show: this week, or the next one on a weekend. */
+function firstWeek(): string {
+  const today = todayKey()
+  const monday = weekStart(today)
+  return today >= addDays(monday, WORKDAYS) ? addDays(monday, 7) : monday
 }
 
-function AppointmentSlip({
-  appointment,
-  onNew,
-  onShowAppointments,
-}: {
-  appointment: Appointment
-  onNew: () => void
-  onShowAppointments: () => void
-}) {
-  return (
-    <section className="panel slip" aria-live="polite">
-      <div className="panel-head">
-        <h2>Randevunuz oluşturuldu</h2>
-      </div>
-      <div className="panel-body">
-        <dl className="fields">
-          <Field label="Randevu no" value={appointmentNumber(appointment.id)} />
-          <Field label="Bölüm" value={DEPARTMENT_NAME} />
-          <Field label="Tarih" value={formatLongDate(appointment.appointment_date)} />
-          <Field label="Saat" value={formatTimeRange(appointment.start_at, appointment.end_at)} />
-        </dl>
-        <p className="note">
-          Randevu saatinden 15 dakika önce poliklinik bankosuna başvurunuz. Gelemeyecekseniz
-          randevunuzu iptal ederek sıranın başka bir hastaya verilmesini sağlayabilirsiniz.
-        </p>
-        <div className="actions">
-          <button type="button" className="primary" onClick={onShowAppointments}>
-            Randevularım
-          </button>
-          <button type="button" onClick={onNew}>
-            Yeni randevu
-          </button>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-export function BookingPage({ onShowAppointments }: { onShowAppointments: () => void }) {
+export function BookingPage() {
+  const minWeek = useMemo(() => firstWeek(), [])
+  const [week, setWeek] = useState(minWeek)
   const [slots, setSlots] = useState<Slot[] | null>(null)
-  const [day, setDay] = useState<string | null>(null)
   const [selected, setSelected] = useState<Slot | null>(null)
   const [booked, setBooked] = useState<Appointment | null>(null)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<NoticeState | null>(null)
-
   const closeNotice = useCallback(() => setNotice(null), [])
-  const showError = (error: unknown) => setNotice({ kind: 'error', text: errorText(error) })
 
-  // The department's slots; there is only one department
+  const days = useMemo(() => [...Array(WORKDAYS).keys()].map((n) => addDays(week, n)), [week])
+  const load = useCallback(() => api.slots(days[0], days[WORKDAYS - 1]), [days])
+
   useEffect(() => {
-    api.slots().then(setSlots).catch(showError)
-  }, [])
+    // Ignore a late answer after the week has changed
+    let current = true
+    load()
+      .then((next) => {
+        if (current) setSlots(next)
+      })
+      .catch((error) => setNotice({ kind: 'error', text: errorText(error) }))
+    return () => {
+      current = false
+    }
+  }, [load])
 
-  const days = useMemo(() => groupByDay(slots ?? []), [slots])
-  const firstOpenDay = [...days].find(([, list]) => list.some((s) => s.available))?.[0]
-  const activeDay = day !== null && days.has(day) ? day : (firstOpenDay ?? null)
-  const daySlots = activeDay ? (days.get(activeDay) ?? []) : []
+  const byCell = useMemo(
+    () =>
+      new Map(
+        (slots ?? []).map((slot) => [
+          `${dayKey(slot.start_at)}|${formatTime(slot.start_at)}`,
+          slot,
+        ]),
+      ),
+    [slots],
+  )
+  const times = useMemo(
+    () => [...new Set((slots ?? []).map((slot) => formatTime(slot.start_at)))].sort(),
+    [slots],
+  )
 
-  function chooseDay(key: string) {
-    setDay(key)
+  function changeWeek(days: number) {
+    setWeek((current) => addDays(current, days))
+    setSlots(null)
     setSelected(null)
   }
 
-  async function book() {
+  function choose(slot: Slot) {
+    setSelected(slot)
+    setBooked(null)
+  }
+
+  async function confirm() {
     if (!selected) return
     setBusy(true)
     try {
@@ -128,140 +121,138 @@ export function BookingPage({ onShowAppointments }: { onShowAppointments: () => 
       setSelected(null)
       setBusy(false)
     }
-    setSlots(await api.slots().catch(() => slots))
+    setSlots(await load().catch(() => slots))
   }
 
   return (
     <>
-      <Notice notice={notice} onClose={closeNotice} />
-      <PageHeader
-        title="Online Randevu"
-        description={`${DEPARTMENT_NAME} için uygun gün ve saati seçin.`}
-      />
-
-      <div className="booking">
-        <section className="panel">
-          <div className="panel-body stack">
-            <div>
-              <h2 className="section-title">Gün</h2>
-              {slots === null ? (
-                <p className="muted">Yükleniyor…</p>
-              ) : days.size === 0 ? (
-                <p className="muted">Önümüzdeki iki haftada açık gün yok.</p>
-              ) : (
-                <div className="day-strip" role="listbox" aria-label="Gün seçimi">
-                  {[...days].map(([key, list]) => {
-                    const free = list.filter((s) => slotState(s) === 'free').length
-                    const open = list.filter((s) => s.available && !s.booked_by_me).length
-                    const parts = dayParts(key)
-                    return (
-                      <button
-                        key={key}
-                        type="button"
-                        role="option"
-                        aria-selected={key === activeDay}
-                        className={`day-option ${key === activeDay ? 'is-active' : ''}`}
-                        onClick={() => chooseDay(key)}
-                      >
-                        <span className="day-weekday">{parts.weekday}</span>
-                        <span className="day-number">{parts.day}</span>
-                        <span className="day-month">{parts.month}</span>
-                        <span className={`day-free ${open === 0 ? 'is-full' : ''}`}>
-                          {free > 0 ? `${free} boş` : open > 0 ? 'Ek randevu' : 'Dolu'}
-                        </span>
-                      </button>
-                    )
-                  })}
+      <main className="main">
+        <Notice notice={notice} onClose={closeNotice} />
+        <PageTop
+          title="Randevu al"
+          description={`${DEPARTMENT_NAME}. Haftalık takvimden müsait bir saati seçin.`}
+        />
+        <div className="wnav">
+          <button type="button" onClick={() => changeWeek(-7)} disabled={week <= minWeek}>
+            ‹ Önceki hafta
+          </button>
+          <b>{weekLabel(days[0], days[WORKDAYS - 1])}</b>
+          <button
+            type="button"
+            onClick={() => changeWeek(7)}
+            disabled={week >= addDays(minWeek, 7 * (WEEKS_AHEAD - 1))}
+          >
+            Sonraki hafta ›
+          </button>
+        </div>
+        {slots === null ? (
+          <p className="muted">Yükleniyor…</p>
+        ) : times.length === 0 ? (
+          <p className="card muted">Bu hafta için açık saat yok.</p>
+        ) : (
+          <div className="wk" role="group" aria-label="Haftalık takvim">
+            <div />
+            {days.map((day) => {
+              const parts = dayParts(day)
+              return (
+                <div key={day} className="h">
+                  {parts.weekday}
+                  <small>
+                    {parts.day} {parts.month}
+                  </small>
                 </div>
-              )}
-            </div>
-
-            {activeDay && (
-              <div>
-                <h2 className="section-title">Saat · {formatLongDate(activeDay)}</h2>
-                <div className="time-grid">
-                  {daySlots.map((slot) => {
-                    const state = slotState(slot)
-                    return (
-                      <button
-                        key={slot.id}
-                        type="button"
-                        className={`time time-${state} ${selected?.id === slot.id ? 'is-selected' : ''}`}
-                        disabled={state === 'taken' || state === 'mine' || busy}
-                        title={state === 'extra' ? 'Ek randevu' : undefined}
-                        aria-pressed={selected?.id === slot.id}
-                        onClick={() => setSelected(slot)}
-                      >
-                        {formatTime(slot.start_at)}
-                      </button>
-                    )
-                  })}
-                </div>
-                <ul className="legend">
-                  <li>
-                    <span className="swatch time-free" /> Uygun
-                  </li>
-                  <li>
-                    <span className="swatch time-extra" /> Ek randevu
-                  </li>
-                  <li>
-                    <span className="swatch time-taken" /> Dolu
-                  </li>
-                  <li>
-                    <span className="swatch time-mine" /> Sizin randevunuz
-                  </li>
-                </ul>
-              </div>
-            )}
+              )
+            })}
+            {times.map((time) => (
+              <Fragment key={time}>
+                <div className="t">{time}</div>
+                {days.map((day) => {
+                  const slot = byCell.get(`${day}|${time}`)
+                  const state = cellState(slot)
+                  const isSelected = slot !== undefined && selected?.id === slot.id
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      className={`wc ${state} ${isSelected ? 'sel' : ''}`}
+                      disabled={state !== 'open' || busy}
+                      aria-pressed={state === 'open' ? isSelected : undefined}
+                      aria-label={`${formatLongDate(day)} ${time}: ${CELL_TEXT[state]}`}
+                      onClick={() => slot && choose(slot)}
+                    >
+                      {state === 'open' || state === 'mine' ? CELL_TEXT[state] : ''}
+                    </button>
+                  )
+                })}
+              </Fragment>
+            ))}
           </div>
-        </section>
-
-        <aside>
-          {booked ? (
-            <AppointmentSlip
-              appointment={booked}
-              onNew={() => setBooked(null)}
-              onShowAppointments={onShowAppointments}
-            />
-          ) : (
-            <section className="panel">
-              <div className="panel-head">
-                <h2>Randevu özeti</h2>
-              </div>
-              <div className="panel-body">
-                <dl className="fields">
-                  <Field label="Bölüm" value={DEPARTMENT_NAME} />
-                  <Field
-                    label="Tarih"
-                    value={selected ? formatLongDate(dayKey(selected.start_at)) : undefined}
-                  />
-                  <Field
-                    label="Saat"
-                    value={
-                      selected ? formatTimeRange(selected.start_at, selected.end_at) : undefined
-                    }
-                  />
-                </dl>
-                <button
-                  type="button"
-                  className="primary block"
-                  onClick={book}
-                  disabled={!selected || busy}
-                >
-                  {busy ? 'Kaydediliyor…' : 'Randevuyu onayla'}
-                </button>
-                <p className="note">
-                  {!selected
-                    ? 'Devam etmek için uygun bir saat seçin.'
-                    : slotState(selected) === 'extra'
-                      ? 'Bu saat için ek randevu talep ediyorsunuz. Uygunluk onay sırasında kontrol edilir.'
-                      : 'Bilgileri kontrol edip randevunuzu onaylayın.'}
+        )}
+        <div className="legend">
+          <span>
+            <i style={{ background: 'var(--freebg)', border: '1px solid #a9c4ec' }} />
+            Müsait
+          </span>
+          <span>
+            <i style={{ background: 'var(--soft)' }} />
+            Dolu
+          </span>
+          <span>
+            <i style={{ background: 'var(--acc)' }} />
+            Randevum
+          </span>
+          <span>
+            <i style={{ border: '1px dashed var(--mute)' }} />
+            Kapalı
+          </span>
+        </div>
+      </main>
+      <aside className="side" aria-label="Randevu özeti">
+        <PatientWho />
+        {booked ? (
+          <section aria-live="polite">
+            <h2>Randevunuz alındı ✓</h2>
+            <p>
+              {formatLongDate(booked.appointment_date)}
+              <br />
+              Saat <b>{formatTime(booked.start_at)}</b> · Randevu no{' '}
+              <b>{appointmentNumber(booked.id)}</b>
+            </p>
+            <p className="note">
+              Onay SMS&apos;i gönderilir; &quot;Randevularım&quot; sayfasındaki SMS mesajlarınızda
+              görünür.
+            </p>
+            <p className="gate-row">
+              <Link to={PATHS.appointments} className="btn">
+                Randevularım
+              </Link>
+              <button type="button" className="btn ghost" onClick={() => setBooked(null)}>
+                Yeni randevu
+              </button>
+            </p>
+          </section>
+        ) : (
+          <section>
+            <h2>Randevu özeti</h2>
+            {selected ? (
+              <>
+                <p>
+                  <b>{formatLongDate(dayKey(selected.start_at))}</b>
+                  <br />
+                  Saat <b>{formatTime(selected.start_at)}</b> · {DEPARTMENT_NAME}
                 </p>
-              </div>
-            </section>
-          )}
-        </aside>
-      </div>
+                <p className="gate-row">
+                  <button type="button" className="btn" onClick={confirm} disabled={busy}>
+                    {busy ? 'Kaydediliyor…' : 'Randevuyu onayla'}
+                  </button>
+                </p>
+              </>
+            ) : (
+              <p className="muted">Takvimden bir saat seçin.</p>
+            )}
+          </section>
+        )}
+      </aside>
     </>
   )
 }
