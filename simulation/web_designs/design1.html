@@ -160,6 +160,6 @@ draw();
 Gate.start({hospital:D.hospital,
   roleButtons:()=>[...document.querySelectorAll('#roles button')].map(el=>({el,role:el.dataset.role})),
   setUser:(name,role,out)=>{const r=document.querySelector('.ribbon');let u=document.getElementById('usr');if(!u){u=document.createElement('span');u.id='usr';r.appendChild(u);}
-    u.innerHTML='Giriş: <b></b> <button type="button">Çıkış</button>';u.querySelector('b').textContent=name;u.querySelector('button').onclick=out;},
+    u.innerHTML='Giriş: <b></b> <button type="button">Çıkış</button><span id="xl"></span>';u.querySelector('b').textContent=name;u.querySelector('button').onclick=out;},
   enter:role=>{state.role=role;state.tab=TABS[role][0][0];state.day=null;state.slot=null;state.confirmed=null;draw();}});
 </script></body></html>
