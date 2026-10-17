@@ -9,11 +9,13 @@ from admin_service.dependencies import AppSettings, CurrentAdmin, DbSession, Now
 from admin_service.overbooking import OverbookingClient, OverbookingUnavailable
 from admin_service.templating import templates
 from noshow_db.models.admin import AdminAuditLog
-from noshow_db.models.core import Doctor
+from noshow_db.models.core import Doctor, Patient
+from noshow_db.models.service import Message
 
 router = APIRouter()
 
 AUDIT_ROWS = 100
+SMS_ROWS = 100
 
 
 @router.get("/")
@@ -79,3 +81,26 @@ def audit_page(request: Request, admin: CurrentAdmin, session: DbSession) -> Res
         select(AdminAuditLog).order_by(AdminAuditLog.created_at.desc()).limit(AUDIT_ROWS)
     ).all()
     return templates.TemplateResponse(request, "audit.html", {"admin": admin, "rows": rows})
+
+
+@router.get("/sms", response_class=HTMLResponse)
+def sms_page(
+    request: Request,
+    admin: CurrentAdmin,
+    session: DbSession,
+    q: Annotated[str, Query(max_length=20)] = "",
+) -> Response:
+    # Demo SMS of the overbooking service, addressed by the dataset patient number
+    query = (
+        select(Message, Patient.patient_number)
+        .outerjoin(Patient, Patient.id == Message.patient_id)
+        .order_by(Message.send_at.desc(), Message.id.desc())
+        .limit(SMS_ROWS)
+    )
+    if q := q.strip():
+        # Wildcards in the search text match only themselves
+        query = query.where(Patient.patient_number.startswith(q, autoescape=True))
+    rows = session.execute(query).all()
+    return templates.TemplateResponse(
+        request, "sms.html", {"admin": admin, "rows": rows, "q": q, "limit": SMS_ROWS}
+    )

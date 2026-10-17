@@ -73,9 +73,6 @@ class Settings(BaseSettings):
     message_recovery: RecoverySettings = RecoverySettings()
     ab_test: AbTestSettings
     kpi: KpiSettings
-    smtp_host: str | None = None
-    smtp_port: int = 1025
-    mail_from: str = "randevu@sehirhastanesi.example"
 
     @classmethod
     def settings_customise_sources(

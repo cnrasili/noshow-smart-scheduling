@@ -1,5 +1,5 @@
 {
-  "version": "dummy-v0",
+  "version": "random_forest-v1",
   "features": [
     "lead_days",
     "weekday",

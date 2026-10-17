@@ -15,7 +15,6 @@ NOW = datetime(2026, 11, 2, 9, 0, tzinfo=UTC)
 BODY = {
     "appointment_id": 501,
     "patient_id": 1,
-    "email": "patient@example.com",
     "appointment_start": "2026-11-10T09:30:00+03:00",
 }
 
@@ -58,13 +57,22 @@ def test_message_text_uses_local_appointment_time(
 ):
     book(client)
     confirmation, reminder = stored(session_factory)
-    assert confirmation.email == "patient@example.com"
-    assert confirmation.subject == "Randevunuz onaylandı"
-    assert "10 Kasım 2026 Salı, 09:30" in confirmation.body
-    assert reminder.subject == "Randevu hatırlatması"
-    assert "10 Kasım 2026 Salı, 09:30" in reminder.body
-    assert confirmation.body.endswith("\n\nŞehir Hastanesi")
-    assert reminder.body.endswith("\n\nŞehir Hastanesi")
+    assert confirmation.body == (
+        "10 Kasım 2026 Salı, 09:30 tarihli Aile Hekimliği randevunuz alındı. "
+        "Gelemeyecekseniz lütfen iptal edin. Şehir Hastanesi"
+    )
+    assert reminder.body == (
+        "10 Kasım 2026 Salı, 09:30 tarihli Aile Hekimliği randevunuzu hatırlatırız. "
+        "Gelemeyecekseniz lütfen iptal edin. Şehir Hastanesi"
+    )
+
+
+def test_email_in_the_booked_event_is_ignored(
+    client: TestClient, session_factory: sessionmaker[Session]
+):
+    # The web backend still sends the patient's email; messages are SMS without an address
+    assert len(book(client, email="patient@example.com")) == 2
+    assert len(stored(session_factory)) == 2
 
 
 def test_no_reminder_when_appointment_is_too_close(client: TestClient):
@@ -107,7 +115,6 @@ def test_cancel_unknown_appointment_cancels_nothing(client: TestClient):
     [
         {"appointment_start": "2026-11-01T09:00:00+00:00"},
         {"appointment_start": "2026-11-10T09:30:00"},
-        {"email": "not-an-email"},
         {"appointment_id": 0},
     ],
 )

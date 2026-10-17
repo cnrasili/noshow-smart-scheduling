@@ -46,8 +46,7 @@ class Message(Base):
     appointment_id: Mapped[int]
     patient_id: Mapped[int] = mapped_column(index=True)
     kind: Mapped[str] = mapped_column(String(16))
-    email: Mapped[str] = mapped_column(String(255))
-    subject: Mapped[str] = mapped_column(String(255))
+    # Demo SMS text; the recipient is the patient's dataset patient number
     body: Mapped[str] = mapped_column(Text)
     appointment_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     send_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
