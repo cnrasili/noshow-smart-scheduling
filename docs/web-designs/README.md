@@ -57,3 +57,13 @@ Her iki tasarım da bir giriş sayfasıyla açılır: **Randevu Oluştur**, **Do
 | Yönetici Girişi | erişim kodu (demo: `YON-2026`) | üç sayfanın hepsi |
 
 Üstteki şeritte "Çıkış" ile giriş sayfasına dönülür. Kodu `simulation/web_designs/common.js` içindeki `Gate` bölümündedir.
+
+## Randevu kayıtlarını Excel'e yazma
+
+Statik sayfalar dosya yazamaz; bu yüzden küçük bir yerel sunucu vardır. Hasta girişinde girilen bilgiler (ad soyad, bilinen hastalık, doğum tarihi, mahalle) ve her randevu (no, gün, saat, normal/ek, risk, durum) **ana veri dosyasına değil**, ayrı bir dosyaya, `output/web_randevulari.xlsx` içine eklenir. İptal edilen randevunun durumu "İptal" olur.
+
+```bash
+python simulation/web_designs/serve.py
+```
+
+Ardından `http://127.0.0.1:8765/design1.html` (veya `design2.html`) açılır. Sunucu çalışmıyorsa sayfa yine çalışır; üst şeritte "Excel kaydı: kapalı" yazar. Excel dosyası açıkken yazma başarısız olur; dosyayı kapatıp randevuyu yeniden alın. `output/` git tarafından izlenmez.

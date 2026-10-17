@@ -84,6 +84,13 @@ function hash(str) { let h = 2166136261; for (const c of str) { h ^= c.charCodeA
 // Demo patients (the person using the patient portal can be switched in the demo).
 const PATIENTS = [{ id: 5778201, age: 34 }, { id: 5778202, age: 61 }, { id: 5778203, age: 27 }];
 let CUR = PATIENTS[0].id;
+// Demo bookings are also written to output/web_randevulari.xlsx by simulation/web_designs/serve.py (if running).
+function sendRecord(path, body) {
+  const mark = (ok) => { const u = document.getElementById('xl'); if (u) u.textContent = ok ? ' · Excel kaydı: açık' : ' · Excel kaydı: kapalı (serve.py çalışmıyor)'; };
+  try {
+    fetch('http://127.0.0.1:8765/' + path, { method: 'POST', body: JSON.stringify(body) }).then((r) => mark(r.ok)).catch(() => mark(false));
+  } catch (e) { mark(false); }
+}
 const RISKS = S.slots.flatMap((sl) => sl.patients.map((p) => p.risk));
 // Demo: the model API is not connected, so a new booking gets a risk drawn from the real risk distribution.
 const riskOf = (no) => RISKS[hash(no) % RISKS.length];
@@ -107,9 +114,10 @@ function addBooking(i, k) {
   const no = 'R-' + (5780000 + Math.floor(Math.random() * 9999));
   const bk = { no, pid: CUR, iso: i, time, kind, risk: riskOf(no) };
   BK.push(bk);
+  sendRecord('kayit', { ...bk, who: (window.SESSION || {}).who });
   return bk;
 }
-const cancelBooking = (no) => { const x = BK.findIndex((b) => b.no === no); if (x >= 0) BK.splice(x, 1); };
+const cancelBooking = (no) => { sendRecord('iptal', { no }); const x = BK.findIndex((b) => b.no === no); if (x >= 0) BK.splice(x, 1); };
 const myBookings = () => BK.filter((b) => b.pid === CUR);
 
 // Staff day: patient number, age and (for record days) the real outcome. Record days are read-only.
@@ -304,12 +312,7 @@ function draw(){document.body.dataset.role=st.role;$('#portal').textContent=PORT
   if($('#rules').dataset.role!==st.role){$('#rules').dataset.role=st.role;$('#rules').innerHTML=st.role==='yonetim'?`<div class="box"><b>Overbooking eşiği</b><div class="big" id="thv"></div><input type="range" id="thr" min="10" max="60" step="1" value="${st.thr}"><div class="note" style="margin-top:6px">Bir slota ikinci hasta, o slottaki hastaların gelmeme riski eşiğin üstündeyse yazılabilir. Yalnızca yönetim görür.</div></div>
    <div class="box"><b>Gün</b>${adayPicker()}<div class="note" style="margin-top:6px">Takvim ve karar ekranları seçilen günün bir muayene odası oturumunu gösterir.</div></div>
    <div class="box"><b>Günlük sınır</b><div class="big" id="limv"></div><input type="range" id="lim" min="0" max="8" step="1" value="${st.lim}"><div class="note" style="margin-top:6px">Departmanın bir günde açabileceği en çok ek randevu.</div></div>`:'';
-   const ad=$('#aday');if(ad)ad.onchange=()=>{setAday(ad.value);st.sel=firstExtra();draw();
-Gate.start({hospital:D.hospital,
-  roleButtons:()=>[...document.querySelectorAll('#who button')].map(el=>({el,role:el.dataset.w})),
-  setUser:(name,role,out)=>{const r=document.querySelector('.ribbon');let u=document.getElementById('usr');if(!u){u=document.createElement('span');u.id='usr';r.appendChild(u);}
-    u.innerHTML='Giriş: <b></b> <button type="button">Çıkış</button>';u.querySelector('b').textContent=name;u.querySelector('button').onclick=out;},
-  enter:role=>{st.role=role;st.v=NAV[role][0][0];st.day=null;st.slot=null;st.confirmed=null;draw();}});};const th=$('#thr');if(th)th.oninput=e=>{st.thr=+e.target.value;draw();};const li=$('#lim');if(li)li.oninput=e=>{st.lim=+e.target.value;draw();};}
+   const ad=$('#aday');if(ad)ad.onchange=()=>{setAday(ad.value);st.sel=firstExtra();draw();};const th=$('#thr');if(th)th.oninput=e=>{st.thr=+e.target.value;draw();};const li=$('#lim');if(li)li.oninput=e=>{st.lim=+e.target.value;draw();};}
   if($('#thv')){$('#thv').textContent='%'+st.thr;$('#limv').textContent=st.lim;}
   $('#main').innerHTML=MAIN[st.role][st.v]();$('#side').innerHTML=side();
   document.querySelectorAll('.nv').forEach(b=>b.onclick=()=>{st.v=b.dataset.v;draw();});
@@ -329,6 +332,6 @@ st.sel=firstExtra();draw();
 Gate.start({hospital:D.hospital,
   roleButtons:()=>[...document.querySelectorAll('#who button')].map(el=>({el,role:el.dataset.w})),
   setUser:(name,role,out)=>{const r=document.querySelector('.ribbon');let u=document.getElementById('usr');if(!u){u=document.createElement('span');u.id='usr';r.appendChild(u);}
-    u.innerHTML='Giriş: <b></b> <button type="button">Çıkış</button>';u.querySelector('b').textContent=name;u.querySelector('button').onclick=out;},
+    u.innerHTML='Giriş: <b></b> <button type="button">Çıkış</button><span id="xl"></span>';u.querySelector('b').textContent=name;u.querySelector('button').onclick=out;},
   enter:role=>{st.role=role;st.v=NAV[role][0][0];st.day=null;st.slot=null;st.confirmed=null;draw();}});
 </script></body></html>
