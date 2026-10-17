@@ -27,7 +27,7 @@
 
 ```
 Kaggle verisi → temizle → gelmeme olasılığı modeli (RF) → overbooking kuralı (eşik %30)
-        → randevu uygulaması (hasta/personel/yönetim) → KPI'lar
+        → randevu uygulaması (hasta/departman/yönetim) → KPI'lar
                       ↑
         SimPy simülasyonu: kural ile kuralsız takvimi aynı hastalarla yarıştır
 ```
@@ -133,7 +133,7 @@ PM yeni **veri seti kurallarını** yazdı (`docs/features.md` → Dataset Rules
 | 14:53 | `1550830` | **Literatür incelemesi** (Batool ve ark. 2020), makalenin sonuçlarının yeniden üretimi (`paper_replication.py`) ve makalenin politikasının simülasyona eklenmesi |
 | 15:03–16:16 | `f80bcf9`, `d4f6567`, `3a58ae8`, `d9cf102`, `68c3c04` | **Etkileşimli simülasyon:** önce karmaşık, sonra "bir doktorun günü" olarak sadeleştirildi (geri bildirimle), her ayar değişince otomatik hesap, tek ekrana sığma, iki sütunlu ayar paneli, masaüstü uygulama gibi pencere |
 | 16:20–16:28 | `500ed61`, `9696e56` | Uzak dalla birleşme (4 çakışma çözüldü), `main` birleşimi |
-| 19:01 | `cf8773b` | **İki web arayüz taslağı** (hasta/personel/yönetim; risk ve kural yalnızca yönetimde) |
+| 19:01 | `cf8773b` | **İki web arayüz taslağı** (hasta/departman/yönetim; risk ve kural yalnızca yönetimde) |
 | 23:16 | `a29bb90` | **Model karşılaştırması** (LR/RF/DT, sızıntısız protokol), eşleştirilmiş deneyler, **karar listesi**, `apply_decisions.py` |
 | 23:41–23:47 | `3b9ca01`, `63f1962` | RF seçili, iki model aynı dalda; modeller **scikit-learn 1.9.1** ile yeniden eğitildi |
 | 23:57 | `4c435a2` | Zamansal sızıntı kontrolü, servis uyum raporu, temiz ortam sonucu |
@@ -587,7 +587,7 @@ Ek hasta yalnızca ilk hasta gelmezse "bedava" olur. İlk hastanın riski yükse
 | 10 | **Değerlendirme protokolü** | İlk raporlar: zamana göre 80/20 | + hiperparametre taraması, log-loss ölçütü, eşik eğitimden, sızıntı denetimi, ileri-pencere karşılaştırma | Makalenin %95'ini çürütürken **bizim** protokolümüzün de sızıntısız olduğunu kanıtlamak gerekti | 16–17 Eki |
 | 11 | **Hatırlatma etkisi** | SMS verisinden etki çıkarma düşüncesi | **Kullanılmaz;** canlı A/B + varsayımsal senaryo | SMS verisi deney değil; SMS zaten riskli hastaya gitmiş (yanlış yön) | 2–17 Eki |
 | 12 | **Teslim edilen kural** | Eşik, maliyet, havayolu | **Yalnızca eşik** | Maliyet r=1 tetiklenmiyor; diğerleri karşılaştırma olarak kalır; servis zaten eşik uyguluyor | 17 Eki |
-| 13 | **Web taslakları** | 3 taslak; hekim ve hasta aynı ekranı görüyor, risk görünür | **2 taslak;** roller ayrı portal; risk, eşik ve overbooking **yalnızca yönetimde**; hasta tam takvim görür; "bugün" boş, veri günleri salt okunur; hekim → personel | Kullanıcı kararları: roller ayrışmalı; hasta ve hekim kural/overbook görmemeli; gerçek veri günleri hekim tarafından değiştirilmemeli; bugün boş olsun ki hasta panelinden alınan randevu sisteme işleniyor mu görülsün | 16–17 Eki |
+| 13 | **Web taslakları** | 3 taslak; hekim ve hasta aynı ekranı görüyor, risk görünür | **2 taslak;** roller ayrı portal; risk, eşik ve overbooking **yalnızca yönetimde**; hasta tam takvim görür; "bugün" boş, veri günleri salt okunur; hekim → departman | Kullanıcı kararları: roller ayrışmalı; hasta ve hekim kural/overbook görmemeli; gerçek veri günleri hekim tarafından değiştirilmemeli; bugün boş olsun ki hasta panelinden alınan randevu sisteme işleniyor mu görülsün | 16–17 Eki |
 | 14 | **Veri** | Bölüm yok | `Department = General Practice` sabit sütunu | "Departman bazlı" kararı; veri kuralı: eklenen sütun her satırda aynı | 17 Eki |
 | 15 | **Karar yönetimi** | Kararlar sohbette | `docs/KARAR_LISTESI.md` + `docs/decisions.json` + `apply_decisions.py` | Bir karar değişince model, sonuçlar ve belgeler **tek komutla** yenilensin; çöp kod kalmasın | 16 Eki |
 
@@ -640,7 +640,7 @@ Web arayüzü (React) → web backend (FastAPI) → her randevudan önce **overb
 
 ### 13.4 Web taslakları (IEN'in uygulama önerisi)
 
-`docs/web-designs/design1.html` (kurumsal portal, aylık takvim) ve `design2.html` (haftalık takvim ızgarası, karar açıklama paneli). Üretim: `simulation/web_designs/build.py` + ortak `common.js` + `records.js` (27 günün 110.521 gerçek kaydı, 1,9 MB). **Davranış kuralları:** hasta yalnızca "müsait/dolu" görür, personel kendi programını (saat, no, yaş) görür; **risk, eşik, overbooking, A/B grubu yalnızca yönetimde**; veri günlerinde (29 Nisan–8 Haziran) personel "geldi/gelmedi" işaretleyemez (kayıt salt okunur); "bugün" (9 Haziran) boş başlar, hasta panelinden alınan randevu personel listesine ve yönetim karar kaydına düşer; üç demo hasta arasında geçilebilir ki ikinci hasta ek randevu alabilsin; yönetimde 27 günden biri seçilir (o günün bir oturumu). **Sınırlar:** model API'si bağlı olmadığından yeni randevunun riski gerçek risk dağılımından örneklenir ("örnek" etiketli); A/B tablosu `SMS_received`'dan hesaplanır, gerçek deney değil.
+`docs/web-designs/design1.html` (kurumsal portal, aylık takvim) ve `design2.html` (haftalık takvim ızgarası, karar açıklama paneli). Üretim: `simulation/web_designs/build.py` + ortak `common.js` + `records.js` (27 günün 110.521 gerçek kaydı, 1,9 MB). **Davranış kuralları:** hasta yalnızca "müsait/dolu" görür, departman ekranı günün programını (saat, no, yaş) görür; **risk, eşik, overbooking, A/B grubu yalnızca yönetimde**; veri günlerinde (29 Nisan–8 Haziran) departman ekranı "geldi/gelmedi" işaretleyemez (kayıt salt okunur); "bugün" (9 Haziran) boş başlar, hasta panelinden alınan randevu departmanın günlük listesine ve yönetim karar kaydına düşer; üç demo hasta arasında geçilebilir ki ikinci hasta ek randevu alabilsin; yönetimde 27 günden biri seçilir (o günün bir oturumu). **Sınırlar:** model API'si bağlı olmadığından yeni randevunun riski gerçek risk dağılımından örneklenir ("örnek" etiketli); A/B tablosu `SMS_received`'dan hesaplanır, gerçek deney değil.
 
 ---
 

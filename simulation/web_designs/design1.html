@@ -3,10 +3,10 @@
 <title>Şehir Hastanesi · Tasarım 1: Kurumsal portal</title>
 <style>
 :root{--bg:#f3f7fb;--card:#fff;--ink:#14263a;--mute:#5d7184;--line:#dbe5ef;--brand:#0b5ea8;--brand2:#0a4a85;--soft:#e8f1fa;--ok:#18794e;--okbg:#e3f5ec;--warn:#b45309;--warnbg:#fdf0dc;--bad:#b42318;--badbg:#fde8e6;--shadow:0 1px 2px rgba(20,38,58,.06),0 6px 18px rgba(20,38,58,.06)}
-body[data-role=personel]{--brand:#0f766e;--brand2:#0b5a54;--soft:#e4f3f1}
+body[data-role=departman]{--brand:#0f766e;--brand2:#0b5a54;--soft:#e4f3f1}
 body[data-role=yonetim]{--brand:#334155;--brand2:#1e293b;--soft:#e9edf3}
 @media (prefers-color-scheme:dark){:root{--bg:#0d1722;--card:#13212f;--ink:#e7eef5;--mute:#8da2b5;--line:#243648;--brand:#4aa3e8;--brand2:#7cbcf0;--soft:#17293a;--ok:#4ade80;--okbg:#10301f;--warn:#fbbf24;--warnbg:#33260c;--bad:#f87171;--badbg:#391614;--shadow:none}
-body[data-role=personel]{--brand:#3fc1b3;--brand2:#7fd9cf;--soft:#14302d}body[data-role=yonetim]{--brand:#94a3b8;--brand2:#cbd5e1;--soft:#1e2a38}}
+body[data-role=departman]{--brand:#3fc1b3;--brand2:#7fd9cf;--soft:#14302d}body[data-role=yonetim]{--brand:#94a3b8;--brand2:#cbd5e1;--soft:#1e2a38}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,sans-serif}
 .ribbon{background:#fff7d6;color:#6a5600;font-size:12px;padding:5px 10px;border-bottom:1px solid #ecdc8b;display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap}
 @media (prefers-color-scheme:dark){.ribbon{background:#3a3310;color:#f5e6a0;border-color:#5b5120}}
@@ -54,12 +54,12 @@ tr.hl td{background:var(--soft);font-weight:700}
 const DATA=/*__DATA__*/null;
 /*__COMMON__*/
 const state={role:'hasta',tab:'al',month:5,day:null,slot:null,confirmed:null,kural:'thr30',dday:TODAY,dmonth:5,dshow:200,kday:REAL};
-const TABS={hasta:[['al','Randevu al'],['benim','Randevularım']],personel:[['gun','Bugünkü program']],yonetim:[['ozet','Özet'],['karar','Randevu kararları'],['msg','Mesajlar ve A/B']]};
-const PORTAL={hasta:['✚','Hasta portalı'],personel:['⚕','Poliklinik paneli'],yonetim:['▣','Yönetim paneli']};
+const TABS={hasta:[['al','Randevu al'],['benim','Randevularım']],departman:[['gun','Bugünkü program']],yonetim:[['ozet','Özet'],['karar','Randevu kararları'],['msg','Mesajlar ve A/B']]};
+const PORTAL={hasta:['✚','Hasta portalı'],departman:['⚕','Departman paneli'],yonetim:['▣','Yönetim paneli']};
 const riskCls=r=>r>=30?'high':r>=15?'mid':'low',riskTxt=r=>r>=30?'Yüksek':r>=15?'Orta':'Düşük';
 const names={none:'Kural yok',thr20:'Eşik %20',thr30:'Eşik %30',thr40:'Eşik %40',cost05:'Maliyet kuralı r=0,5',ev:'Havayolu kuralı',paper:'Makale yöntemi'};
 $('#hname').textContent=D.hospital;
-$('#roles').innerHTML=[['hasta','Hasta'],['personel','Personel'],['yonetim','Yönetim']].map(([k,l])=>`<button data-role="${k}">${l}</button>`).join('');
+$('#roles').innerHTML=[['hasta','Hasta'],['departman','Departman'],['yonetim','Yönetim']].map(([k,l])=>`<button data-role="${k}">${l}</button>`).join('');
 document.querySelectorAll('#roles button').forEach(b=>b.onclick=()=>{state.role=b.dataset.role;state.tab=TABS[state.role][0][0];draw();});
 
 // ---------- HASTA ----------
@@ -91,7 +91,7 @@ function docCal(){const y=2016,m=state.dmonth,first=dowOf(isoOf(y,m,1)),n=new Da
   for(let d=1;d<=n;d++){const i=isoOf(y,m,d),c=BK.filter(b=>b.iso===i).length,tag=DATA_DAYS.has(i)?'kayıt':c?c+' randevu':'';
     h+=`<button class="cd ${DATA_DAYS.has(i)?'none':c?'free':''} ${i===TODAY?'mine':''} ${state.dday===i?'on':''}" data-dd="${i}"><b>${d}</b><small>${tag}</small></button>`;}
   return h;}
-function personel(){const day=staffDay(state.dday),L=day.list,live=day.mode==='today',rec=day.mode==='data';
+function departman(){const day=staffDay(state.dday),L=day.list,live=day.mode==='today',rec=day.mode==='data';
   const got=L.filter(p=>live?ATT[p.key]==='g':p.outcome==='g').length,miss=L.filter(p=>live?ATT[p.key]==='n':p.outcome==='n').length,wait=L.length-got-miss;
   const next=live?L.find(p=>!ATT[p.key]):null,times=[...new Set(L.map(p=>p.time))];
   const empty={none:'Bu gün için kayıt yok.',today:'Bugün için randevu yok. Hasta panelinden randevu alındığında burada görünür.',future:'Bu gün için henüz randevu alınmadı.'}[day.mode]||'';
@@ -120,7 +120,7 @@ function yonetim(){
    <table><tr><th>Kural</th><th class="r">Görülen</th><th class="r">Bekleme dk</th><th class="r">Doluluk</th><th class="r">Boşta saat</th><th class="r">Mesai aşımı saat</th></tr>
    ${Object.keys(names).map(x=>`<tr class="${x===state.kural?'hl':''}"><td>${names[x]}</td><td class="r">${fmt(R[x].seen)}</td><td class="r">${f1(R[x].wait)}</td><td class="r">${f1(R[x].util)}%</td><td class="r">${fmt(R[x].idle_h)}</td><td class="r">${fmt(R[x].ot_h)}</td></tr>`).join('')}</table>
    <h2 style="margin-top:18px">Görülen hasta sayısı</h2>${Object.keys(names).map(x=>`<div class="barrow"><span>${names[x]}</span><div class="t"><i style="width:${100*R[x].seen/mx}%;${x==='none'?'background:var(--mute)':''}"></i></div><b>${fmt(R[x].seen)}</b></div>`).join('')}</div>
-  <div class="grid" style="align-content:start"><div class="card"><h2>Etkin kural</h2><p style="margin:0"><b>Eşik kuralı %${THR}</b> · slot başına en çok 2 hasta · günde en çok 4 ek randevu</p><div class="note">Bu ayarlar ve hastaların gelmeme riski <b>yalnızca yönetim ekranında</b> görünür. Hasta takvimde yalnızca “müsait / dolu”, personel yalnızca kendi programını görür.</div></div>
+  <div class="grid" style="align-content:start"><div class="card"><h2>Etkin kural</h2><p style="margin:0"><b>Eşik kuralı %${THR}</b> · slot başına en çok 2 hasta · günde en çok 4 ek randevu</p><div class="note">Bu ayarlar ve hastaların gelmeme riski <b>yalnızca yönetim ekranında</b> görünür. Hasta takvimde yalnızca “müsait / dolu”, departman ekranı yalnızca günün programını görür.</div></div>
    <div class="card"><h2>Okuma notu</h2><p style="margin:0;color:var(--mute)">Fazladan randevu hasta sayısını artırır ve muayene odasının boş kalma süresini azaltır, ancak <b>ortalama beklemeyi de artırır</b>. Değerler simülasyon varsayımlarına (${D.assumptions.slots} slot x ${D.assumptions.slot_min} dk, ortalama ${D.assumptions.service_mean} dk muayene) bağlıdır.</p></div></div></div>`;}
 function karar(){const all=AS.slots.flatMap(sl=>sl.patients.map(p=>({...p,time:sl.time})));
   const exp=all.reduce((a,p)=>a+p.risk/100,0),high=all.filter(p=>p.risk>=30).length,ob=all.filter(p=>p.extra).length;
@@ -130,7 +130,7 @@ function karar(){const all=AS.slots.flatMap(sl=>sl.patients.map(p=>({...p,time:s
   ${all.map(p=>`<tr><td><b>${p.time}</b></td><td>${p.id}</td><td>${p.age}</td><td><div style="display:flex;gap:10px;align-items:center"><div class="meter"><i style="width:${Math.min(100,p.risk*1.6)}%;background:var(--${p.risk>=30?'bad':p.risk>=15?'warn':'ok'})"></i></div><span class="badge b-${riskCls(p.risk)}">%${p.risk} ${riskTxt(p.risk)}</span></div></td>
    <td>${p.extra?'<span class="badge b-ob">Ek randevu verildi</span>':'Normal randevu'}</td><td>${p.showed?'Geldi':'Gelmedi'}</td></tr>`).join('')}</table>
   <div class="note"><b>Risk nasıl hesaplanır?</b> Yalnızca randevu alındığı anda bilinen bilgiler kullanılır (yaş, randevuya kalan gün, hasta geçmişi gibi); SMS bilgisi ve mahalle kullanılmaz. Modelin ayırt etme gücü AUC ${String(D.model.auc).replace('.',',')} (0,5 = şans). Bir slota ikinci hasta, slottaki hastanın riski %${THR} ve üstündeyse yazılır.</div></div>
-  <div class="card" style="margin-top:16px"><h2>Veri günleri: gerçek randevular ve risk</h2><div class="scroll" style="max-height:340px">${dayStatsTable(ADAY)}</div><div class="note">Risk, modelin o güne hiç görmeden yaptığı tahmindir. Personel ekranında bu günler salt okunurdur.</div></div>
+  <div class="card" style="margin-top:16px"><h2>Veri günleri: gerçek randevular ve risk</h2><div class="scroll" style="max-height:340px">${dayStatsTable(ADAY)}</div><div class="note">Risk, modelin o güne hiç görmeden yaptığı tahmindir. Departman ekranında bu günler salt okunurdur.</div></div>
   <div class="card" style="margin-top:16px"><h2>Hasta panelinden alınan randevular</h2><table><tr><th>Tarih</th><th>Saat</th><th>Hasta</th><th>Randevu no</th><th>Hasta riski (örnek)</th><th>Karar</th></tr>
   ${BK.filter(b=>!b.old).map(b=>`<tr><td>${longDate(b.iso)}</td><td>${b.time}</td><td>${b.pid}</td><td>${b.no}</td><td>%${b.risk}</td><td>${b.kind==='extra'?'<span class="badge b-ob">Ek randevu</span> ':''}${decisionText(b)}</td></tr>`).join('')||'<tr><td colspan="6" style="color:var(--mute)">Henüz randevu alınmadı. Hasta ekranından randevu alınca burada görünür.</td></tr>'}</table>
   <div class="note">Demo: gelmeme riski modelinin API'si bağlı olmadığından yeni randevuların riski gerçek risk dağılımından örneklenir. Aynı saate ikinci hasta, ilk hastanın riski %${THR} ve üstündeyse ve günlük ${LIM} ek randevu dolmadıysa yazılır.</div></div>`;}
@@ -140,7 +140,7 @@ function draw(){document.body.dataset.role=state.role;
   $('#nav').innerHTML=TABS[state.role].map(([k,l])=>`<button data-t="${k}" class="${state.tab===k?'on':''}">${l}</button>`).join('');
   $('#nav').style.display=TABS[state.role].length>1?'flex':'none';
   document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>{state.tab=b.dataset.t;draw();});
-  $('#app').innerHTML={hasta,personel,yonetim}[state.role]();
+  $('#app').innerHTML={hasta,departman,yonetim}[state.role]();
   document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{state.month+=+b.dataset.m;state.day=null;state.slot=null;draw();});
   document.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{state.day=b.dataset.d;state.slot=null;state.confirmed=null;draw();});
   document.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{state.slot=+b.dataset.s;draw();});
