@@ -48,18 +48,18 @@ class FakeSlots:
     def __init__(self) -> None:
         self.overbooks = 0
         self.slots = {
-            10: SlotState(10, 1, SLOT_DATE, 2, ()),
-            11: SlotState(11, 1, SLOT_DATE, 2, (SlotBooking(2, BOOKED),)),
-            12: SlotState(12, 1, SLOT_DATE, 2, (SlotBooking(3, BOOKED),)),
-            13: SlotState(13, 1, SLOT_DATE, 2, (SlotBooking(2, BOOKED), SlotBooking(4, BOOKED))),
-            14: SlotState(14, 1, SLOT_DATE, 2, (SlotBooking(99, BOOKED),)),
-            15: SlotState(15, 1, SLOT_DATE, 1, (SlotBooking(2, BOOKED),)),
+            10: SlotState(10, SLOT_DATE, 2, ()),
+            11: SlotState(11, SLOT_DATE, 2, (SlotBooking(2, BOOKED),)),
+            12: SlotState(12, SLOT_DATE, 2, (SlotBooking(3, BOOKED),)),
+            13: SlotState(13, SLOT_DATE, 2, (SlotBooking(2, BOOKED), SlotBooking(4, BOOKED))),
+            14: SlotState(14, SLOT_DATE, 2, (SlotBooking(99, BOOKED),)),
+            15: SlotState(15, SLOT_DATE, 1, (SlotBooking(2, BOOKED),)),
         }
 
     def get_slot(self, slot_id: int) -> SlotState | None:
         return self.slots.get(slot_id)
 
-    def count_overbooks(self, doctor_id: int, slot_date: date) -> int:
+    def count_overbooks(self, slot_date: date) -> int:
         return self.overbooks
 
 

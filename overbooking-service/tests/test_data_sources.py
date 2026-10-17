@@ -65,8 +65,8 @@ def db(session_factory: sessionmaker[Session]) -> Iterator[Session]:
                 patient(2),
                 patient(3),
                 patient(4),
-                Doctor(id=1, full_name="Doctor 1"),
-                Doctor(id=2, full_name="Doctor 2"),
+                # The department's schedule is its one record in doctors
+                Doctor(id=1, full_name="General Practice"),
                 # 21:30 UTC on Nov 9 is 00:30 on Nov 10 in the clinic
                 Slot(
                     id=10,
@@ -79,7 +79,7 @@ def db(session_factory: sessionmaker[Session]) -> Iterator[Session]:
                 Slot(id=12, doctor_id=1, start_at=utc(10, 8), end_at=utc(10, 8, 20)),
                 # 21:30 UTC on Nov 10 is already Nov 11 in the clinic
                 Slot(id=13, doctor_id=1, start_at=utc(10, 21, 30), end_at=utc(10, 21, 50)),
-                Slot(id=14, doctor_id=2, start_at=utc(10, 7), end_at=utc(10, 7, 20)),
+                Slot(id=14, doctor_id=1, start_at=utc(10, 9), end_at=utc(10, 9, 20)),
                 Slot(id=20, doctor_id=1, start_at=utc(3, 7), end_at=utc(3, 7, 20)),
             ]
         )
@@ -93,7 +93,7 @@ def db(session_factory: sessionmaker[Session]) -> Iterator[Session]:
                 appointment(1, 20, 3, attended=True),
                 appointment(1, 11, 10, attended=False),
                 appointment(1, 12, 10),
-                # Doctor 1 on Nov 10: slot 10 overbooked twice, slot 11 once
+                # Nov 10: slot 10 overbooked twice, slots 11 and 14 once
                 appointment(2, 10, 10),
                 appointment(3, 10, 10, booking_date=date(2026, 11, 4)),
                 appointment(4, 10, 10),
@@ -137,7 +137,7 @@ def test_history_is_empty_without_dataset_appointments_or_outcomes(db: Session):
 def test_slot_state_is_read(db: Session):
     slot = DbSlotSource(db, CLINIC).get_slot(10)
     assert slot is not None
-    assert (slot.slot_id, slot.doctor_id, slot.max_patients) == (10, 1, 3)
+    assert (slot.slot_id, slot.max_patients) == (10, 3)
     assert slot.bookings == (
         SlotBooking(2, date(2026, 11, 1)),
         SlotBooking(3, date(2026, 11, 4)),
@@ -155,12 +155,11 @@ def test_unknown_slot_is_none(db: Session):
     assert DbSlotSource(db, CLINIC).get_slot(99) is None
 
 
-def test_overbooks_are_counted_per_doctor_and_clinic_day(db: Session):
+def test_overbooks_are_counted_per_clinic_day(db: Session):
     source = DbSlotSource(db, CLINIC)
-    assert source.count_overbooks(1, date(2026, 11, 10)) == 3
-    assert source.count_overbooks(1, date(2026, 11, 11)) == 1
-    assert source.count_overbooks(2, date(2026, 11, 10)) == 1
-    assert source.count_overbooks(1, date(2026, 11, 12)) == 0
+    assert source.count_overbooks(date(2026, 11, 10)) == 4
+    assert source.count_overbooks(date(2026, 11, 11)) == 1
+    assert source.count_overbooks(date(2026, 11, 12)) == 0
 
 
 def test_missing_tables_raise_unavailable():
@@ -172,7 +171,7 @@ def test_missing_tables_raise_unavailable():
         with pytest.raises(DataSourceUnavailable):
             DbSlotSource(session, CLINIC).get_slot(1)
         with pytest.raises(DataSourceUnavailable):
-            DbSlotSource(session, CLINIC).count_overbooks(1, date(2026, 11, 10))
+            DbSlotSource(session, CLINIC).count_overbooks(date(2026, 11, 10))
 
 
 def test_predict_reads_patient_from_database(client: TestClient, db: Session):
