@@ -11,7 +11,6 @@ from sqlalchemy.orm import Session
 from noshow_db.models.core import AuthSession, Doctor, LoginFailure, Patient, UserAccount
 from web_backend.clinic import as_utc
 from web_backend.db import get_db
-from web_backend.national_id import is_valid_national_id
 from web_backend.security import hash_password, hash_token, new_token, verify_password
 
 SESSION_LIFETIME = timedelta(hours=12)
@@ -60,33 +59,37 @@ bearer = HTTPBearer(auto_error=False)
 DbSession = Annotated[Session, Depends(get_db)]
 
 
+# The department's staff accounts have the doctor role in the database: the one record in
+# doctors stands for the department. The API and the screens call the role "department".
+DEPARTMENT_ROLE = "doctor"
+
+
 class PatientLogin(BaseModel):
     # The login form the user chose; an account can only sign in through its own form
     role: Literal["patient"]
-    national_id: str
+    # PatientId of the dataset
+    patient_number: str
     password: str
 
 
-class DoctorLogin(BaseModel):
-    role: Literal["doctor"]
-    email: str
+class DepartmentLogin(BaseModel):
+    role: Literal["department"]
+    username: str
     password: str
 
 
-LoginRequest = Annotated[PatientLogin | DoctorLogin, Body(discriminator="role")]
+LoginRequest = Annotated[PatientLogin | DepartmentLogin, Body(discriminator="role")]
 
-WRONG_PATIENT_LOGIN = "Wrong national ID number or password"
-WRONG_DOCTOR_LOGIN = "Wrong email or password"
+WRONG_PATIENT_LOGIN = "Wrong patient number or password"
+WRONG_DEPARTMENT_LOGIN = "Wrong username or password"
 # Same answer for known and unknown login names, so it does not reveal an account
 TOO_MANY_LOGINS = "Too many failed login attempts; try again later"
 
 
 class Me(BaseModel):
-    role: Literal["patient", "doctor"]
+    role: Literal["patient", "department"]
+    # "Hasta <PatientId>" for patients, the department's name for its staff
     name: str
-    email: str
-    # Doctor's specialty; None for patients
-    specialty: str | None = None
 
 
 class LoginResponse(Me):
@@ -124,43 +127,43 @@ def require_patient(account: CurrentAccount) -> UserAccount:
     return account
 
 
-def require_doctor(account: CurrentAccount) -> UserAccount:
-    if account.role != "doctor":
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Doctors only")
+def require_department(account: CurrentAccount) -> UserAccount:
+    if account.role != DEPARTMENT_ROLE:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Department staff only")
     return account
 
 
 PatientAccount = Annotated[UserAccount, Depends(require_patient)]
-DoctorAccount = Annotated[UserAccount, Depends(require_doctor)]
+DepartmentAccount = Annotated[UserAccount, Depends(require_department)]
 
 
 def _me(db: Session, account: UserAccount) -> Me:
     if account.role == "patient":
-        patient = db.get(Patient, account.patient_id)
-        return Me(role="patient", name=patient.full_name, email=account.email)
-    doctor = db.get(Doctor, account.doctor_id)
-    return Me(role="doctor", name=doctor.full_name, email=account.email, specialty=doctor.specialty)
+        return Me(role="patient", name=db.get(Patient, account.patient_id).full_name)
+    return Me(role="department", name=db.get(Doctor, account.doctor_id).full_name)
 
 
-def _find_account(db: Session, body: PatientLogin | DoctorLogin) -> UserAccount | None:
+def _login_name(body: PatientLogin | DepartmentLogin) -> str:
+    return body.patient_number.strip() if isinstance(body, PatientLogin) else body.username.strip()
+
+
+def _find_account(db: Session, body: PatientLogin | DepartmentLogin) -> UserAccount | None:
+    name = _login_name(body)
     if isinstance(body, PatientLogin):
-        national_id = body.national_id.strip()
-        if not is_valid_national_id(national_id):
-            return None
         return db.scalar(
             select(UserAccount)
             .join(Patient, Patient.id == UserAccount.patient_id)
-            .where(Patient.national_id == national_id)
+            .where(Patient.patient_number == name)
         )
-    account = db.scalar(select(UserAccount).where(UserAccount.email == body.email.strip().lower()))
-    # A patient's e-mail is a contact address, not a login name; it gets the same answer
-    return account if account is not None and account.role == "doctor" else None
+    # The department's login name is kept in user_accounts.email. A patient account's e-mail
+    # address is not a login name; it gets the same answer as an unknown name.
+    account = db.scalar(select(UserAccount).where(UserAccount.email == name.lower()))
+    return account if account is not None and account.role == DEPARTMENT_ROLE else None
 
 
-def _login_hash(body: PatientLogin | DoctorLogin) -> str:
-    """Hash of the role and the normalized login name; the national ID is never stored."""
-    name = body.national_id.strip() if isinstance(body, PatientLogin) else body.email.strip()
-    return hash_token(f"{body.role}:{name.lower()}")
+def _login_hash(body: PatientLogin | DepartmentLogin) -> str:
+    """Hash of the role and the normalized login name; the name itself is never stored."""
+    return hash_token(f"{body.role}:{_login_name(body).lower()}")
 
 
 def _is_locked(db: Session, login_hash: str, client_ip: str, now: datetime) -> bool:
@@ -186,7 +189,7 @@ def _record_failure(db: Session, login_hash: str, client_ip: str, now: datetime)
 
 @router.post("/login")
 def login(body: LoginRequest, request: Request, db: DbSession) -> LoginResponse:
-    wrong = WRONG_PATIENT_LOGIN if body.role == "patient" else WRONG_DOCTOR_LOGIN
+    wrong = WRONG_PATIENT_LOGIN if body.role == "patient" else WRONG_DEPARTMENT_LOGIN
     now = datetime.now(UTC)
     login_hash = _login_hash(body)
     client_ip = request.client.host if request.client else "unknown"

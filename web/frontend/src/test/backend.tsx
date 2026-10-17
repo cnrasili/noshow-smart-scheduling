@@ -51,18 +51,10 @@ function json(status: number, body: unknown): Response {
   })
 }
 
-export const PATIENT: Me = {
-  role: 'patient',
-  name: 'Ayşe Kaya',
-  email: 'ayse@demo.local',
-  specialty: null,
-}
-export const DOCTOR: Me = {
-  role: 'doctor',
-  name: 'Dr. Deniz Yıldız',
-  email: 'doktor@demo.local',
-  specialty: 'Dahiliye',
-}
+export const PATIENT_NUMBER = '1421986987763'
+export const PATIENT: Me = { role: 'patient', name: `Hasta ${PATIENT_NUMBER}` }
+// The department's name in the database; the screens show "Aile Hekimliği"
+export const DEPARTMENT: Me = { role: 'department', name: 'General Practice' }
 
 /** Store a session token so the app restores the user from GET /auth/me. */
 export function signIn(me: Me): Record<string, Handler> {
