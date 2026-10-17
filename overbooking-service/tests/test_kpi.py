@@ -176,12 +176,12 @@ def test_day_is_loaded_in_clinic_timezone(session_factory: sessionmaker[Session]
 def test_kpi_endpoint(client: TestClient, clinic):
     response = client.get("/kpi", params={"doctor_id": 1, "date": "2026-11-10"})
     assert response.status_code == 200
-    # Patients 1 and 2 in the first slot, patient 3 in the second; waits 0, 12 and 9 minutes
+    # Patients 1 and 2 in the first slot, patient 3 in the second; waits 0, 7.5 and 0 minutes
     assert response.json() == {
-        "utilization": 0.6,
-        "idle_minutes": 24.0,
+        "utilization": 0.375,
+        "idle_minutes": 37.5,
         "overtime_minutes": 0.0,
-        "mean_wait_minutes": 7.0,
+        "mean_wait_minutes": 2.5,
         "overbooked_slots": 1,
         "patients_seen": 3,
     }
@@ -205,7 +205,7 @@ def test_dashboard_moved_to_admin_service(client: TestClient):
 
 def test_default_settings_come_from_config():
     settings = get_kpi_settings()
-    assert settings.service_minutes == 12
+    assert settings.service_minutes == 7.5
     assert settings.session is SessionDefinition.SLOTS
 
 
@@ -219,7 +219,7 @@ def schedule(session_factory: sessionmaker[Session], weekday: int) -> None:
 
 def use_session_definition(definition: SessionDefinition) -> None:
     app.dependency_overrides[get_kpi_settings] = lambda: KpiSettings(
-        service_minutes=12, session=definition
+        service_minutes=7.5, session=definition
     )
 
 
@@ -240,10 +240,10 @@ def test_kpi_endpoint_with_working_hours(client: TestClient, session_factory, cl
     response = client.get("/kpi", params={"doctor_id": 1, "date": "2026-11-10"})
     # Same patients as with slots, in a 120-minute session instead of 60 minutes
     assert response.json() == {
-        "utilization": 0.3,
-        "idle_minutes": 84.0,
+        "utilization": 0.188,
+        "idle_minutes": 97.5,
         "overtime_minutes": 0.0,
-        "mean_wait_minutes": 7.0,
+        "mean_wait_minutes": 2.5,
         "overbooked_slots": 1,
         "patients_seen": 3,
     }
