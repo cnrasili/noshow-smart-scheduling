@@ -6,14 +6,12 @@ from noshow_db import SessionLocal
 from overbooking_service.config import settings
 from overbooking_service.dispatcher import dispatch_due
 from overbooking_service.recovery import recover_lost_bookings
-from overbooking_service.sender import make_sender
+from overbooking_service.sender import DemoSmsSender
 
 
 def run_dispatch() -> None:
     with SessionLocal() as session:
-        dispatch_due(
-            session, make_sender(settings), datetime.now(UTC), settings.reminders.max_attempts
-        )
+        dispatch_due(session, DemoSmsSender(), datetime.now(UTC), settings.reminders.max_attempts)
 
 
 def run_recovery() -> None:

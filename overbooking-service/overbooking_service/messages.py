@@ -18,14 +18,11 @@ MONTHS = [
 ]
 WEEKDAYS = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"]
 
-# Fictional hospital shown as the sender and at the end of every message
+# Fictional hospital signing every message, and its only department
 HOSPITAL_NAME = "Şehir Hastanesi"
+DEPARTMENT_NAME = "Aile Hekimliği"
 
-CANCEL_NOTE = (
-    "Randevunuza gelemeyecekseniz lütfen iptal edin; böylece randevu saati başka bir hastaya "
-    "verilebilir."
-)
-ARRIVAL_NOTE = "Lütfen randevu saatinden 15 dakika önce poliklinik bankosuna başvurun."
+CANCEL_NOTE = "Gelemeyecekseniz lütfen iptal edin."
 
 
 class Kind(StrEnum):
@@ -49,16 +46,11 @@ def turkish_date_time(moment: datetime) -> str:
     )
 
 
-def render(kind: Kind, appointment_start: datetime) -> tuple[str, str]:
-    """Return the subject and body of a message."""
+def render(kind: Kind, appointment_start: datetime) -> str:
+    """Return the SMS text of a message."""
     when = turkish_date_time(appointment_start)
     if kind is Kind.CONFIRMATION:
-        return (
-            "Randevunuz onaylandı",
-            f"{when} tarihli randevunuz onaylandı.\n\n{CANCEL_NOTE}\n\n{HOSPITAL_NAME}",
-        )
-    return (
-        "Randevu hatırlatması",
-        f"Hatırlatma: {when} tarihinde randevunuz var. {ARRIVAL_NOTE}\n\n{CANCEL_NOTE}"
-        f"\n\n{HOSPITAL_NAME}",
-    )
+        sentence = f"{when} tarihli {DEPARTMENT_NAME} randevunuz alındı."
+    else:
+        sentence = f"{when} tarihli {DEPARTMENT_NAME} randevunuzu hatırlatırız."
+    return f"{sentence} {CANCEL_NOTE} {HOSPITAL_NAME}"

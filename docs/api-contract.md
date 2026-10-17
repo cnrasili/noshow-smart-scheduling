@@ -18,7 +18,7 @@ All services use one PostgreSQL database with a single Alembic history in [`db/`
 | Tables | Written by | Read by |
 |---|---|---|
 | `patients`, `doctors`, `doctor_schedules`, `slots`, `appointments`, `user_accounts`, `auth_sessions` | Web backend | Overbooking service (`patients`, `doctors`, `doctor_schedules`, `slots`, `appointments`); admin service (`patients`, `doctors`, `doctor_schedules`, `user_accounts`) |
-| `predictions`, `booking_decisions`, `messages`, `ab_assignments` | Overbooking service | — |
+| `predictions`, `booking_decisions`, `messages`, `ab_assignments` | Overbooking service | Admin service (`booking_decisions`, `messages`) |
 | `admin_users`, `admin_sessions`, `admin_audit_log` | Admin service | — |
 | `dataset_appointments` | Dataset loading command | Overbooking service |
 
@@ -31,6 +31,12 @@ Attendance is not reported by an event. The doctor marks an appointment as atten
 - the patients seen in `GET /kpi`.
 
 The web backend deletes a cancelled appointment and then reports it with `POST /events/appointment-cancelled`; deleted appointments no longer count anywhere.
+
+### Messages
+
+The overbooking service stores each confirmation and reminder in `messages`: the appointment, the patient, the kind, the SMS text, the sending time and the status (`pending`, `sent`, `failed`, `cancelled` or `expired`). Messages are demo SMS addressed by the dataset patient number (`patients.patient_number`). No phone number or e-mail address is stored or used for them, and no phone receives them; the admin service lists them in its SMS inbox.
+
+An appointment booked in the application has `SMS_received` = 1 when its reminder was sent (`kind` = `reminder`, `status` = `sent`) and 0 otherwise. The control group of the reminder A/B test gets no reminder, so its appointments have 0; the confirmation does not count, because every patient gets one.
 
 ## Service Availability
 
@@ -119,7 +125,7 @@ Errors:
 
 ## `POST /events/appointment-booked`
 
-Called by the web backend after an appointment is booked. Schedules a confirmation message, sent within a minute, and a reminder message before the appointment.
+Called by the web backend after an appointment is booked. Schedules a confirmation SMS, sent within a minute, and a reminder SMS before the appointment (see [Messages](#messages)).
 
 Request:
 
@@ -127,12 +133,11 @@ Request:
 {
   "appointment_id": 501,
   "patient_id": 123,
-  "email": "patient@example.com",
   "appointment_start": "2026-11-10T09:30:00+03:00"
 }
 ```
 
-`appointment_start` must include a time zone offset. Message texts show the time as sent.
+`appointment_start` must include a time zone offset. Message texts show the time as sent. Other fields are ignored, such as the `email` the web backend sends today; it can be dropped from the event.
 
 Response:
 

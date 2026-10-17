@@ -3,9 +3,12 @@ from datetime import datetime
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
+from noshow_db.models.core import Patient
 from noshow_db.models.service import Message
 from overbooking_service.messages import Status
 from overbooking_service.sender import MessageSender
+
+NO_RECIPIENT = "Patient has no patient number"
 
 
 def dispatch_due(session: Session, sender: MessageSender, now: datetime, max_attempts: int) -> int:
@@ -19,18 +22,25 @@ def dispatch_due(session: Session, sender: MessageSender, now: datetime, max_att
     )
     session.commit()
 
-    due = session.scalars(
-        select(Message)
+    due = session.execute(
+        select(Message, Patient.patient_number)
+        .outerjoin(Patient, Patient.id == Message.patient_id)
         .where(Message.status == Status.PENDING, Message.send_at <= now)
         .order_by(Message.send_at)
-        .with_for_update(skip_locked=True)
+        .with_for_update(of=Message, skip_locked=True)
     ).all()
 
     sent = 0
-    for message in due:
+    for message, patient_number in due:
         message.attempts += 1
+        if patient_number is None:
+            # SMS are addressed by the dataset patient number; retrying cannot help
+            message.status = Status.FAILED
+            message.error = NO_RECIPIENT
+            session.commit()
+            continue
         try:
-            sender.send(message.email, message.subject, message.body)
+            sender.send(patient_number, message.body)
         except OSError as exc:
             message.error = str(exc)[:255]
             if message.attempts >= max_attempts:
