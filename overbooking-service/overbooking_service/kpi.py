@@ -3,11 +3,11 @@ from datetime import UTC, date, datetime, time, timedelta
 from typing import Annotated
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
-from noshow_db.models.core import Appointment, Doctor, DoctorSchedule, Slot
+from noshow_db.models.core import Appointment, DoctorSchedule, Slot
 from overbooking_service.config import KpiSettings, SessionDefinition, settings
 from overbooking_service.dependencies import get_kpi_settings, get_session
 from overbooking_service.schemas import KpiResponse
@@ -41,7 +41,7 @@ def compute_kpis(
     """Replay a session: attended patients are seen in slot order, each for service_minutes.
 
     The session runs from the first slot start to the last slot end, or within session_bounds
-    when they are given, for example the doctor's working hours.
+    when they are given, for example the department's working hours.
     """
     if not slots:
         return None
@@ -52,7 +52,7 @@ def compute_kpis(
         return (moment - session_start).total_seconds() / 60
 
     end_min = minutes(session_end)
-    # The doctor is free from the session start, or from an earlier first slot
+    # The clinic room is free from the session start, or from an earlier first slot
     free_at = min(0.0, minutes(slots[0].start))
     busy: list[tuple[float, float]] = []
     waits: list[float] = []
@@ -81,8 +81,8 @@ def as_utc(value: datetime) -> datetime:
     return value.replace(tzinfo=UTC) if value.tzinfo is None else value
 
 
-def load_day(session: Session, doctor_id: int, day: date, timezone: ZoneInfo) -> list[SlotLoad]:
-    """Slots of a doctor on a clinic day with booked and attended counts."""
+def load_day(session: Session, day: date, timezone: ZoneInfo) -> list[SlotLoad]:
+    """Slots of the department on a clinic day with booked and attended counts."""
     day_start = datetime.combine(day, time(), timezone).astimezone(UTC)
     day_end = datetime.combine(day + timedelta(days=1), time(), timezone).astimezone(UTC)
     rows = session.execute(
@@ -93,7 +93,7 @@ def load_day(session: Session, doctor_id: int, day: date, timezone: ZoneInfo) ->
             func.count(case((Appointment.attended.is_(True), 1))),
         )
         .outerjoin(Appointment, Appointment.slot_id == Slot.id)
-        .where(Slot.doctor_id == doctor_id, Slot.start_at >= day_start, Slot.start_at < day_end)
+        .where(Slot.start_at >= day_start, Slot.start_at < day_end)
         .group_by(Slot.id, Slot.start_at, Slot.end_at)
     ).all()
     return [
@@ -103,42 +103,39 @@ def load_day(session: Session, doctor_id: int, day: date, timezone: ZoneInfo) ->
 
 
 def working_hours(
-    session: Session, doctor_id: int, day: date, timezone: ZoneInfo
+    session: Session, day: date, timezone: ZoneInfo
 ) -> tuple[datetime, datetime] | None:
-    """The doctor's working hours on a clinic day, or None on a day without working hours."""
-    schedule = session.scalar(
-        select(DoctorSchedule).where(
-            DoctorSchedule.doctor_id == doctor_id, DoctorSchedule.weekday == day.weekday()
+    """The department's working hours on a clinic day, or None on a day without working hours."""
+    start, end = session.execute(
+        select(func.min(DoctorSchedule.start_time), func.max(DoctorSchedule.end_time)).where(
+            DoctorSchedule.weekday == day.weekday()
         )
-    )
-    if schedule is None:
+    ).one()
+    if start is None:
         return None
     return (
-        datetime.combine(day, schedule.start_time, timezone).astimezone(UTC),
-        datetime.combine(day, schedule.end_time, timezone).astimezone(UTC),
+        datetime.combine(day, start, timezone).astimezone(UTC),
+        datetime.combine(day, end, timezone).astimezone(UTC),
     )
 
 
-def doctor_kpis(session: Session, doctor_id: int, day: date, kpi: KpiSettings) -> Kpis | None:
+def department_kpis(session: Session, day: date, kpi: KpiSettings) -> Kpis | None:
     timezone = settings.clinic_timezone
     bounds = None
     if kpi.session is SessionDefinition.SCHEDULE:
-        bounds = working_hours(session, doctor_id, day, timezone)
-    return compute_kpis(load_day(session, doctor_id, day, timezone), kpi.service_minutes, bounds)
+        bounds = working_hours(session, day, timezone)
+    return compute_kpis(load_day(session, day, timezone), kpi.service_minutes, bounds)
 
 
-@router.get("/kpi", responses={404: {"description": "Doctor not found or no slots on the date"}})
+@router.get("/kpi", responses={404: {"description": "No slots on the date"}})
 def get_kpi(
-    doctor_id: Annotated[int, Query(gt=0)],
     date: date,
     session: Annotated[Session, Depends(get_session)],
     kpi: Annotated[KpiSettings, Depends(get_kpi_settings)],
 ) -> KpiResponse:
-    if session.get(Doctor, doctor_id) is None:
-        raise HTTPException(404, f"Doctor {doctor_id} not found")
-    result = doctor_kpis(session, doctor_id, date, kpi)
+    result = department_kpis(session, date, kpi)
     if result is None:
-        raise HTTPException(404, f"Doctor {doctor_id} has no slots on {date}")
+        raise HTTPException(404, f"No slots on {date}")
     return KpiResponse(
         utilization=round(result.utilization, 3),
         idle_minutes=round(result.idle_minutes, 1),

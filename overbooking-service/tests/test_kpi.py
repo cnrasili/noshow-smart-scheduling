@@ -119,7 +119,8 @@ def test_slot_order_does_not_matter():
 def clinic(session_factory: sessionmaker[Session]) -> None:
     with session_factory() as session:
         session.add_all(
-            [Doctor(id=1, full_name="Dr. Ada"), Doctor(id=2, full_name="Dr. Bora")]
+            # The department's schedule is its one record in doctors
+            [Doctor(id=1, full_name="General Practice")]
             + [
                 Patient(
                     id=i,
@@ -169,12 +170,12 @@ def clinic(session_factory: sessionmaker[Session]) -> None:
 
 def test_day_is_loaded_in_clinic_timezone(session_factory: sessionmaker[Session], clinic):
     with session_factory() as session:
-        loads = load_day(session, 1, date(2026, 11, 10), CLINIC)
+        loads = load_day(session, date(2026, 11, 10), CLINIC)
     assert sorted((s.booked, s.attended) for s in loads) == [(1, 0), (1, 0), (1, 1), (2, 2)]
 
 
 def test_kpi_endpoint(client: TestClient, clinic):
-    response = client.get("/kpi", params={"doctor_id": 1, "date": "2026-11-10"})
+    response = client.get("/kpi", params={"date": "2026-11-10"})
     assert response.status_code == 200
     # Patients 1 and 2 in the first slot, patient 3 in the second; waits 0, 7.5 and 0 minutes
     assert response.json() == {
@@ -187,16 +188,13 @@ def test_kpi_endpoint(client: TestClient, clinic):
     }
 
 
-@pytest.mark.parametrize(
-    "params",
-    [{"doctor_id": 99, "date": "2026-11-10"}, {"doctor_id": 2, "date": "2026-11-10"}],
-)
-def test_kpi_not_found(client: TestClient, clinic, params: dict):
-    assert client.get("/kpi", params=params).status_code == 404
+def test_day_without_slots_is_not_found(client: TestClient, clinic):
+    assert client.get("/kpi", params={"date": "2026-11-12"}).status_code == 404
 
 
-def test_kpi_invalid_request(client: TestClient):
-    assert client.get("/kpi", params={"doctor_id": 0, "date": "2026-11-10"}).status_code == 422
+@pytest.mark.parametrize("params", [{}, {"date": "10.11.2026"}])
+def test_kpi_invalid_request(client: TestClient, params: dict):
+    assert client.get("/kpi", params=params).status_code == 422
 
 
 def test_dashboard_moved_to_admin_service(client: TestClient):
@@ -227,17 +225,17 @@ def test_working_hours_are_read_in_clinic_time(session_factory: sessionmaker[Ses
     schedule(session_factory, weekday=1)
     with session_factory() as session:
         # 10 November 2026 is a Tuesday
-        assert working_hours(session, 1, date(2026, 11, 10), CLINIC) == (
+        assert working_hours(session, date(2026, 11, 10), CLINIC) == (
             START,
             START + timedelta(hours=2),
         )
-        assert working_hours(session, 1, date(2026, 11, 9), CLINIC) is None
+        assert working_hours(session, date(2026, 11, 9), CLINIC) is None
 
 
 def test_kpi_endpoint_with_working_hours(client: TestClient, session_factory, clinic):
     schedule(session_factory, weekday=1)
     use_session_definition(SessionDefinition.SCHEDULE)
-    response = client.get("/kpi", params={"doctor_id": 1, "date": "2026-11-10"})
+    response = client.get("/kpi", params={"date": "2026-11-10"})
     # Same patients as with slots, in a 120-minute session instead of 60 minutes
     assert response.json() == {
         "utilization": 0.188,
@@ -252,7 +250,7 @@ def test_kpi_endpoint_with_working_hours(client: TestClient, session_factory, cl
 def test_day_without_working_hours_falls_back_to_slots(client: TestClient, session_factory, clinic):
     # Working hours only on Mondays
     schedule(session_factory, weekday=0)
-    params = {"doctor_id": 1, "date": "2026-11-10"}
+    params = {"date": "2026-11-10"}
     by_slots = client.get("/kpi", params=params).json()
     use_session_definition(SessionDefinition.SCHEDULE)
     assert client.get("/kpi", params=params).json() == by_slots

@@ -33,7 +33,6 @@ class SlotBooking:
 @dataclass(frozen=True)
 class SlotState:
     slot_id: int
-    doctor_id: int
     slot_date: date
     max_patients: int
     bookings: tuple[SlotBooking, ...]
@@ -44,8 +43,8 @@ class SlotDataSource(Protocol):
 
     def get_slot(self, slot_id: int) -> SlotState | None: ...
 
-    def count_overbooks(self, doctor_id: int, slot_date: date) -> int:
-        """Number of overbooked appointments of a doctor on a date."""
+    def count_overbooks(self, slot_date: date) -> int:
+        """Number of overbooked appointments of the department on a date."""
         ...
 
 
@@ -118,13 +117,12 @@ class DbSlotSource:
             raise DataSourceUnavailable("Slot data cannot be read") from exc
         return SlotState(
             slot_id=slot.id,
-            doctor_id=slot.doctor_id,
             slot_date=self._local_date(slot.start_at),
             max_patients=slot.max_patients,
             bookings=tuple(SlotBooking(row.patient_id, row.booking_date) for row in bookings),
         )
 
-    def count_overbooks(self, doctor_id: int, slot_date: date) -> int:
+    def count_overbooks(self, slot_date: date) -> int:
         # Every appointment after the first one in a slot is an overbook
         day_start = datetime.combine(slot_date, time(), self.timezone).astimezone(UTC)
         day_end = datetime.combine(slot_date + timedelta(days=1), time(), self.timezone).astimezone(
@@ -133,7 +131,7 @@ class DbSlotSource:
         query = (
             select(Appointment.slot_id, func.count())
             .join(Slot, Slot.id == Appointment.slot_id)
-            .where(Slot.doctor_id == doctor_id, Slot.start_at >= day_start, Slot.start_at < day_end)
+            .where(Slot.start_at >= day_start, Slot.start_at < day_end)
             .group_by(Appointment.slot_id)
         )
         try:
