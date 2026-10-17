@@ -13,7 +13,6 @@ from noshow_db.base import Base
 from noshow_db.models.core import Doctor, Patient, UserAccount
 from web_backend.db import get_db
 from web_backend.main import app
-from web_backend.national_id import fictional_national_id
 from web_backend.overbooking import OverbookingClient, get_overbooking_client
 from web_backend.security import hash_password
 
@@ -81,16 +80,18 @@ def client(db: Session, overbooking: FakeOverbookingService) -> Iterator[TestCli
 
 @pytest.fixture
 def make_patient(db: Session) -> Callable[..., Patient]:
+    """A dataset-like patient with a login account; the account takes the patient's e-mail."""
     numbers = iter(range(1, 10000))
 
     def make(
         email: str = "patient@example.com",
-        name: str = "Test Patient",
-        national_id: str | None = None,
+        name: str | None = None,
+        patient_number: str | None = None,
     ) -> Patient:
+        number = patient_number or f"{next(numbers)}0000000"
         patient = Patient(
-            national_id=national_id or fictional_national_id(next(numbers)),
-            full_name=name,
+            patient_number=number,
+            full_name=name or f"Hasta {number}",
             email=email,
             age=30,
             gender="F",
@@ -112,21 +113,23 @@ def make_patient(db: Session) -> Callable[..., Patient]:
 
 
 @pytest.fixture
-def make_doctor(db: Session) -> Callable[..., Doctor]:
-    def make(email: str = "doctor@example.com", name: str = "Dr. Test") -> Doctor:
-        doctor = Doctor(full_name=name, specialty="General")
-        db.add(doctor)
+def make_department(db: Session) -> Callable[..., Doctor]:
+    """The department as stored: a record in doctors with a staff account of the doctor role."""
+
+    def make(username: str = "aile.hekimligi", name: str = "General Practice") -> Doctor:
+        department = Doctor(full_name=name, specialty=name)
+        db.add(department)
         db.flush()
         db.add(
             UserAccount(
-                email=email,
+                email=username,
                 password_hash=hash_password(PASSWORD),
                 role="doctor",
-                doctor_id=doctor.id,
+                doctor_id=department.id,
             )
         )
         db.commit()
-        return doctor
+        return department
 
     return make
 
@@ -135,16 +138,17 @@ def make_doctor(db: Session) -> Callable[..., Doctor]:
 def login(client: TestClient, db: Session) -> Callable[[str], dict[str, str]]:
     """Sign in through the account's own login form and return the Authorization header.
 
-    Accounts are looked up by e-mail; patients then sign in with their national ID number.
+    Accounts are looked up by user_accounts.email: the patient's e-mail address or the
+    department's username. Patients then sign in with their patient number.
     """
 
     def sign_in(email: str) -> dict[str, str]:
         account = db.scalar(select(UserAccount).where(UserAccount.email == email))
         if account.role == "patient":
-            national_id = db.get(Patient, account.patient_id).national_id
-            body = {"role": "patient", "national_id": national_id, "password": PASSWORD}
+            number = db.get(Patient, account.patient_id).patient_number
+            body = {"role": "patient", "patient_number": number, "password": PASSWORD}
         else:
-            body = {"role": "doctor", "email": email, "password": PASSWORD}
+            body = {"role": "department", "username": email, "password": PASSWORD}
         response = client.post("/auth/login", json=body)
         assert response.status_code == 200, response.text
         return {"Authorization": f"Bearer {response.json()['token']}"}

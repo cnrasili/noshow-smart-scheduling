@@ -59,7 +59,7 @@ class OverbookingClient:
             return None
 
     def appointment_booked(
-        self, appointment_id: int, patient_id: int, email: str, appointment_start: datetime
+        self, appointment_id: int, patient_id: int, appointment_start: datetime
     ) -> bool:
         """Report a new booking so confirmation and reminder messages are scheduled.
 
@@ -70,7 +70,6 @@ class OverbookingClient:
             {
                 "appointment_id": appointment_id,
                 "patient_id": patient_id,
-                "email": email,
                 "appointment_start": appointment_start.isoformat(),
             },
         )

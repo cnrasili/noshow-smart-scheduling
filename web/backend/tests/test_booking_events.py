@@ -9,8 +9,8 @@ from noshow_db.models.core import Appointment, Slot
 
 
 @pytest.fixture
-def slot(db, make_doctor) -> Slot:
-    doctor = make_doctor()
+def slot(db, make_department) -> Slot:
+    doctor = make_department()
     start = datetime(2030, 3, 4, 6, 20, tzinfo=UTC)
     slot = Slot(doctor_id=doctor.id, start_at=start, end_at=start + timedelta(minutes=20))
     db.add(slot)
@@ -39,7 +39,6 @@ def test_booking_reports_the_appointment_with_clinic_time(client, overbooking, s
             "path": "/events/appointment-booked",
             "appointment_id": appointment_id,
             "patient_id": patient_row.id,
-            "email": "ayse@example.com",
             # 06:20 UTC is 09:20 in the clinic; the offset tells the service the time zone
             "appointment_start": "2030-03-04T09:20:00+03:00",
         }

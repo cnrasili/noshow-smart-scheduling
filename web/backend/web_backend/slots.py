@@ -1,4 +1,5 @@
-# Slot generation from the doctors' weekly working hours
+# Slot generation from the department's weekly working hours. The department is the one record
+# in doctors, so the tables and functions keep the doctor names.
 import os
 from datetime import UTC, date, datetime, timedelta
 from typing import Annotated
@@ -9,12 +10,13 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from noshow_db.models.core import Appointment, DoctorSchedule, Slot
-from web_backend.auth import CurrentAccount, DoctorAccount
+from web_backend.auth import CurrentAccount, DepartmentAccount
 from web_backend.clinic import CLINIC_TZ, as_utc, today
 from web_backend.db import get_db
 
-# Used when SLOT_MINUTES is not set; the session parameters are decided by IEN-1 (#9)
-DEFAULT_SLOT_MINUTES = 20
+# Used when SLOT_MINUTES is not set: 16 slots from 08:00 to 12:00, one session as in the
+# simulation (#9)
+DEFAULT_SLOT_MINUTES = 15
 MIN_SLOT_MINUTES = 5
 MAX_SLOT_MINUTES = 120
 MAX_GENERATION_DAYS = 62
@@ -118,7 +120,7 @@ class GenerateSlotsResponse(BaseModel):
 @router.post("/doctors/me/slots/generate")
 def generate_my_slots(
     body: GenerateSlotsRequest,
-    account: DoctorAccount,
+    account: DepartmentAccount,
     db: Annotated[Session, Depends(get_db)],
 ) -> GenerateSlotsResponse:
     if body.date_from < today():
@@ -138,7 +140,6 @@ def generate_my_slots(
 
 class SlotOut(BaseModel):
     id: int
-    doctor_id: int
     start_at: datetime
     end_at: datetime
     max_patients: int
@@ -153,11 +154,10 @@ class SlotOut(BaseModel):
 def list_slots(
     account: CurrentAccount,
     db: Annotated[Session, Depends(get_db)],
-    doctor_id: int,
     date_from: Annotated[date | None, Query()] = None,
     date_to: Annotated[date | None, Query()] = None,
 ) -> list[SlotOut]:
-    """Upcoming slots of a doctor, by default for the next two weeks."""
+    """Upcoming slots of the department, by default for the next two weeks."""
     date_from = date_from or today()
     date_to = date_to or date_from + timedelta(days=DEFAULT_LISTING_DAYS - 1)
     range_start, range_end = clinic_days_in_utc(date_from, date_to)
@@ -171,11 +171,7 @@ def list_slots(
     rows = db.execute(
         select(Slot, func.coalesce(booked.c.booked_count, 0))
         .outerjoin(booked, booked.c.slot_id == Slot.id)
-        .where(
-            Slot.doctor_id == doctor_id,
-            Slot.start_at >= range_start,
-            Slot.start_at < range_end,
-        )
+        .where(Slot.start_at >= range_start, Slot.start_at < range_end)
         .order_by(Slot.start_at)
     ).all()
     mine = set()
@@ -189,7 +185,6 @@ def list_slots(
     return [
         SlotOut(
             id=slot.id,
-            doctor_id=slot.doctor_id,
             start_at=as_utc(slot.start_at),
             end_at=as_utc(slot.end_at),
             max_patients=slot.max_patients,

@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { INSTITUTION_NAME } from '../config'
 import { ANNOUNCEMENTS, DISCLAIMER } from '../content/site'
 import { PATHS, announcementPath } from '../routes'
-import { DOCTOR, PATIENT, fakeBackend, renderApp, signIn } from './backend'
+import { DEPARTMENT, PATIENT, fakeBackend, renderApp, signIn } from './backend'
 
 const STATIC_PAGES = [
   [PATHS.home, null],
@@ -43,7 +43,7 @@ describe('hospital site frame', () => {
     expectFrame()
     const header = screen.getByRole('banner')
     expect(within(header).getByRole('link', { name: 'Hasta Girişi' })).toBeInTheDocument()
-    expect(within(header).getByRole('link', { name: 'Hekim Girişi' })).toBeInTheDocument()
+    expect(within(header).getByRole('link', { name: 'Departman Girişi' })).toBeInTheDocument()
     expect(document.title).toBe(title ? `${title} | ${INSTITUTION_NAME}` : INSTITUTION_NAME)
   })
 
@@ -57,7 +57,7 @@ describe('hospital site frame', () => {
   })
 
   it('keeps the frame for a signed-in patient, with the account menu', async () => {
-    fakeBackend({ ...signIn(PATIENT), 'GET /doctors': () => [] })
+    fakeBackend({ ...signIn(PATIENT), 'GET /slots': () => [] })
     renderApp(PATHS.booking)
 
     expect(await screen.findByRole('heading', { name: 'Online Randevu' })).toBeVisible()
@@ -68,8 +68,8 @@ describe('hospital site frame', () => {
     expect(screen.queryByRole('link', { name: 'Hasta Girişi' })).not.toBeInTheDocument()
   })
 
-  it('lets a signed-in doctor open the home page and keeps the doctor screens', async () => {
-    fakeBackend({ ...signIn(DOCTOR) })
+  it('lets the signed-in department open the home page and keeps its screens', async () => {
+    fakeBackend({ ...signIn(DEPARTMENT) })
     renderApp(PATHS.home)
 
     expect(await screen.findByRole('heading', { level: 1, name: INSTITUTION_NAME })).toBeVisible()
@@ -146,6 +146,16 @@ describe('hospital site pages', () => {
     renderApp(announcementPath('yok'))
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Duyurular' })).toBeVisible()
+  })
+
+  it('names no doctor', () => {
+    fakeBackend({})
+    for (const [path] of STATIC_PAGES) {
+      const { container, unmount } = renderApp(path)
+      // "Aile Hekimliği" is the department's name; no page mentions a doctor
+      expect(container.textContent).not.toMatch(/\bDr\.|hekim(?!li)|branş|kimlik numara/i)
+      unmount()
+    }
   })
 
   it('names no real government service', () => {

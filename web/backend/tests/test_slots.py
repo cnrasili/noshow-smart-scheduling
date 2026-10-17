@@ -12,9 +12,9 @@ MONDAY = date(2026, 11, 9)
 
 
 @pytest.fixture
-def doctor(db, make_doctor):
+def doctor(db, make_department):
     """Doctor working Monday 09:00-12:00 and Wednesday 13:00-14:10."""
-    doctor = make_doctor()
+    doctor = make_department()
     db.add_all(
         [
             DoctorSchedule(
@@ -78,13 +78,14 @@ def test_generation_can_be_repeated_without_duplicates(db, doctor) -> None:
     second = generate_slots(db, doctor.id, MONDAY, week_end)
     db.commit()
 
-    assert len(first) == 12
+    # Monday 09:00-12:00 and Wednesday 13:00-14:00 in 15-minute slots
+    assert len(first) == 16
     assert second == []
-    assert db.scalar(select(func.count()).select_from(Slot)) == 12
+    assert db.scalar(select(func.count()).select_from(Slot)) == 16
 
 
-def test_other_doctors_are_not_affected(db, doctor, make_doctor) -> None:
-    other = make_doctor(email="other@example.com")
+def test_other_doctors_are_not_affected(db, doctor, make_department) -> None:
+    other = make_department(username="other.department")
 
     generate_slots(db, other.id, MONDAY, MONDAY)
 
@@ -101,11 +102,11 @@ def test_doctor_generates_own_slots(client, db, doctor, login) -> None:
     response = client.post(
         "/doctors/me/slots/generate",
         json={"date_from": monday.isoformat(), "date_to": monday.isoformat()},
-        headers=login("doctor@example.com"),
+        headers=login("aile.hekimligi"),
     )
 
     assert response.status_code == 200
-    assert response.json() == {"created": 9}
+    assert response.json() == {"created": 12}
 
 
 @pytest.mark.parametrize(
@@ -123,7 +124,7 @@ def test_invalid_generation_ranges_are_rejected(
             "date_from": (monday + timedelta(days=offset_from)).isoformat(),
             "date_to": (monday + timedelta(days=offset_to)).isoformat(),
         },
-        headers=login("doctor@example.com"),
+        headers=login("aile.hekimligi"),
     )
 
     assert response.status_code == 422

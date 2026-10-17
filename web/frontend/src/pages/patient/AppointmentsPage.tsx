@@ -1,12 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, errorText } from '../../api'
-import {
-  appointmentNumber,
-  branchLabel,
-  formatShortDate,
-  formatTimeRange,
-  hasStarted,
-} from '../../format'
+import { appointmentNumber, formatShortDate, formatTimeRange, hasStarted } from '../../format'
 import type { Appointment } from '../../types'
 import { Notice, PageHeader, Status, type NoticeState } from '../../ui'
 
@@ -97,8 +91,6 @@ export function AppointmentsPage({ onBook }: { onBook: () => void }) {
                 <th>Randevu no</th>
                 <th>Tarih</th>
                 <th>Saat</th>
-                <th>Branş</th>
-                <th>Hekim</th>
                 <th>Durum</th>
                 {tab === 'active' && <th className="cell-actions">İşlem</th>}
               </tr>
@@ -113,8 +105,6 @@ export function AppointmentsPage({ onBook }: { onBook: () => void }) {
                   <td data-label="Saat" className="mono">
                     {formatTimeRange(appointment.start_at, appointment.end_at)}
                   </td>
-                  <td data-label="Branş">{branchLabel(appointment.doctor_specialty)}</td>
-                  <td data-label="Hekim">{appointment.doctor_name}</td>
                   <td data-label="Durum">
                     {tab === 'active' ? (
                       <Status tone="info">Aktif</Status>

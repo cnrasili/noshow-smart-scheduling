@@ -18,7 +18,6 @@ from noshow_db.models.core import (
     Slot,
     UserAccount,
 )
-from web_backend.national_id import fictional_national_id
 
 
 @pytest.fixture
@@ -35,9 +34,10 @@ _numbers = count(1)
 
 
 def _patient(email: str = "patient@example.com", age: int = 30) -> Patient:
+    number = f"{next(_numbers)}0000000"
     return Patient(
-        national_id=fictional_national_id(next(_numbers)),
-        full_name="Test Patient",
+        patient_number=number,
+        full_name=f"Hasta {number}",
         email=email,
         age=age,
         gender="F",
@@ -50,7 +50,7 @@ def _patient(email: str = "patient@example.com", age: int = 30) -> Patient:
 
 
 def _slot(session: Session) -> Slot:
-    doctor = Doctor(full_name="Dr. Test", specialty="General")
+    doctor = Doctor(full_name="General Practice", specialty="General Practice")
     session.add(doctor)
     session.flush()
     slot = Slot(
@@ -142,7 +142,7 @@ def test_same_patient_cannot_book_a_slot_twice(session: Session) -> None:
 
 
 def test_doctor_schedule_is_one_interval_per_weekday(session: Session) -> None:
-    doctor = Doctor(full_name="Dr. Test", specialty=None)
+    doctor = Doctor(full_name="General Practice", specialty=None)
     session.add(doctor)
     session.flush()
 
@@ -163,11 +163,11 @@ def test_doctor_schedule_is_one_interval_per_weekday(session: Session) -> None:
 def test_defaults_apply_to_raw_sql_inserts(session: Session) -> None:
     session.execute(
         text(
-            "INSERT INTO patients (national_id, full_name, email, age, gender) "
-            "VALUES ('99999000184', 'Raw Patient', 'raw@example.com', 40, 'M')"
+            "INSERT INTO patients (patient_number, full_name, email, age, gender) "
+            "VALUES ('10000000', 'Hasta 10000000', 'raw@example.com', 40, 'M')"
         )
     )
-    session.execute(text("INSERT INTO doctors (full_name) VALUES ('Dr. Raw')"))
+    session.execute(text("INSERT INTO doctors (full_name) VALUES ('General Practice')"))
     session.execute(
         text(
             "INSERT INTO slots (doctor_id, start_at, end_at) "
@@ -212,7 +212,7 @@ def test_booking_date_cannot_be_after_appointment_date(session: Session) -> None
 
 @pytest.mark.parametrize("max_patients", [0, -1])
 def test_slot_capacity_must_be_positive(session: Session, max_patients: int) -> None:
-    session.add(Doctor(full_name="Dr. Test", specialty=None))
+    session.add(Doctor(full_name="General Practice", specialty=None))
     session.flush()
     session.add(
         Slot(
@@ -228,7 +228,7 @@ def test_slot_capacity_must_be_positive(session: Session, max_patients: int) -> 
 
 
 def test_slot_must_end_after_it_starts(session: Session) -> None:
-    session.add(Doctor(full_name="Dr. Test", specialty=None))
+    session.add(Doctor(full_name="General Practice", specialty=None))
     session.flush()
     start = datetime(2026, 11, 10, 9, 0, tzinfo=UTC)
     session.add(Slot(doctor_id=1, start_at=start, end_at=start))
@@ -239,7 +239,7 @@ def test_slot_must_end_after_it_starts(session: Session) -> None:
 
 def _owners(session: Session) -> tuple[int, int]:
     patient = _patient()
-    doctor = Doctor(full_name="Dr. Test", specialty=None)
+    doctor = Doctor(full_name="General Practice", specialty=None)
     session.add_all([patient, doctor])
     session.flush()
     return patient.id, doctor.id
