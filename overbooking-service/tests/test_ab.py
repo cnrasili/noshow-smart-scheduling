@@ -19,7 +19,6 @@ SALT = "reminder-ab-v1"
 CONTROL_PATIENT, REMINDER_PATIENT = 1, 2
 BODY = {
     "appointment_id": 501,
-    "email": "patient@example.com",
     "appointment_start": "2026-11-10T09:30:00+03:00",
 }
 

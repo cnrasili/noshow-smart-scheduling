@@ -35,6 +35,16 @@ AUDIT_EVENTS = {
 }
 AB_GROUPS = {"reminder": "Hatırlatma", "control": "Kontrol"}
 
+# Demo SMS of the overbooking service
+MESSAGE_KINDS = {"confirmation": "Onay", "reminder": "Hatırlatma"}
+MESSAGE_STATUSES = {
+    "pending": "Bekliyor",
+    "sent": "Gönderildi",
+    "failed": "Gönderilemedi",
+    "cancelled": "İptal edildi",
+    "expired": "Süresi geçti",
+}
+
 # Booking decisions of the overbooking service and appointment outcomes
 DECISION_KINDS = {
     "normal": "Normal randevu",

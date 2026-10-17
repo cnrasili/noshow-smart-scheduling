@@ -1,6 +1,6 @@
 name: Branch cleanup
 
-# Each person keeps only their most recently updated branch
+# Each person keeps only their most recently updated branch; exempt owners are listed in the script
 on:
   create:
   schedule:
@@ -33,5 +33,4 @@ jobs:
         run: python .github/scripts/cleanup_branches.py
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          EXEMPT_LOGINS: cnrasili
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}

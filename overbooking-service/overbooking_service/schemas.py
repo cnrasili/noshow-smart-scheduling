@@ -28,9 +28,9 @@ class BookingDecisionResponse(BaseModel):
 
 
 class AppointmentBooked(BaseModel):
+    # Other fields, such as the email the web backend still sends, are ignored
     appointment_id: int = Field(gt=0)
     patient_id: int = Field(gt=0)
-    email: str = Field(max_length=255, pattern=r"^[^@\s]+@[^@\s]+$")
     appointment_start: AwareDatetime
 
 

@@ -1,7 +1,8 @@
 """Delete outdated branches: each person keeps only their most recently updated branch.
 
 Owner of a branch is the GitHub user (or email) of its latest commit. Branches in KEEP and
-branches of EXEMPT_LOGINS are never touched. Unmerged work is saved as an archive tag first.
+branches of the owners in EXEMPT are never touched. Unmerged work is saved as an archive
+tag first.
 """
 
 import json
@@ -13,6 +14,9 @@ from datetime import UTC, datetime
 
 API = "https://api.github.com"
 KEEP = {"main"}
+# Owners whose branches are never removed. Kept here rather than in the workflow, because a
+# run started by a new branch reads the workflow file of that branch.
+EXEMPT = {"cnrasili", "hazarikizler"}
 
 
 @dataclass(frozen=True)
@@ -58,15 +62,15 @@ def list_branches(repo: str) -> list[Branch]:
 
 def select_outdated(branches: list[Branch], exempt: set[str]) -> list[Branch]:
     """Every branch except the most recently updated one of each owner."""
-    latest: dict[str, Branch] = {}
+    owned: dict[str, list[Branch]] = {}
     for branch in branches:
-        if branch.owner in exempt:
-            continue
-        current = latest.get(branch.owner)
-        if current is None or branch.updated > current.updated:
-            latest[branch.owner] = branch
-    keep = {branch.name for branch in latest.values()}
-    return [b for b in branches if b.owner not in exempt and b.name not in keep]
+        if branch.owner not in exempt:
+            owned.setdefault(branch.owner, []).append(branch)
+    outdated = []
+    for own in owned.values():
+        own.sort(key=lambda b: b.updated, reverse=True)
+        outdated += own[1:]
+    return outdated
 
 
 def is_merged(repo: str, branch: Branch) -> bool:
@@ -77,13 +81,13 @@ def is_merged(repo: str, branch: Branch) -> bool:
 def main() -> None:
     repo = os.environ["GITHUB_REPOSITORY"]
     dry_run = os.getenv("DRY_RUN", "false").lower() == "true"
-    exempt = {login for login in os.getenv("EXEMPT_LOGINS", "").split(",") if login}
+    print(f"Owners whose branches are kept: {sorted(EXEMPT)}")
 
     branches = list_branches(repo)
     for branch in sorted(branches, key=lambda b: (b.owner, b.updated)):
         print(f"{branch.owner:24} {branch.updated:%Y-%m-%d %H:%M}  {branch.name}")
 
-    outdated = select_outdated(branches, exempt)
+    outdated = select_outdated(branches, EXEMPT)
     if not outdated:
         print("No outdated branches.")
         return

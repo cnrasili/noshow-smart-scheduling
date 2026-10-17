@@ -32,9 +32,8 @@ The project is developed as an interdisciplinary study combining industrial engi
 
 ## Scope
 
-- The analysis starts with one outpatient clinic session of one physician with fixed-length appointment slots. Later stages extend it to several physicians and departments, including several physicians of the same department.
-- The demo application contains several physicians in several departments.
-- The prediction model is trained on the public Medical Appointment No Shows dataset; the application and the simulation use simulated data. The dataset has no physician or department information, so physicians and departments in the simulation are assumed.
+- The project's single data source is the public Medical Appointment No Shows dataset (see [Dataset](#dataset)). The prediction model, the simulation and the application all use it; the application has only the dataset's patients and nothing the dataset does not have.
+- The whole system has one department with fixed-length appointment slots. The dataset names no physician, so neither the simulation nor the application names or assigns one; capacity and results belong to the department.
 - Selective overbooking is compared with fixed-interval booking.
 - Real patient data and integration with hospital information systems are outside the scope.
 
@@ -45,9 +44,9 @@ The project is developed as an interdisciplinary study combining industrial engi
 | **Booking application** | Patients choose department → doctor → day → time and manage their appointments. Doctors see their daily patient list, record attendance and open slots from their working hours. Patients log in with their national ID number, doctors with their email address; accounts are created by the hospital, there is no registration. |
 | **No-show prediction** | Each booking is scored with the patient's no-show probability, computed only from information known at booking time. |
 | **Selective overbooking** | A booked slot accepts an extra patient only when every booked patient is likely to miss the appointment, within the slot capacity and a daily limit. Every decision is logged with its reason. |
-| **Confirmation and reminders** | A confirmation is sent at booking and a reminder before the appointment; cancelled appointments stop their reminders. |
+| **Confirmation and reminders** | A confirmation SMS is sent at booking and a reminder SMS before the appointment; cancelled appointments stop their reminders. The SMS are demo messages addressed by the patient number and shown in the admin service; no phone number or e-mail address is used. |
 | **Reminder A/B test** | Patients are split into reminder and control groups; the no-show rates of the groups are compared with a two-proportion z-test. |
-| **Admin service** | Separate administration screen reachable only from the internal network, with its own administrator accounts, login protection and audit log. Creates patient and doctor accounts. Shows utilization, physician idle time, overtime, mean waiting time and overbooked slots per doctor and day, and the reminder A/B test. |
+| **Admin service** | Separate administration screen reachable only from the internal network, with its own administrator accounts, login protection and audit log. Creates patient and doctor accounts. Shows utilization, physician idle time, overtime, mean waiting time and overbooked slots per doctor and day, the reminder A/B test and the demo SMS sent to patients. |
 | **Simulation** | SimPy model of a clinic session that compares fixed-interval booking, overbooking rules and appointment templates on real appointment days. |
 | **Model reports** | Data cleaning, logistic regression and random forest, AUC and calibration reports. |
 
@@ -61,14 +60,13 @@ flowchart LR
     BE -->|booking decision<br/>booking events| OS[Overbooking service<br/>FastAPI]
     BE --> DB[(PostgreSQL)]
     OS --> DB
-    OS --> MAIL[Email<br/>SMTP / Mailpit]
     ADM[Admin service<br/>internal network only] -->|KPIs, A/B summary| OS
     ADM --> DB
     ML[ML pipeline] -->|trained model| OS
     ML -->|no-show risks| SIM[SimPy simulation]
 ```
 
-The web backend asks the overbooking service before every booking. The service computes the features, scores the patient with the model, applies the overbooking rule and schedules the messages. The admin service is a separate application for the hospital administration; it reads the KPIs from the overbooking service and is not reachable from the public website. All services share one PostgreSQL database with a single Alembic migration history.
+The web backend asks the overbooking service before every booking. The service computes the features, scores the patient with the model, applies the overbooking rule and schedules the confirmation and reminder SMS; these are demo messages stored in the database and shown in the admin service's SMS inbox. The admin service is a separate application for the hospital administration; it reads the KPIs from the overbooking service and is not reachable from the public website. All services share one PostgreSQL database with a single Alembic migration history.
 
 ## Tech Stack
 
@@ -79,7 +77,6 @@ The web backend asks the overbooking service before every booking. The service c
 | Overbooking service | FastAPI, Pydantic, APScheduler, scikit-learn, joblib |
 | Admin service | FastAPI, Jinja2, Chart.js |
 | Database | PostgreSQL 16, SQLAlchemy 2, Alembic |
-| Email | SMTP; Mailpit in development |
 | Prediction model | Python, pandas, scikit-learn, Jupyter |
 | Simulation | Python, SimPy |
 | Infrastructure | Docker Compose, GitHub Actions |
@@ -142,10 +139,10 @@ After every `git pull`, run `docker compose up --build -d` again; it rebuilds th
 | Web backend API docs | http://localhost:8000/docs |
 | Overbooking service API docs | http://localhost:8001/docs |
 | Admin service (KPI screen) | http://localhost:8002 |
-| Mailpit (sent emails) | http://localhost:8025 |
+| Admin service SMS inbox (demo SMS) | http://localhost:8002/sms |
 | PostgreSQL | `localhost:5432` |
 
-Only the website (web application and web backend) is reachable from other machines; the overbooking service, the admin service, Mailpit and PostgreSQL are published on `127.0.0.1` only.
+Only the website (web application and web backend) is reachable from other machines; the overbooking service, the admin service and PostgreSQL are published on `127.0.0.1` only.
 
 Default settings work without configuration. To change them, copy `.env.example` to `.env`.
 
@@ -218,7 +215,7 @@ The dataset is the project's single data source; the rules for using it are in t
 python -m noshow_db.load_dataset
 ```
 
-The database then holds the dataset's 62,298 patients and their 110,521 appointments; the 6 rows the dataset rules leave out are skipped. A patient is shown as `Hasta <PatientId>` and gets a technical e-mail address derived from the number, `<PatientId>@hasta.sehirhastanesi.example`, which only reaches Mailpit.
+The database then holds the dataset's 62,298 patients and their 110,521 appointments; the 6 rows the dataset rules leave out are skipped. A patient is shown as `Hasta <PatientId>`, and messages to the patient are demo SMS addressed by this number. The patient record still carries a technical e-mail address derived from the number, `<PatientId>@hasta.sehirhastanesi.example`, because the column is required; no message uses it.
 
 The dataset is licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) by its author and is used for non-commercial academic purposes only.
 
@@ -236,7 +233,7 @@ Components depend on each other through the files below. Changes to them are agr
 ## Workflow
 
 - `main` always contains working code and only the maintainer updates it: teammates' changes come through reviewed pull requests; the maintainer's own changes are pushed directly after the checks pass locally.
-- Each contributor works on one branch and keeps it up to date with `main` (`git merge origin/main`). Older branches of the same contributor are removed automatically by the `Branch cleanup` workflow; unmerged work is kept as an `archive/...` tag.
+- Each contributor works on one branch and keeps it up to date with `main` (`git merge origin/main`); the branches of the maintainer and of `hazarikizler` are not limited (`EXEMPT` in [`.github/scripts/cleanup_branches.py`](.github/scripts/cleanup_branches.py)). Older branches of other contributors are removed automatically by the `Branch cleanup` workflow; unmerged work is kept as an `archive/...` tag.
 - Pull requests reference the issue they solve (`Closes #<number>`); open work is tracked in [GitHub Issues](https://github.com/cnrasili/noshow-smart-scheduling/issues).
 - Each issue has one assignee and covers one component; its Scope section lists the files it may change. Work needed in another component is requested in a comment, not made in the same pull request.
 - Commit messages are one line in the form `type: Imperative short message`, for example `feat: Add prediction endpoint` or `fix: Correct lead time calculation`.
@@ -251,9 +248,9 @@ Components depend on each other through the files below. Changes to them are agr
 | Booking application | Working: login, booking, cancellation, doctor views, attendance |
 | Overbooking service | Working: prediction, overbooking decision, messages, A/B test, KPIs |
 | Admin service | Working: administrator login, internal network restriction, KPI screen, account management, audit log |
-| Prediction model | Trained; the service still uses a placeholder model until the trained model is delivered |
+| Prediction model | Delivered: random forest (`random_forest-v1`), installed in the overbooking service |
 | Overbooking rule | Default threshold; the final rule and threshold come from the simulation study |
-| Simulation | Single session, appointment templates and real appointment days; extension to several physicians and departments planned |
+| Simulation | Single session, appointment templates and real appointment days; moving to one department without physicians (#61) |
 
 ## Course
 

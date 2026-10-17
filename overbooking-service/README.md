@@ -1,6 +1,6 @@
 # Overbooking Service
 
-Decision service behind the booking application. It serves the no-show model, decides slot-level overbooking, sends confirmation and reminder messages, and reports schedule KPIs.
+Decision service behind the booking application. It serves the no-show model, decides slot-level overbooking, sends confirmation and reminder messages as demo SMS, and reports schedule KPIs.
 
 ## Tech Stack
 
@@ -8,7 +8,6 @@ Decision service behind the booking application. It serves the no-show model, de
 - SQLAlchemy 2 through the shared [`db`](../db/) package
 - scikit-learn and joblib for model serving
 - APScheduler for reminder jobs
-- Mailpit (SMTP) for confirmation and reminder emails in development
 - pytest
 
 ## Scope
@@ -54,7 +53,7 @@ Models trained on named columns receive a DataFrame; others receive an array in 
 
 `tests/test_model_acceptance.py` checks any model placed in `models/`. See [model features](../docs/features.md) for the delivery steps.
 
-The current model is a placeholder (`dummy-v0`) created by `scripts/make_dummy_model.py`.
+The installed model is the random forest `random_forest-v1` delivered by the prediction model side (#7).
 
 ### Installing a Delivered Model
 
@@ -97,7 +96,7 @@ Rule parameters are read from `config.yaml`. The current values are defaults unt
 | Setting | Default | Meaning |
 |---|---|---|
 | `threshold` | 0.30 | Minimum `p_noshow` of the booked patient for an overbook |
-| `daily_overbook_limit` | 2 | Maximum overbooks per doctor per day |
+| `daily_overbook_limit` | 4 | Maximum overbooks per doctor per day |
 
 Environment variables override the file, for example `OVERBOOKING__THRESHOLD=0.25`. With Docker Compose, rebuild the service after editing `config.yaml`.
 
@@ -114,15 +113,17 @@ The web backend reports booked and cancelled appointments to `POST /events/appoi
 
 A background job (APScheduler) sends due messages every `dispatch_interval_seconds`. Because messages are stored in the database, scheduled reminders survive a restart.
 
+Messages are demo SMS addressed by the patient's dataset patient number. No phone number, e-mail address or SMS provider is used, and no phone receives them: a sent SMS is written to the service log and shown in the SMS inbox of the admin service at http://localhost:8002/sms. The text names the appointment time, the department and the hospital, and asks the patient to cancel if they cannot come.
+
 | Status | Meaning |
 |---|---|
 | `pending` | Waiting to be sent |
-| `sent` | Delivered to the mail server |
+| `sent` | Sent as demo SMS |
 | `cancelled` | Appointment cancelled before sending |
 | `expired` | Appointment started before sending |
-| `failed` | Sending failed `max_attempts` times |
+| `failed` | Sending failed `max_attempts` times, or the patient has no patient number |
 
-Each appointment gets at most one message of each kind, and a sent message is never sent again.
+Each appointment gets at most one message of each kind, and a sent message is never sent again. An appointment's `SMS_received` is 1 when its reminder was sent and 0 otherwise: the control group of the A/B test gets no reminder, and the confirmation does not count.
 
 Settings in `config.yaml`:
 
@@ -133,15 +134,13 @@ Settings in `config.yaml`:
 | `dispatch_interval_seconds` | 60 | How often due messages are sent |
 | `max_attempts` | 3 | Send attempts before a message is marked `failed` |
 
-The web backend does not retry a failed event. If a booked event is lost, for example while the service is stopped, a second job of the background sender schedules the messages and the A/B group by the same rules: at startup and then every `interval_seconds`, each future appointment booked within the last `lookback_hours` that has no message is handled as if its event had arrived. The patient's email and the appointment time are read from the booking database. A booked event and the job never create a second message or A/B group for the same appointment. After the database is reset, the job also schedules messages for the upcoming appointments of the demo data, which are stored without events.
+The web backend does not retry a failed event. If a booked event is lost, for example while the service is stopped, a second job of the background sender schedules the messages and the A/B group by the same rules: at startup and then every `interval_seconds`, each future appointment booked within the last `lookback_hours` that has no message is handled as if its event had arrived. The patient and the appointment time are read from the booking database. A booked event and the job never create a second message or A/B group for the same appointment. After the database is reset, the job also schedules messages for the upcoming appointments of the demo data, which are stored without events.
 
 | Setting | Default | Meaning |
 |---|---|---|
 | `message_recovery.enabled` | true | Run the recovery job |
 | `message_recovery.interval_seconds` | 300 | How often the job runs after its first run at startup |
 | `message_recovery.lookback_hours` | 48 | Only appointments booked within this many hours are handled |
-
-Messages are sent by email when `SMTP_HOST` is set; otherwise they are written to the service log. With Docker Compose, emails go to Mailpit at http://localhost:8025.
 
 ## Reminder A/B Test
 
@@ -168,7 +167,7 @@ The default consultation length is the simulation's mean service time.
 
 | Setting | Default | Meaning |
 |---|---|---|
-| `kpi.service_minutes` | 12 | Consultation length in minutes |
+| `kpi.service_minutes` | 7.5 | Consultation length in minutes |
 | `kpi.session` | `slots` | Session definition: `slots` or `schedule`; the final choice belongs to the session parameters decided with the simulation side |
 
 ## Demo Scenario
@@ -176,6 +175,6 @@ The default consultation length is the simulation's mean service time.
 The service generates no demo data. It works on the dataset patients and on the bookings made in the web application, so the decisions page, the KPI screen and the reminder A/B test fill as bookings are made and attendance is marked.
 
 1. Start the stack, load the demo data and create an administrator (see [Getting Started](../README.md#getting-started)).
-2. Book an appointment in the web application with a demo patient account. The decision and the patient's predicted no-show risk appear on the decisions page of the admin service at http://localhost:8002/decisions; the risk counts the patient's past appointments in the dataset. The confirmation appears in Mailpit at http://localhost:8025 within a minute.
+2. Book an appointment in the web application with a demo patient account. The decision and the patient's predicted no-show risk appear on the decisions page of the admin service at http://localhost:8002/decisions; the risk counts the patient's past appointments in the dataset. The confirmation SMS appears in the SMS inbox of the admin service at http://localhost:8002/sms within a minute.
 3. Book the same time with another demo patient. The rule adds the patient as an overbook when the first patient's risk reaches the threshold, and otherwise rejects the booking; the decisions page shows the reason.
 4. Log in as the doctor and mark the appointments as attended or missed. The KPI screen of the admin service and http://localhost:8001/ab/summary count them.
