@@ -4,6 +4,8 @@ from datetime import UTC, date, datetime
 from zoneinfo import ZoneInfo
 
 HOSPITAL_NAME = "Şehir Hastanesi"
+# The only department; "General Practice" in the database
+DEPARTMENT_NAME = "Aile Hekimliği"
 PANEL_NAME = f"{HOSPITAL_NAME} Yönetim Paneli"
 
 MONTHS = [
@@ -107,17 +109,9 @@ FIELDS = {
     "full_name": "Ad soyad",
     "email": "E-posta",
     "password": "Şifre",
-    "specialty": "Bölüm",
-    "working_hours": "Çalışma saatleri",
-    "start_time": "Başlangıç saati",
-    "end_time": "Bitiş saati",
 }
 VALIDATION_ERRORS = {
     "Invalid email address": "E-posta adresi geçerli değil.",
-    "end_time must be after start_time": "Bitiş saati başlangıç saatinden sonra olmalı.",
-    "At most one working interval per weekday": (
-        "Her gün için en fazla bir çalışma aralığı girilebilir."
-    ),
 }
 
 

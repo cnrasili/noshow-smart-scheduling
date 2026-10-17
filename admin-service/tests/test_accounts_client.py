@@ -60,7 +60,7 @@ def test_without_token_nothing_is_sent(monkeypatch):
     client = AccountsClient("http://web-backend:8000", "")
     assert not client.enabled
     with pytest.raises(AccountsUnavailable):
-        client.create_doctor({})
+        client.open_patient_account("93779.52927", "secret")
     assert sent == []
 
 

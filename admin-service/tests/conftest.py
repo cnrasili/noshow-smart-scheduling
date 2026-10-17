@@ -35,13 +35,13 @@ class FakeOverbooking:
     """KPIs and A/B summary of the overbooking service, kept in memory."""
 
     def __init__(self) -> None:
-        self.kpis: dict[tuple[int, date], dict] = {}
+        self.kpis: dict[date, dict] = {}
         self.available = True
 
-    def kpi(self, doctor_id: int, day: date) -> dict | None:
+    def kpi(self, day: date) -> dict | None:
         if not self.available:
             raise OverbookingUnavailable("down")
-        return self.kpis.get((doctor_id, day))
+        return self.kpis.get(day)
 
     def ab_summary(self, unit: str = "appointment") -> dict:
         if not self.available:
@@ -85,17 +85,6 @@ class FakeAccounts:
             "email": f"{patient_number}@hasta.sehirhastanesi.example",
         }
 
-    def create_doctor(self, doctor: dict) -> dict:
-        self._answer("doctor", doctor)
-        return {
-            "account_id": self.next_id,
-            "doctor_id": self.next_id + 1000,
-            "full_name": doctor["full_name"],
-            "specialty": doctor["specialty"],
-            "email": doctor["email"],
-            "slots_created": 18,
-        }
-
     def reset_password(self, account_id: int, password: str) -> None:
         self._answer("reset", {"account_id": account_id, "password": password})
 
@@ -117,7 +106,8 @@ def session_factory() -> sessionmaker[Session]:
     factory = sessionmaker(bind=engine)
     with factory() as session:
         create_admin(session, EMAIL, PASSWORD)
-        session.add_all([Doctor(full_name="Dr. Ada"), Doctor(full_name="Dr. Bora")])
+        # The department's schedule is its one record in doctors
+        session.add(Doctor(full_name="General Practice"))
         session.commit()
     return factory
 

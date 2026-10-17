@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from admin_service.dependencies import AppSettings, CurrentAdmin, DbSession, Now
 from admin_service.templating import templates
-from noshow_db.models.core import Appointment, Doctor, Patient, Slot
+from noshow_db.models.core import Appointment, Patient, Slot
 from noshow_db.models.service import BookingDecision
 
 router = APIRouter()
@@ -84,14 +84,10 @@ def outcome(attended: bool | None, start: datetime, now: datetime) -> str:
     return "unmarked" if start <= now else "upcoming"
 
 
-def day_view(
-    session: Session, doctor_id: int, day: date, tz: ZoneInfo, now: datetime
-) -> list[SlotRow]:
-    """Slots of a doctor on a day with their patients, decisions and refused requests."""
+def day_view(session: Session, day: date, tz: ZoneInfo, now: datetime) -> list[SlotRow]:
+    """The department's slots on a day with their patients, decisions and refused requests."""
     slots = session.scalars(
-        select(Slot)
-        .where(Slot.doctor_id == doctor_id, slots_between(day, day, tz))
-        .order_by(Slot.start_at)
+        select(Slot).where(slots_between(day, day, tz)).order_by(Slot.start_at)
     ).all()
     rows = {
         slot.id: SlotRow(as_utc(slot.start_at).astimezone(tz), as_utc(slot.end_at).astimezone(tz))
@@ -202,12 +198,9 @@ def decisions_page(
     session: DbSession,
     now: Now,
     app_settings: AppSettings,
-    doctor_id: Annotated[int | None, Query(gt=0)] = None,
     day: Annotated[date | None, Query(alias="date")] = None,
 ) -> Response:
     tz = app_settings.clinic_timezone
-    doctors = list(session.scalars(select(Doctor).order_by(Doctor.full_name)))
-    selected = next((d for d in doctors if d.id == doctor_id), doctors[0] if doctors else None)
     day = day or now.astimezone(tz).date()
     first_day = day - timedelta(days=PERIOD_DAYS - 1)
 
@@ -221,12 +214,10 @@ def decisions_page(
         "decisions.html",
         {
             "admin": admin,
-            "doctors": doctors,
-            "selected": selected,
             "day": day,
             "first_day": first_day,
             "period_days": PERIOD_DAYS,
-            "slots": day_view(session, selected.id, day, tz, now) if selected else [],
+            "slots": day_view(session, day, tz, now),
             "decision_kind": decision_kind,
             "requests": len(decisions),
             "kinds": kinds,
