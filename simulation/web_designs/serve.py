@@ -44,7 +44,7 @@ def _open():
     ws = wb.active
     ws.title = "Randevular"
     ws.append(HEADERS)
-    for col, w in zip("ABCDEFGHIJK", (19, 12, 24, 24, 13, 18, 13, 7, 8, 9, 10)):
+    for col, w in zip("ABCDEFGHIJK", (19, 12, 24, 24, 13, 18, 13, 7, 8, 9, 10), strict=True):
         ws.column_dimensions[col].width = w
     return wb, ws
 
