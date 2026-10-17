@@ -100,10 +100,20 @@ The internal account API (`/internal/accounts/...`) lets the hospital's admin se
 INTERNAL_API_TOKEN=change-me uvicorn web_backend.main:app --reload
 ```
 
+## Patient Messages
+
+`GET /patients/me/messages` returns the signed-in patient's demo SMS for "Randevularım": only their own messages with the status `sent`, newest first, with `kind` (`confirmation` or `reminder`), `sent_at` and `body`. The web backend only reads the overbooking service's `messages` table (see the [API contract](../../docs/api-contract.md#messages)); nothing about the A/B test is returned.
+
+## Department Panel
+
+- `GET /doctors/me/calendar?date=…` and `GET /doctors/me/agenda` give the department's days and weeks (the paths keep the doctor names of the API contract).
+- `PATCH /appointments/{id}/attendance` with `{"attended": true}`, `false` or `null` (takes a mark back) works only on the appointment day; other days get `422`.
+- `GET /department/dataset-days` lists the days of the dataset with their number of appointments and no-shows, and `GET /department/dataset-days/{date}` returns every appointment of such a day with the patient (`Hasta <PatientId>`), the age and the recorded outcome. They read `dataset_appointments` and are read-only.
+
 ## Overbooking
 
 Before booking, `POST /appointments` asks the overbooking service (`OVERBOOKING_SERVICE_URL`, default `http://localhost:8001`) for a `/booking-decision`. A rejected booking returns `409`. If the service does not answer within 3 seconds or returns an error, empty slots are still booked but booked slots are never overbooked. A slot that has reached its `max_patients` is rejected without asking the service.
 
-`GET /slots` lists the department's upcoming slots and marks a slot `available` while it is below capacity, so partly booked slots can be requested as extra appointments; the service decides when the patient books.
+`GET /slots` lists the department's upcoming slots (by default the next two weeks; `date_from` and `date_to` choose a range) as the patient sees them: `available` ("Müsait") or not ("Dolu"), and `booked_by_me`. A booked slot below its capacity stays available, because the service decides when the patient books; the number of patients in a slot and any risk are not sent.
 
 After a booking or a cancellation is saved, the web backend sends `/events/appointment-booked` (appointment, patient and start time) or `/events/appointment-cancelled` so the service schedules or cancels the confirmation and reminder messages. The events are sent after the response; if one fails it is logged and the booking change stays.

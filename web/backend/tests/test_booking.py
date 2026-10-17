@@ -60,17 +60,29 @@ def test_slot_listing_shows_bookings(client, make_slot, make_patient, login, pat
     _book(client, patient_headers, booked.id)
 
     other_headers = login(make_patient(email="other@example.com").email)
-    slots = client.get(
-        "/slots", params={"doctor_id": booked.doctor_id}, headers=other_headers
-    ).json()
+    slots = client.get("/slots", headers=other_headers).json()
 
-    # The past slot is hidden; a booked slot stays bookable below its capacity of two
-    assert [(s["id"], s["booked_count"], s["available"], s["booked_by_me"]) for s in slots] == [
-        (booked.id, 1, True, False),
-        (free.id, 0, True, False),
+    # The past slot is hidden; a booked slot stays free ("Müsait") below its capacity of two,
+    # and nothing tells how many patients it has
+    assert slots == [
+        {
+            "id": booked.id,
+            "start_at": slots[0]["start_at"],
+            "end_at": slots[0]["end_at"],
+            "available": True,
+            "booked_by_me": False,
+        },
+        {
+            "id": free.id,
+            "start_at": slots[1]["start_at"],
+            "end_at": slots[1]["end_at"],
+            "available": True,
+            "booked_by_me": False,
+        },
     ]
-    mine = client.get("/slots", params={"doctor_id": booked.doctor_id}, headers=patient_headers)
-    assert mine.json()[0]["booked_by_me"] is True
+    mine = client.get("/slots", headers=patient_headers).json()
+    # The patient's own slot is not free for them
+    assert (mine[0]["available"], mine[0]["booked_by_me"]) == (False, True)
 
 
 def test_same_slot_cannot_be_booked_twice(client, make_slot, patient_headers) -> None:

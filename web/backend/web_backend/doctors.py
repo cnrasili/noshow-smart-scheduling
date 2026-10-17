@@ -1,4 +1,4 @@
-from datetime import UTC, date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -65,7 +65,8 @@ class AgendaDay(BaseModel):
 
 
 class AttendanceRequest(BaseModel):
-    attended: bool
+    # None takes a mark back
+    attended: bool | None
 
 
 def _calendar_appointment(appointment: Appointment, patient: Patient) -> CalendarAppointment:
@@ -183,11 +184,12 @@ def mark_attendance(
     ).first()
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Appointment not found")
-    appointment, slot, patient = row
-    if as_utc(slot.start_at) > datetime.now(UTC):
+    appointment, _, patient = row
+    # The department marks attendance on the appointment day only
+    if appointment.appointment_date != today():
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT,
-            "Attendance can be marked once the appointment has started",
+            "Attendance can be marked only on the appointment day",
         )
 
     appointment.attended = body.attended
