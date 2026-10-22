@@ -28,7 +28,7 @@ class Patient(Base):
     # PatientId of the public dataset; NULL for patients created in the application
     patient_number: Mapped[str | None] = mapped_column(String(20), unique=True, index=True)
     full_name: Mapped[str] = mapped_column(String(255))
-    # Contact address for messages
+    # Technical address from the patient number, kept by the login account; no message uses it
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     # Age is stored as recorded at registration; it is a model feature known at booking time
     age: Mapped[int]
