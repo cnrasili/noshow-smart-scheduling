@@ -20,7 +20,7 @@ All services use one PostgreSQL database with a single Alembic history in [`db/`
 | `patients`, `doctors`, `doctor_schedules`, `slots`, `appointments`, `user_accounts`, `auth_sessions` | Web backend | Overbooking service (`patients`, `doctors`, `doctor_schedules`, `slots`, `appointments`); admin service (`patients`, `doctors`, `doctor_schedules`, `user_accounts`) |
 | `predictions`, `booking_decisions`, `messages`, `ab_assignments` | Overbooking service | Admin service (`booking_decisions`, `messages`); web backend (`messages`) |
 | `admin_users`, `admin_sessions`, `admin_audit_log` | Admin service | — |
-| `dataset_appointments` | Dataset loading command | Overbooking service |
+| `dataset_appointments` | Dataset loading command | Overbooking service; web backend (the department's dataset days) |
 
 ### Attendance
 
