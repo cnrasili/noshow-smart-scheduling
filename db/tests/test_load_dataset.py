@@ -106,7 +106,7 @@ def test_name_and_email_come_only_from_the_number(session: Session, rows: list[D
     stored = patient(session, "93779.52927")
     assert stored.full_name == "Hasta 93779.52927"
     assert stored.email == "93779.52927@hasta.sehirhastanesi.example"
-    assert stored.national_id is None
+    assert "national_id" not in Patient.__table__.c
 
 
 def test_patient_has_the_attributes_of_the_dataset(

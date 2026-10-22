@@ -22,15 +22,11 @@ class Patient(Base):
     __table_args__ = (
         CheckConstraint("age >= 0", name="ck_patients_age_non_negative"),
         CheckConstraint("handcap >= 0", name="ck_patients_handcap_non_negative"),
-        CheckConstraint("length(national_id) = 11", name="ck_patients_national_id_eleven_digits"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     # PatientId of the public dataset; NULL for patients created in the application
     patient_number: Mapped[str | None] = mapped_column(String(20), unique=True, index=True)
-    # Not used since the dataset rules: patients log in with patient_number. The column is
-    # dropped by a later migration (#58).
-    national_id: Mapped[str | None] = mapped_column(String(11), unique=True, index=True)
     full_name: Mapped[str] = mapped_column(String(255))
     # Contact address for messages
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
