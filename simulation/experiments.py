@@ -12,7 +12,7 @@ Session settings, threshold, daily limit and the waiting limit come from docs/de
     python simulation/experiments.py --risks ml/data/processed/risks_decision_model.csv
 
 Risks and show-ups come from out-of-sample predictions of all 27 days. Slot length, consultation
-time, lateness and demand are decisions or assumptions (docs/KARAR_LISTESI.md).
+time, lateness and demand are decisions or assumptions (docs/decision-list.md).
 """
 
 from __future__ import annotations
@@ -34,18 +34,18 @@ HERE = Path(__file__).resolve().parent
 DOCS = HERE.parent / "docs"
 RISKS = HERE.parent / "ml" / "data" / "processed" / "risks_all_days.csv"
 OUT = HERE / "results_experiments"
-REPORT = DOCS / "IEN_DENEY_SONUCLARI.md"
-SUMMARY = DOCS / "SONUC_OZETI.md"
+REPORT = DOCS / "experiment-results.md"
+SUMMARY = DOCS / "results-summary.md"
 METRICS = ["seen", "mean_wait", "idle", "overtime", "utilization"]
 LABELS = {
-    "seen": "Görülen hasta",
-    "mean_wait": "Ortalama bekleme (dk)",
-    "idle": "Boşta kalma (dk)",
-    "overtime": "Mesai aşımı (dk)",
-    "utilization": "Doluluk",
+    "seen": "Patients seen",
+    "mean_wait": "Mean wait (min)",
+    "idle": "Idle time (min)",
+    "overtime": "Overtime (min)",
+    "utilization": "Utilization",
 }
 SEED = 20261016
-MODEL_NAMES = {"random_forest": "Rastgele orman", "decision_tree": "Karar ağacı"}
+MODEL_NAMES = {"random_forest": "Random forest", "decision_tree": "Decision tree"}
 
 
 def load_decisions(path: Path) -> dict:
@@ -125,7 +125,7 @@ def paired_md(tab: pd.DataFrame) -> str:
     """One row per case, one cell per metric: difference [95 % CI] (d_z)."""
     out = []
     for name, g in tab.groupby("case", sort=False):
-        row = {"Senaryo": name}
+        row = {"Scenario": name}
         for r in g.itertuples():
             row[LABELS[r.metric]] = (
                 f"{r.diff:+.2f} [{r.ci_low:+.2f}; {r.ci_high:+.2f}] (d={r.d_z:+.2f})"
@@ -169,10 +169,10 @@ def rule_of(d: dict):
 
 
 def rule_name(d: dict) -> str:
-    return f"Karar ayarı (eşik %{round(100 * d['threshold'])}, sınır {d['daily_limit']})"
+    return f"Decided setting (threshold {round(100 * d['threshold'])}%, limit {d['daily_limit']})"
 
 
-BASE_NAME = "Sabit aralık (kural yok)"
+BASE_NAME = "Fixed intervals (no rule)"
 
 
 def exp_main(cfg, pool, reps, d):
@@ -181,11 +181,11 @@ def exp_main(cfg, pool, reps, d):
     cases = {
         BASE_NAME: (cfg, cs.fixed_interval(), lay),
         rule_name(d): (cfg, rule_of(d), lay),
-        "Eşik %20": (cfg, cs.threshold_rule(0.20, mps, lim), lay),
-        "Eşik %40": (cfg, cs.threshold_rule(0.40, mps, lim), lay),
-        "Maliyet kuralı r=0,5": (cfg, cs.cost_rule(0.5, mps, lim), lay),
-        "Maliyet kuralı r=1,0": (cfg, cs.cost_rule(1.0, mps, lim), lay),
-        "Havayolu kuralı": (cfg, cs.expected_value_rule(mps, lim), lay),
+        "Threshold 20%": (cfg, cs.threshold_rule(0.20, mps, lim), lay),
+        "Threshold 40%": (cfg, cs.threshold_rule(0.40, mps, lim), lay),
+        "Cost rule r=0.5": (cfg, cs.cost_rule(0.5, mps, lim), lay),
+        "Cost rule r=1.0": (cfg, cs.cost_rule(1.0, mps, lim), lay),
+        "Airline rule": (cfg, cs.expected_value_rule(mps, lim), lay),
     }
     res = run_cases(cases, cfg, reps, SEED, pool)
     return res, paired(res, BASE_NAME)
@@ -220,15 +220,15 @@ def exp_templates(cfg, pool, reps, d):
     cfg = replace(cfg, requests=cfg.n_requests)  # same demand for every layout
     rule, fixed = rule_of(d), cs.fixed_interval()
     off = cs.Layout(offset=0.5)
-    base = f"{n}x{s:g} sabit (taban)"
+    base = f"{n}x{s:g} fixed (base)"
     sn, ss = short.n_slots, short.slot_min
     cases = {
         base: (cfg, fixed, cs.DEFAULT_LAYOUT),
-        f"{n}x{s:g} + karar ayarı": (cfg, rule, cs.DEFAULT_LAYOUT),
-        f"{n}x{s:g} + karar ayarı + kaydırma 0,5": (cfg, rule, off),
-        f"{sn}x{ss:g} kısa slot sabit": (short, fixed, cs.DEFAULT_LAYOUT),
-        f"{sn}x{ss:g} kısa slot + karar ayarı": (short, rule, cs.DEFAULT_LAYOUT),
-        f"{sn}x{ss:g} kısa slot + karar ayarı + kaydırma 0,5": (short, rule, off),
+        f"{n}x{s:g} + decided setting": (cfg, rule, cs.DEFAULT_LAYOUT),
+        f"{n}x{s:g} + decided setting + offset 0.5": (cfg, rule, off),
+        f"{sn}x{ss:g} short slots fixed": (short, fixed, cs.DEFAULT_LAYOUT),
+        f"{sn}x{ss:g} short slots + decided setting": (short, rule, cs.DEFAULT_LAYOUT),
+        f"{sn}x{ss:g} short slots + decided setting + offset 0.5": (short, rule, off),
     }
     res = run_cases(cases, cfg, reps, SEED + 2, pool)
     return res, paired(res, base)
@@ -241,25 +241,25 @@ def exp_sensitivity(cfg, pool, reps, d):
     alt_slot = 10.0 if cfg.slot_min != 10.0 else 15.0  # the other usual slot length, same session
     alt_n = round(cfg.n_slots * cfg.slot_min / alt_slot)
     variants = {
-        f"Muayene süresi {lo:g} dk": replace(cfg, service_mean=float(lo)),
-        f"Muayene süresi {hi:g} dk": replace(cfg, service_mean=float(hi)),
-        "Muayene değişkenliği 0,3": replace(cfg, service_cv=0.3),
-        "Muayene değişkenliği 0,8": replace(cfg, service_cv=0.8),
-        f"Talep {cfg.n_requests - 4} istek": replace(cfg, requests=cfg.n_requests - 4),
-        f"Talep {cfg.n_requests + 4} istek": replace(cfg, requests=cfg.n_requests + 4),
-        "Geç kalma sapması 8 dk": replace(cfg, punctuality_sd=8.0),
-        f"{alt_slot:g} dk slot, {alt_n} slot": replace(
+        f"Consultation time {lo:g} min": replace(cfg, service_mean=float(lo)),
+        f"Consultation time {hi:g} min": replace(cfg, service_mean=float(hi)),
+        "Consultation variability 0.3": replace(cfg, service_cv=0.3),
+        "Consultation variability 0.8": replace(cfg, service_cv=0.8),
+        f"Demand {cfg.n_requests - 4} requests": replace(cfg, requests=cfg.n_requests - 4),
+        f"Demand {cfg.n_requests + 4} requests": replace(cfg, requests=cfg.n_requests + 4),
+        "Lateness deviation 8 min": replace(cfg, punctuality_sd=8.0),
+        f"{alt_slot:g} min slots, {alt_n} slots": replace(
             cfg, slot_min=alt_slot, n_slots=alt_n, requests=alt_n + extra
         ),
     }
     rule = rule_of(d)
-    for name, c in {"taban": cfg, **variants}.items():
+    for name, c in {"base": cfg, **variants}.items():
         cases = {
-            "sabit": (c, cs.fixed_interval(), cs.DEFAULT_LAYOUT),
-            "karar ayarı": (c, rule, cs.DEFAULT_LAYOUT),
+            "fixed": (c, cs.fixed_interval(), cs.DEFAULT_LAYOUT),
+            "decided setting": (c, rule, cs.DEFAULT_LAYOUT),
         }
         res = run_cases(cases, c, reps, SEED + 3, pool)
-        t = paired(res, "sabit")
+        t = paired(res, "fixed")
         t["case"] = name
         tabs.append(t)
 
@@ -272,13 +272,13 @@ def exp_sensitivity(cfg, pool, reps, d):
 
         return tf
 
-    for factor, name in ((0.7, "No-show oranı x0,7"), (1.3, "No-show oranı x1,3")):
+    for factor, name in ((0.7, "No-show rate x0.7"), (1.3, "No-show rate x1.3")):
         cases = {
-            "sabit": (cfg, cs.fixed_interval(), cs.DEFAULT_LAYOUT),
-            "karar ayarı": (cfg, rule, cs.DEFAULT_LAYOUT),
+            "fixed": (cfg, cs.fixed_interval(), cs.DEFAULT_LAYOUT),
+            "decided setting": (cfg, rule, cs.DEFAULT_LAYOUT),
         }
         res = run_cases(cases, cfg, reps, SEED + 4, pool, transform=scaled(factor))
-        t = paired(res, "sabit")
+        t = paired(res, "fixed")
         t["case"] = name
         tabs.append(t)
     return pd.concat(tabs, ignore_index=True)
@@ -297,15 +297,13 @@ def exp_reminder(cfg, pool, reps, d):
             return cs.Draws(risk, draws.shows | flip, draws.arrival_offset, draws.service)
 
         cases = {
-            "sabit": (cfg, cs.fixed_interval(), cs.DEFAULT_LAYOUT),
-            "karar ayarı": (cfg, rule, cs.DEFAULT_LAYOUT),
+            "fixed": (cfg, cs.fixed_interval(), cs.DEFAULT_LAYOUT),
+            "decided setting": (cfg, rule, cs.DEFAULT_LAYOUT),
         }
         res = run_cases(cases, cfg, reps, SEED + 5, pool, transform=tf)
         m = means(res)
         for case in m.index:
-            rows.append(
-                {"hatırlatma etkisi": f"%{int(effect * 100)}", "politika": case, **m.loc[case]}
-            )
+            rows.append({"reminder effect": f"{int(effect * 100)}%", "policy": case, **m.loc[case]})
     return pd.DataFrame(rows)
 
 
@@ -313,9 +311,9 @@ def exp_reminder(cfg, pool, reps, d):
 def assumptions_line(d: dict, cfg: cs.SessionConfig) -> str:
     lo, hi = d["service_range_min"]
     return (
-        f"{cfg.n_slots} slot x {cfg.slot_min:g} dk, ortalama {cfg.service_mean:g} dk muayene "
-        f"(aralık {lo:g}–{hi:g} dk, değişkenlik {cfg.service_cv:g}), geç kalma sapması "
-        f"{cfg.punctuality_sd:g} dk, {cfg.n_requests} randevu isteği"
+        f"{cfg.n_slots} slots x {cfg.slot_min:g} min, mean consultation "
+        f"{cfg.service_mean:g} min (range {lo:g}–{hi:g} min, variability {cfg.service_cv:g}), "
+        f"lateness deviation {cfg.punctuality_sd:g} min, {cfg.n_requests} booking requests"
     )
 
 
@@ -334,94 +332,92 @@ def write_report(
             best = ranked.iloc[0]
             cons.append(
                 {
-                    "Bekleme sınırı (dk)": f"≤ {limit:.0f}",
-                    "En iyi ayar": ranked.index[0],
-                    "Görülen": best.seen,
-                    "Bekleme": best.mean_wait,
-                    "Boşta": best.idle,
-                    "Mesai aşımı": best.overtime,
+                    "Waiting limit (min)": f"≤ {limit:.0f}",
+                    "Best setting": ranked.index[0],
+                    "Seen": best.seen,
+                    "Wait": best.mean_wait,
+                    "Idle": best.idle,
+                    "Overtime": best.overtime,
                 }
             )
     cols = ["seen", "mean_wait", "idle", "overtime", "utilization", "overbooked_slots"]
-    f = front[cols].reset_index().rename(columns={"case": "Ayar"})
+    f = front[cols].reset_index().rename(columns={"case": "Setting"})
     f.columns = [
-        "Ayar",
-        "Görülen",
-        "Bekleme dk",
-        "Boşta dk",
-        "Mesai aşımı dk",
-        "Doluluk",
-        "Ek slot",
+        "Setting",
+        "Seen",
+        "Wait min",
+        "Idle min",
+        "Overtime min",
+        "Utilization",
+        "Extra slots",
     ]
     sens_rows = []
     for name, g in parts["sens"].groupby("case", sort=False):
         t = g.set_index("metric")
         sens_rows.append(
             {
-                "Senaryo": name,
-                "Görülen": f"{t.loc['seen', 'diff']:+.2f}",
-                "Bekleme (dk)": f"{t.loc['mean_wait', 'diff']:+.2f}",
-                "Boşta (dk)": f"{t.loc['idle', 'diff']:+.2f}",
-                "Mesai aşımı (dk)": f"{t.loc['overtime', 'diff']:+.2f}",
+                "Scenario": name,
+                "Seen": f"{t.loc['seen', 'diff']:+.2f}",
+                "Wait (min)": f"{t.loc['mean_wait', 'diff']:+.2f}",
+                "Idle (min)": f"{t.loc['idle', 'diff']:+.2f}",
+                "Overtime (min)": f"{t.loc['overtime', 'diff']:+.2f}",
             }
         )
-    rem = parts["reminder"][
-        ["hatırlatma etkisi", "politika", "seen", "mean_wait", "idle", "overtime"]
-    ]
+    rem = parts["reminder"][["reminder effect", "policy", "seen", "mean_wait", "idle", "overtime"]]
     rem.columns = [
-        "Hatırlatma etkisi",
-        "Politika",
-        "Görülen",
-        "Bekleme dk",
-        "Boşta dk",
-        "Mesai aşımı dk",
+        "Reminder effect",
+        "Policy",
+        "Seen",
+        "Wait min",
+        "Idle min",
+        "Overtime min",
     ]
-    model = MODEL_NAMES.get(d["model"], "Rastgele orman (varsayılan risk dosyası)")
-    text = f"""# IEN deney sonuçları (otomatik üretilir)
+    model = MODEL_NAMES.get(d["model"], "Random forest (default risk file)")
+    text = f"""# IEN experiment results (generated)
 
-Bu dosya `simulation/experiments.py` tarafından üretilir; elle düzenlemeyin. Risk kaynağı: **{model}**. Tohum {SEED}; Python {platform.python_version()}, numpy {np.__version__}, pandas {pd.__version__}, scipy {scipy.__version__}, simpy {simpy.__version__}. Ayarlar `docs/decisions.json` dosyasındandır.
+This file is generated by `simulation/experiments.py`; do not edit it by hand. Risk source: **{model}**. Seed {SEED}; Python {platform.python_version()}, numpy {np.__version__}, pandas {pd.__version__}, scipy {scipy.__version__}, simpy {simpy.__version__}. The settings come from `docs/decisions.json`.
 
-**Okuma kuralları**
+**How to read it**
 
-- Risk ve gelme/gelmeme bilgisi, modelin görmediği 27 günün gerçek tahminlerinden ve gerçek sonuçlarından gelir. Oturum ayarı: {assumptions_line(d, cfg)}. Muayene süresi (5–10 dk) devlet hastanesi poliklinik uygulamasından alınmıştır; slot, geç kalma ve talep **varsayımdır** (`docs/KARAR_LISTESI.md`).
-- Tüm karşılaştırmalar **eşleştirilmiş**dir: her politika aynı rastgele oturumları görür (ortak rastgele sayılar). Farklar `taban politikaya göre` verilir; köşeli parantez %95 güven aralığı, `d` eşleştirilmiş etki büyüklüğüdür (Cohen d_z).
-- Süreler oturum başına dakikadır; "Görülen" oturum başına hasta sayısıdır.
+- Risks and show-ups come from real out-of-sample predictions and the real outcomes of the 27 days the model did not see. Session settings: {assumptions_line(d, cfg)}. The consultation time (5–10 min) comes from state hospital outpatient practice; slot length, lateness and demand are **assumptions** (`docs/decision-list.md`).
+- All comparisons are **paired**: every policy sees the same random sessions (common random numbers). Differences are given against the base policy; brackets hold the 95% confidence interval, and `d` is the paired effect size (Cohen's d_z).
+- Times are minutes per session; "Seen" is the number of patients per session.
 
-## 1. Politika karşılaştırması ({reps["main"]} oturum)
+## 1. Policy comparison ({reps["main"]} sessions)
 
 {paired_md(parts["main"])}
 
-**Yorum.** Ek randevu hem hasta sayısını artırır hem muayene odasının boşta kalmasını azaltır, ancak aynı slota iki hasta gelince ortalama bekleme ve çoğu politikada mesai aşımı da artar. İyileşme ve bedeli birlikte raporlanmalıdır: kural "bedava" değildir.
+**Interpretation.** Overbooking raises the number of patients seen and cuts the idle time of the clinic room, but when two patients come to the same slot, the mean wait and, under most policies, the overtime grow as well. The improvement and its cost have to be reported together: the rule is not "free".
 
-## 2. Eşik x günlük limit ızgarası ({reps["grid"]} oturum)
+## 2. Threshold x daily limit grid ({reps["grid"]} sessions)
 
-Aşağıdaki ayarlar, dört ölçütte (hasta sayısı yüksek; bekleme, boşta kalma, mesai aşımı düşük) başka hiçbir ayar tarafından geçilmeyen **Pareto** ayarlarıdır:
+The settings below are the **Pareto** settings, which no other setting beats on all four measures (more patients seen; less waiting, idle time and overtime):
 
 {md_table(f)}
 
-Bir bekleme sınırı verilirse en çok hasta gören ayar:
+The setting that sees the most patients within a given waiting limit:
 
-{md_table(pd.DataFrame(cons)) if cons else "Sınırı karşılayan ayar yok."}
+{md_table(pd.DataFrame(cons)) if cons else "No setting meets the limit."}
 
-{rule_name(d)} ızgarada `{grid_key(d["threshold"], d["daily_limit"])}` satırıdır. Tüm ızgara betik çalışınca `simulation/results_experiments/grid_means.csv` olarak üretilir (CSV'ler git'e eklenmez).
+{rule_name(d)} is the `{grid_key(d["threshold"], d["daily_limit"])}` row of the grid. The whole grid is written to `simulation/results_experiments/grid_means.csv` when the script runs (the CSVs are not committed).
 
-## 3. Şablonlar ve kısa slot + overbooking ({reps["templates"]} oturum)
+## 3. Templates and short slots + overbooking ({reps["templates"]} sessions)
 
-Her şablon aynı istek sayısıyla çalışır; fark tabana göredir.
+Every template runs with the same number of requests; differences are against the base.
 
 {paired_md(parts["templates"])}
 
-## 4. Duyarlılık analizi ({reps["sens"]} oturum her senaryo)
+## 4. Sensitivity analysis ({reps["sens"]} sessions per scenario)
 
-Karar ayarının sabit aralığa göre farkı (eşleştirilmiş ortalama):
+Difference of the decided setting from fixed intervals (paired mean):
 
 {md_table(pd.DataFrame(sens_rows))}
 
-Güven aralıkları `simulation/results_experiments/sensitivity.csv` dosyasında üretilir.
+The confidence intervals are written to `simulation/results_experiments/sensitivity.csv`.
 
-## 5. Hatırlatma senaryosu (varsayımsal, {reps["reminder"]} oturum)
+## 5. Reminder scenario (hypothetical, {reps["reminder"]} sessions)
 
-**Bu bir ölçüm değil, varsayımdır:** hatırlatma, hastaların yarısına gider ve gelmeyecek olanların belirtilen payını gelen hastaya çevirir. Gerçek etki A/B testiyle ölçülmelidir; veri setindeki `SMS_received` alanı rastgele bir deney olmadığından etkiyi tahmin etmeye uygun değildir.
+**This is an assumption, not a measurement:** the reminder goes to half of the patients and turns the given share of those who would miss their appointment into patients who come. The real effect has to be measured with the A/B test; the dataset's `SMS_received` field does not come from a randomised experiment, so it cannot estimate the effect.
 
 {md_table(rem)}
 """
@@ -437,8 +433,8 @@ def write_summary(
     mine = tab[tab.case == rule_name(d)].set_index("metric")
     sens = parts["sens"]
     lo, hi = d["service_range_min"]
-    s_lo = sens[(sens.case == f"Muayene süresi {lo:g} dk") & (sens.metric == "mean_wait")]
-    s_hi = sens[(sens.case == f"Muayene süresi {hi:g} dk") & (sens.metric == "mean_wait")]
+    s_lo = sens[(sens.case == f"Consultation time {lo:g} min") & (sens.metric == "mean_wait")]
+    s_hi = sens[(sens.case == f"Consultation time {hi:g} min") & (sens.metric == "mean_wait")]
     wait = mine.loc["mean_wait", "case_mean"]
     ok = wait <= d["wait_limit_min"]
     rows = []
@@ -446,32 +442,32 @@ def write_summary(
         r = mine.loc[m]
         rows.append(
             {
-                "Ölçüt": LABELS[m],
-                "Kural yok": r.base_mean,
-                "Karar ayarı": r.case_mean,
-                "Fark [%95 aralık]": f"{r['diff']:+.2f} [{r.ci_low:+.2f}; {r.ci_high:+.2f}]",
-                "Değişim": f"%{r.rel_pct:+.0f}",
+                "Measure": LABELS[m],
+                "No rule": r.base_mean,
+                "Decided setting": r.case_mean,
+                "Difference [95% interval]": f"{r['diff']:+.2f} [{r.ci_low:+.2f}; {r.ci_high:+.2f}]",
+                "Change": f"{r.rel_pct:+.0f}%",
             }
         )
     auc = roc_auc_score(pool["y"], pool["p"])
-    text = f"""# Sonuç özeti (otomatik üretilir)
+    text = f"""# Results summary (generated)
 
-Bu dosya `ml/apply_decisions.py` / `simulation/experiments.py` tarafından üretilir; elle düzenlemeyin. El yazısı belgeler sayıları buradan alır. Ayrıntı: `docs/IEN_DENEY_SONUCLARI.md`, `docs/MODEL_KARSILASTIRMA.md`.
+This file is generated by `ml/apply_decisions.py` / `simulation/experiments.py`; do not edit it by hand. The hand-written documents take their numbers from here. Details: `docs/experiment-results.md`, `docs/model-comparison.md`.
 
-## Güncel karar ayarları
+## Current decided settings
 
-- **Model:** {model}; 27 günde katlama dışı tahminle ROC-AUC **{auc:.3f}**
-- **Kural:** eşik %{round(100 * d["threshold"])}, günlük ek randevu sınırı {d["daily_limit"]}, slot başına en çok {d["max_per_slot"]} hasta
-- **Oturum:** {assumptions_line(d, cfg)}
-- **Kabul edilen en uzun ortalama bekleme:** {d["wait_limit_min"]} dk
+- **Model:** {model}; ROC-AUC **{auc:.3f}** with out-of-fold predictions over the 27 days
+- **Rule:** threshold {round(100 * d["threshold"])}%, daily overbook limit {d["daily_limit"]}, at most {d["max_per_slot"]} patients per slot
+- **Session:** {assumptions_line(d, cfg)}
+- **Longest accepted mean wait:** {d["wait_limit_min"]} min
 
-## Karar ayarı, sabit aralığa göre (oturum başına)
+## Decided setting against fixed intervals (per session)
 
 {md_table(pd.DataFrame(rows))}
 
-**Bekleme sınırı kontrolü:** ortalama bekleme {wait:.2f} dk; sınır {d["wait_limit_min"]} dk → **{"sınır içinde" if ok else "SINIRI AŞIYOR"}**.
+**Waiting limit check:** mean wait {wait:.2f} min; limit {d["wait_limit_min"]} min → **{"within the limit" if ok else "OVER THE LIMIT"}**.
 
-**Muayene süresi duyarlılığı:** muayene {lo:g} dk iken bekleme farkı {s_lo["diff"].iloc[0]:+.2f} dk, {hi:g} dk iken {s_hi["diff"].iloc[0]:+.2f} dk.
+**Consultation time sensitivity:** with a {lo:g} min consultation the difference in waiting is {s_lo["diff"].iloc[0]:+.2f} min, with {hi:g} min it is {s_hi["diff"].iloc[0]:+.2f} min.
 """
     SUMMARY.write_text(text, encoding="utf-8")
 

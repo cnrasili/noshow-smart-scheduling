@@ -1,14 +1,14 @@
 """Rebuild the model and the results from the team's decisions (docs/decisions.json).
 
-Change a decision -> edit docs/decisions.json and docs/KARAR_LISTESI.md -> run this script:
+Change a decision -> edit docs/decisions.json and docs/decision-list.md -> run this script:
 
 1. Out-of-sample risks of the chosen model for all 27 days (grouped by day, like build_reports).
 2. The chosen model is fitted on all days, checked with the overbooking service's acceptance
    checks and written to ml/models/ (model.joblib, feature_schema.json); the other model goes to
    ml/models/candidates/<model>/ so that a change of decision needs no rework.
 3. simulation/experiments.py runs with the decided settings and the new risks
-   (docs/IEN_DENEY_SONUCLARI.md, docs/SONUC_OZETI.md).
-4. The decision table in docs/KARAR_LISTESI.md is refreshed from decisions.json.
+   (docs/experiment-results.md, docs/results-summary.md).
+4. The decision table in docs/decision-list.md is refreshed from decisions.json.
 
     python ml/apply_decisions.py                 # everything
     python ml/apply_decisions.py --skip-model    # only results and the table
@@ -31,11 +31,11 @@ from sklearn.metrics import roc_auc_score
 
 ROOT = Path(__file__).resolve().parents[1]
 DECISIONS = ROOT / "docs" / "decisions.json"
-LIST_MD = ROOT / "docs" / "KARAR_LISTESI.md"
+LIST_MD = ROOT / "docs" / "decision-list.md"
 RISKS = Path(__file__).parent / "data" / "processed" / "risks_decision_model.csv"
 MODELS_DIR = Path(__file__).parent / "models"
-BEGIN, END = "<!-- KARARLAR:BASLA -->", "<!-- KARARLAR:BITIS -->"
-NAMES = {"random_forest": "Rastgele orman", "decision_tree": "Karar ağacı"}
+BEGIN, END = "<!-- DECISIONS:BEGIN -->", "<!-- DECISIONS:END -->"
+NAMES = {"random_forest": "Random forest", "decision_tree": "Decision tree"}
 
 
 def cv_risks(df: pd.DataFrame, kind: str, params: dict, folds: int = 5) -> pd.DataFrame:
@@ -59,65 +59,63 @@ def decision_rows(d: dict) -> list[tuple[str, str, str]]:
     if chosen in NAMES:
         other = ", ".join(NAMES[k] for k in NAMES if k != chosen)
         status = {
-            "final": "kesin",
-            "alternative": "alternatif dal; seçili model rastgele orman, karşılaştırma için",
-        }.get(d.get("model_status"), "geçici seçim, ekip onayı bekliyor")
-        model = (
-            f"{NAMES[chosen]} ({status}); karşılaştırma için {other} "
-            "`ml/models/candidates/` altında"
-        )
+            "final": "final",
+            "alternative": "alternative branch; the selected model is the random forest, "
+            "kept for comparison",
+        }.get(d.get("model_status"), "provisional choice, awaiting the team's approval")
+        model = f"{NAMES[chosen]} ({status}); {other} for comparison under `ml/models/candidates/`"
     else:
-        model = "**Bekliyor**"
+        model = "**Pending**"
     lo, hi = d["service_range_min"]
     a = d.get("assumptions_approval", {})
     approval = (
-        f"Geçici olarak onaylandı ({a.get('date', '')}, {a.get('by', '')}); {a.get('note', '')}"
+        f"Provisionally approved ({a.get('date', '')}, {a.get('by', '')}); {a.get('note', '')}"
         if a.get("status") == "provisional"
-        else "Onay bekliyor"
+        else "Awaiting approval"
     )
     return [
-        ("1. Model (#7)", model, "Ekip"),
-        ("2. En uzun ortalama bekleme", f"{d['wait_limit_min']} dk (poliklinik)", "Ekip"),
+        ("1. Model (#7)", model, "Team"),
+        ("2. Longest mean wait", f"{d['wait_limit_min']} min (outpatient clinic)", "Team"),
         (
-            "3. Kural ayarı (#8)",
-            f"Eşik %{round(100 * d['threshold'])}, günlük ek randevu sınırı {d['daily_limit']}, "
-            f"slot başına en çok {d['max_per_slot']} hasta",
-            "Ekip",
+            "3. Rule setting (#8)",
+            f"Threshold {round(100 * d['threshold'])}%, daily overbook limit {d['daily_limit']}, "
+            f"at most {d['max_per_slot']} patients per slot",
+            "Team",
         ),
         (
-            "4. Muayene süresi (#9)",
-            f"Ortalama {d['service_mean_min']:g} dk (aralık {lo:g}–{hi:g} dk); "
-            f"slot {d['slot_min']:g} dk x {d['n_slots']} (Türkiye'de yaygın; kaynak eklenecek)",
-            "Ekip",
+            "4. Consultation time (#9)",
+            f"Mean {d['service_mean_min']:g} min (range {lo:g}–{hi:g} min); slots of "
+            f"{d['slot_min']:g} min x {d['n_slots']} (common in Turkey; source to be added)",
+            "Team",
         ),
         (
-            "5. Tek doktor kuralı (#61)",
+            "5. Single-doctor rule (#61)",
             (
-                "Uygulanmayacak; ana README kapsamı: tek bölüm, hekim adlandırılmaz ya da atanmaz"
+                "Not applied; main README scope: one department, no physician named or assigned"
                 if not d["single_doctor_rule"]
-                else "Uygulanacak"
+                else "Applied"
             ),
-            "Ekip",
+            "Team",
         ),
         (
-            "5b. Birim",
-            f"Departman bazlı: `Department` = {d['department']} "
-            "(temizlenmiş veride her satırda); hekim yok",
-            "Ekip",
+            "5b. Unit",
+            f"The department: `Department` = {d['department']} "
+            "(in every row of the cleaned data); no physician",
+            "Team",
         ),
-        ("6. Hatırlatma", "Canlı A/B testi + varsayımsal senaryo", "Ekip"),
-        ("7. Teslim edilen kural", "Yalnızca eşik kuralı", "Ekip"),
+        ("6. Reminder", "Live A/B test + hypothetical scenario", "Team"),
+        ("7. Delivered rule", "Threshold rule only", "Team"),
         (
-            "8. Modelin teslimi",
-            "`ml/models/` altında (seçili model); CEN `IEN` dalını çeker",
+            "8. Model delivery",
+            "Under `ml/models/` (selected model); reached `main` with PR #65",
             "IEN + CEN",
         ),
-        ("9. Canlıda güncel kalma", "CEN2 modele API ile bağlanır", "CEN2"),
-        ("10. Son tarih", d["deadline"], "Ekip"),
-        ("11. Simülasyon varsayımları ve 15 dk sınırı", approval, "Ekip + hoca"),
+        ("9. Keeping the model current", "CEN2 connects to the model through the API", "CEN2"),
+        ("10. Deadline", d["deadline"], "Team"),
+        ("11. Simulation assumptions and the 15 min limit", approval, "Team + advisor"),
         (
-            "12. Uçtan uca test ve final demo",
-            "IEN görevi değildir; CEN ile birlikte, ayrı iş",
+            "12. End-to-end test and final demo",
+            "Not an IEN task; separate work together with CEN",
             "CEN",
         ),
     ]
@@ -125,7 +123,7 @@ def decision_rows(d: dict) -> list[tuple[str, str, str]]:
 
 def update_table(d: dict) -> None:
     rows = "\n".join(f"| {a} | {b} | {c} |" for a, b, c in decision_rows(d))
-    table = f"{BEGIN}\n| Karar | Seçim | Kim |\n|---|---|---|\n{rows}\n{END}"
+    table = f"{BEGIN}\n| Decision | Choice | Who |\n|---|---|---|\n{rows}\n{END}"
     text = LIST_MD.read_text(encoding="utf-8")
     if BEGIN not in text or END not in text:
         raise SystemExit(f"{LIST_MD} has no decision-table markers")
@@ -194,8 +192,8 @@ def main() -> int:
     subprocess.run(wait, check=True, cwd=ROOT / "simulation")
     subprocess.run([sys.executable, str(ROOT / "simulation" / "parity_check.py")], check=False)
     print(
-        "\nNext: check the numbers quoted in docs/IEN_RAPOR_TASLAGI.md and "
-        "docs/DEMO_VE_JURI_HAZIRLIGI.md against docs/SONUC_OZETI.md, then commit."
+        "\nNext: check the numbers quoted in the reports against docs/results-summary.md, "
+        "then commit."
     )
     return 0
 
