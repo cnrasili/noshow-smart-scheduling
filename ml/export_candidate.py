@@ -38,7 +38,7 @@ RENAME = {
     "PriorApptCount": "prior_appt_count",
     "PriorNoShowCount": "prior_noshow_count",
 }
-# Defaults chosen in docs/MODEL_KARSILASTIRMA.md; docs/decisions.json can override them
+# Defaults chosen in docs/model-comparison.md; docs/decisions.json can override them
 DEFAULT_PARAMS = {
     "random_forest": {"n_estimators": 150, "min_samples_leaf": 20, "max_depth": 14},
     "decision_tree": {"max_depth": 4, "min_samples_leaf": 200},

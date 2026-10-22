@@ -1,5 +1,5 @@
 {
-  "_note": "Tek kaynak: bu dosya ve docs/KARAR_LISTESI.md birlikte güncellenir. Değişince `python ml/apply_decisions.py` modeli ve sonuçları yeniden üretir.",
+  "_note": "Single source: this file and docs/decision-list.md are updated together. After a change, `python ml/apply_decisions.py` rebuilds the model and the results.",
   "model": "random_forest",
   "model_status": "final",
   "model_params": {
@@ -16,7 +16,7 @@
   "service_range_min": [5, 10],
   "service_cv": 0.5,
   "slot_min": 15,
-  "slot_basis": "15 dk: Türkiye'de randevu slotu genel olarak 15 dakika (ekip bilgisi, 17 Ekim 2026); kaynak taraması: doğrulanamadı, bkz. docs/KAYNAK_ARASTIRMASI.md",
+  "slot_basis": "15 min: an appointment slot in Turkey is generally 15 minutes (team knowledge, 17 October 2026); not yet confirmed by a source",
   "n_slots": 16,
   "extra_requests": 4,
   "lateness_sd_min": 4,
@@ -25,9 +25,9 @@
   "department": "General Practice",
   "assumptions_approval": {
     "status": "provisional",
-    "by": "IEN sorumlusu",
+    "by": "IEN lead",
     "date": "2026-10-17",
-    "note": "akademik gerekçe ve kaynak (hoca onayı) sonra eklenecek"
+    "note": "the academic justification and source (the advisor's approval) follow later"
   },
   "deadline": "2026-12-16"
 }

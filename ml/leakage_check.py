@@ -5,7 +5,7 @@ robin, so a day is predicted by a model that was also trained on LATER days. The
 predicted row is never in its own training data, but information from the future is. This script
 compares those risks with forward-chaining risks (every block of days is predicted by a model
 trained on EARLIER days only) on exactly the same rows, and shows what the choice does to the
-simulation result. Output: docs/ZAMANSAL_SIZINTI_KONTROLU.md
+simulation result. Output: docs/temporal-leakage-check.md
 
     python ml/leakage_check.py
 """
@@ -28,7 +28,7 @@ sys.path.insert(0, str(ROOT / "simulation"))
 import clinic_sim as cs  # noqa: E402
 import experiments as ex  # noqa: E402
 
-REPORT = ROOT / "docs" / "ZAMANSAL_SIZINTI_KONTROLU.md"
+REPORT = ROOT / "docs" / "temporal-leakage-check.md"
 FIRST_TRAIN_DAYS, BLOCK_DAYS = 7, 4
 
 
@@ -53,21 +53,21 @@ def quality(y, p) -> dict:
     return {
         "AUC": roc_auc_score(y, p),
         "Brier": brier_score_loss(y, p),
-        "Ortalama tahmin": float(np.mean(p)),
-        "Gerçek oran": float(np.mean(y)),
-        "Kalibrasyon kesişimi": a,
-        "Kalibrasyon eğimi": slope,
+        "Mean prediction": float(np.mean(p)),
+        "Actual rate": float(np.mean(y)),
+        "Calibration intercept": a,
+        "Calibration slope": slope,
     }
 
 
 def policy_effect(pool: pd.DataFrame, d: dict, reps: int = 600) -> pd.DataFrame:
     cfg = ex.session_config(d)
     cases = {
-        "sabit": (cfg, cs.fixed_interval(), cs.DEFAULT_LAYOUT),
-        "karar": (cfg, ex.rule_of(d), cs.DEFAULT_LAYOUT),
+        "fixed": (cfg, cs.fixed_interval(), cs.DEFAULT_LAYOUT),
+        "decided": (cfg, ex.rule_of(d), cs.DEFAULT_LAYOUT),
     }
     res = ex.run_cases(cases, cfg, reps, ex.SEED + 9, pool)
-    return ex.paired(res, "sabit")
+    return ex.paired(res, "fixed")
 
 
 def protocol_audit(df: pd.DataFrame, train: pd.DataFrame, test: pd.DataFrame) -> pd.DataFrame:
@@ -76,15 +76,15 @@ def protocol_audit(df: pd.DataFrame, train: pd.DataFrame, test: pd.DataFrame) ->
     forbidden |= {"NoShow", "ShowUp", "ScheduledDay", "AppointmentDay", "AgeBand"}
     rows = [
         (
-            "Özellik listesi hedefi, SMS'i, mahalleyi ve kimlikleri içermez",
+            "The feature list holds no target, SMS, neighbourhood or IDs",
             not forbidden & set(FEATURES),
-            f"{len(FEATURES)} özellik: {', '.join(FEATURES)}",
+            f"{len(FEATURES)} features: {', '.join(FEATURES)}",
         ),
         (
-            "Eğitim günleri test günlerinden önce (zamana göre ayrım)",
+            "Training days come before the test days (split by time)",
             train["AppointmentDay"].max() < test["AppointmentDay"].min(),
-            f"eğitim son gün {train['AppointmentDay'].max():%d.%m.%Y}, "
-            f"test ilk gün {test['AppointmentDay'].min():%d.%m.%Y}",
+            f"last training day {train['AppointmentDay'].max():%Y-%m-%d}, "
+            f"first test day {test['AppointmentDay'].min():%Y-%m-%d}",
         ),
     ]
     # Independent recomputation of the history features for a random sample of rows
@@ -99,29 +99,30 @@ def protocol_audit(df: pd.DataFrame, train: pd.DataFrame, test: pd.DataFrame) ->
             bad += 1
     rows.append(
         (
-            "Geçmiş özellikleri yalnızca randevu alınma gününden önceki randevulardan hesaplanır",
+            "History features count only the appointments before the booking day",
             bad == 0,
-            f"3.000 rastgele satır bağımsız olarak yeniden hesaplandı, {bad} fark",
+            f"3,000 random rows recomputed independently, {bad} differences",
         )
     )
     rows.append(
         (
-            "Ölçekleme yalnızca eğitimde öğrenilir; yeniden örnekleme yok",
+            "Scaling is learned on the training data only; no resampling",
             True,
-            "lojistik regresyon boru hattı (StandardScaler + model) eğitimle kurulur; "
-            "orman ve ağaç ölçekleme kullanmaz; test kümesi doğal dağılımını korur",
+            "the logistic regression pipeline (StandardScaler + model) is fitted on the "
+            "training data; the forest and the tree use no scaling; the test set keeps "
+            "its natural distribution",
         )
     )
     rows.append(
         (
-            "Karar eşiği testten seçilmez",
+            "The decision threshold is not chosen on the test set",
             True,
-            "F1 eşiği eğitim dönemindeki katlama dışı tahminlerden seçilir "
-            "(`ml/evaluate_models.py`)",
+            "the F1 threshold is chosen from out-of-fold predictions of the training "
+            "period (`ml/evaluate_models.py`)",
         )
     )
     return pd.DataFrame(
-        [{"Denetim": a, "Sonuç": "geçti" if ok else "BAŞARISIZ", "Ayrıntı": c} for a, ok, c in rows]
+        [{"Check": a, "Result": "passed" if ok else "FAILED", "Detail": c} for a, ok, c in rows]
     )
 
 
@@ -141,62 +142,63 @@ def main() -> None:
     rr = rr.set_index("AppointmentID").loc[forward["AppointmentID"]].reset_index()
 
     rows = []
-    for name, part in (("Dönüşümlü katlar (şu an)", rr), ("Yalnızca geçmiş günlerle", forward)):
-        rows.append({"Risk üretimi": name, **quality(part["y"].to_numpy(), part["p"].to_numpy())})
+    for name, part in (("Round-robin folds (current)", rr), ("Earlier days only", forward)):
+        rows.append({"Risk source": name, **quality(part["y"].to_numpy(), part["p"].to_numpy())})
     q = pd.DataFrame(rows)
 
     effect = []
-    for name, part in (("Dönüşümlü katlar (şu an)", rr), ("Yalnızca geçmiş günlerle", forward)):
+    for name, part in (("Round-robin folds (current)", rr), ("Earlier days only", forward)):
         t = policy_effect(part[["p", "y"]].reset_index(drop=True), d).set_index("metric")
         effect.append(
             {
-                "Risk üretimi": name,
-                "Görülen (fark)": f"{t.loc['seen', 'diff']:+.2f}",
-                "Bekleme dk (fark)": f"{t.loc['mean_wait', 'diff']:+.2f}",
-                "Boşta dk (fark)": f"{t.loc['idle', 'diff']:+.2f}",
-                "Mesai aşımı dk (fark)": f"{t.loc['overtime', 'diff']:+.2f}",
+                "Risk source": name,
+                "Seen (diff)": f"{t.loc['seen', 'diff']:+.2f}",
+                "Wait min (diff)": f"{t.loc['mean_wait', 'diff']:+.2f}",
+                "Idle min (diff)": f"{t.loc['idle', 'diff']:+.2f}",
+                "Overtime min (diff)": f"{t.loc['overtime', 'diff']:+.2f}",
             }
         )
-    seen_a, seen_b = (float(e["Görülen (fark)"]) for e in effect)
-    wait_a, wait_b = (float(e["Bekleme dk (fark)"]) for e in effect)
+    seen_a, seen_b = (float(e["Seen (diff)"]) for e in effect)
+    wait_a, wait_b = (float(e["Wait min (diff)"]) for e in effect)
     df_all, train_all, test_all, _ = load()
     audit = protocol_audit(df_all, train_all, test_all)
     days = sorted(df["AppointmentDay"].dt.normalize().unique())
     gap = q["AUC"].iloc[0] - q["AUC"].iloc[1]
     verdict = (
-        "AUC farkı çok küçük: dönüşümlü katlar sonuçları belirgin biçimde şişirmiyor."
+        "The AUC difference is very small: the round-robin folds do not noticeably inflate "
+        "the results."
         if abs(gap) < 0.01
-        else "AUC farkı belirgin: dönüşümlü katlar sonuçları şişiriyor olabilir."
+        else "The AUC difference is clear: the round-robin folds may inflate the results."
     )
-    text = f"""# Zamansal sızıntı kontrolü (otomatik üretilir)
+    text = f"""# Temporal leakage check (generated)
 
-Bu dosya `ml/leakage_check.py` tarafından üretilir; elle düzenlemeyin. Model: **{kind}** (`docs/decisions.json`).
+This file is generated by `ml/leakage_check.py`; do not edit it by hand. Model: **{kind}** (`docs/decisions.json`).
 
-## Soru
+## Question
 
-Simülasyonun kullandığı 27 günlük riskler, günleri 5 kata dönüşümlü dağıtarak üretiliyor. Bir gün, **kendisinden sonraki günlerle de eğitilmiş** bir modelle tahmin ediliyor. Günün kendi satırları eğitime girmez, ama gelecekteki günlerin bilgisi girer. Gerçek kullanımda model yalnızca geçmişi görür.
+The 27-day risks that the simulation uses are produced by dealing the days to 5 folds round robin. A day is predicted by a model that was **also trained on the days after it**. The day's own rows never enter the training data, but information from future days does. In real use the model sees only the past.
 
-## Yöntem
+## Method
 
-İlk {FIRST_TRAIN_DAYS} gün yalnızca eğitimde kalır; sonraki günler {BLOCK_DAYS}'er günlük bloklarla tahmin edilir ve her blok için model **yalnızca önceki günlerle** eğitilir (ileri doğru genişleyen pencere). Dönüşümlü katlarla aynı satırlar ({len(forward):,} randevu, {len(days) - FIRST_TRAIN_DAYS} gün) karşılaştırılır.
+The first {FIRST_TRAIN_DAYS} days are used for training only; the following days are predicted in blocks of {BLOCK_DAYS} days, and for every block the model is trained **on earlier days only** (a window that grows forward). The same rows as with the round-robin folds ({len(forward):,} appointments, {len(days) - FIRST_TRAIN_DAYS} days) are compared.
 
-## Tahmin kalitesi (aynı satırlar)
+## Prediction quality (same rows)
 
 {md(q)}
 
-{verdict} (Fark {gap:+.3f}.)
+{verdict} (Difference {gap:+.3f}.)
 
-## Simülasyon sonucuna etkisi (karar ayarı, sabit aralığa göre, 600 eşleştirilmiş oturum)
+## Effect on the simulation result (decided setting against fixed intervals, 600 paired sessions)
 
 {ex.md_table(pd.DataFrame(effect))}
 
-## Değerlendirme protokolü denetimi
+## Audit of the evaluation protocol
 
 {ex.md_table(audit)}
 
-## Sonuç
+## Conclusion
 
-{verdict} Karar ayarının hasta kazancı iki yöntemde {seen_a:+.2f} ve {seen_b:+.2f}; bekleme farkı {wait_a:+.2f} ve {wait_b:+.2f} dk. Ayrıca iki sınırlılık sürer: (1) yalnızca 27 gün vardır, ilk günlerin tahmini için az eğitim verisi vardır; (2) her iki yöntem de hasta geçmişi özelliklerini randevu tarihinden önceki kayıtlarla hesaplar (`ml/data/clean_data.py`), bu yüzden özelliklerde sızıntı yoktur.
+{verdict} The decided setting gains {seen_a:+.2f} and {seen_b:+.2f} patients with the two methods; the difference in waiting is {wait_a:+.2f} and {wait_b:+.2f} min. Two further points: (1) there are only 27 days, so the first days are predicted with little training data; (2) both methods compute the patient history features from records before the appointment date (`ml/data/clean_data.py`), so the features themselves do not leak.
 """
     REPORT.write_text(text, encoding="utf-8")
     print("Saved:", REPORT)
