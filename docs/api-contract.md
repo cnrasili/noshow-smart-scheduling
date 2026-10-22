@@ -7,7 +7,7 @@ Interfaces between the components:
 - the web backend and the overbooking service (prediction, booking decision, booking events),
 - the admin service and the overbooking service (A/B summary, KPIs),
 - the admin service and the web backend (internal account API),
-- the web frontend and the web backend (doctor agenda, public doctor list).
+- the web frontend and the web backend (the department's agenda).
 
 The web frontend calls only the web backend; it never calls the overbooking service or the internal account API.
 
@@ -250,7 +250,7 @@ Errors:
 
 ## Internal account API (web backend)
 
-Served by the web backend for the hospital's admin service. Patients and doctors cannot register themselves; the administration creates their accounts through this API. The public web frontend never calls it, and it is not listed in the web backend's public API documentation.
+Served by the web backend for the hospital's admin service. Patients cannot register themselves; the administration opens their accounts through this API and resets passwords, the department's included. The public web frontend never calls it, and it is not listed in the web backend's public API documentation.
 
 Every request carries the service token in the `X-Internal-Token` header. The token is set in the web backend's `INTERNAL_API_TOKEN` environment variable; if the variable is not set, the API is disabled.
 
@@ -297,52 +297,9 @@ Errors:
 | 409 | `Patient already has an account`, or `Email already in use` (by another account) |
 | 422 | Invalid request, for example a password shorter than 8 characters |
 
-### `POST /internal/accounts/doctors`
-
-Creates a doctor with login account and weekly working hours, and generates the doctor's slots for the next two weeks from the working hours. The doctor logs in with the e-mail address and the password.
-
-Request:
-
-```json
-{
-  "full_name": "Dr. Deniz Yıldız",
-  "specialty": "Dahiliye",
-  "email": "deniz.yildiz@example.com",
-  "password": "initial-password",
-  "working_hours": [
-    { "weekday": 0, "start_time": "09:00", "end_time": "12:00" },
-    { "weekday": 2, "start_time": "13:00", "end_time": "16:00" }
-  ]
-}
-```
-
-- `specialty`: the department patients choose when booking.
-- `working_hours`: 1–7 intervals, at most one per weekday (`0` = Monday … `6` = Sunday), clinic local time, `end_time` after `start_time`.
-- `password`: initial password, 8–128 characters.
-
-Response (`201`):
-
-```json
-{
-  "account_id": 13,
-  "doctor_id": 5,
-  "full_name": "Dr. Deniz Yıldız",
-  "specialty": "Dahiliye",
-  "email": "deniz.yildiz@example.com",
-  "slots_created": 54
-}
-```
-
-Errors:
-
-| Status | Reason |
-|---|---|
-| 409 | `Email already in use` |
-| 422 | Invalid request, for example overlapping weekdays or an invalid time interval |
-
 ### `PUT /internal/accounts/{account_id}/password`
 
-Resets the password of a patient's or a doctor's account. The account's open sessions end, so it has to log in again.
+Resets the password of a patient's account or of the department's account. The account's open sessions end, so it has to log in again.
 
 Request:
 
@@ -361,9 +318,9 @@ Errors:
 
 ## `GET /doctors/me/agenda` (web backend)
 
-Served by the web backend for the website's doctor screens. Returns every clinic day of a date range with the signed-in doctor's slot count and booked appointments; the doctor's patient list uses it for the week overview and the upcoming appointments. Read-only; the daily list with attendance marking keeps using `GET /doctors/me/calendar`.
+Served by the web backend for the department panel. Returns every clinic day of a date range with the department's slot count and booked appointments; the panel uses it for the week strip. Read-only; the daily list with attendance marking keeps using `GET /doctors/me/calendar`.
 
-Needs a signed-in doctor (`Authorization: Bearer <token>`).
+Needs the department's signed-in account (`Authorization: Bearer <token>`).
 
 Query parameters:
 
@@ -378,15 +335,14 @@ Response (`200`), one entry per day of the range in order, days without slots in
 [
   {
     "date": "2026-10-20",
-    "slot_count": 9,
+    "slot_count": 16,
     "appointments": [
       {
         "id": 373,
         "slot_id": 1204,
         "start_at": "2026-10-20T06:00:00Z",
-        "end_at": "2026-10-20T06:20:00Z",
-        "patient_name": "Ayşe Kaya",
-        "extra": false
+        "end_at": "2026-10-20T06:15:00Z",
+        "patient_name": "Hasta 29872499824296"
       }
     ]
   },
@@ -395,8 +351,8 @@ Response (`200`), one entry per day of the range in order, days without slots in
 ```
 
 - Days are clinic days (`Europe/Istanbul`); times are UTC.
-- `slot_count` is 0 on days the doctor has no slots, for example days without working hours.
-- Appointments are ordered by slot time and then by booking order. `extra` is `true` for an appointment booked into a slot that already had a patient (an overbook).
+- `slot_count` is 0 on days without slots, for example days without working hours.
+- Appointments are ordered by slot time and then by booking order. Nothing shows whether an appointment is an overbook; no overbooking information reaches the website (#66).
 - No contact or account data is returned.
 
 Errors:
@@ -406,27 +362,3 @@ Errors:
 | 401 | Not signed in or session expired |
 | 403 | Signed in as a patient |
 | 422 | Invalid dates, `date_to` before `date_from`, or a range of more than 31 days |
-
-## `GET /public/doctors` (web backend)
-
-Served by the web backend for the public pages of the hospital site (departments, doctors, doctor working list). Read-only and without sign-in.
-
-Response (`200`), ordered by department and then by name:
-
-```json
-[
-  {
-    "id": 3,
-    "full_name": "Dr. Leyla Aksoy",
-    "specialty": "Kardiyoloji",
-    "working_hours": [
-      { "weekday": 1, "start_time": "09:00:00", "end_time": "12:00:00" },
-      { "weekday": 3, "start_time": "09:00:00", "end_time": "12:00:00" }
-    ]
-  }
-]
-```
-
-- `specialty` is the doctor's department; `null` if not set. Departments are the distinct `specialty` values.
-- `working_hours` are the weekly working hours (`weekday` 0 = Monday … 6 = Sunday), one interval per weekday, ordered by weekday; empty if none are set.
-- No e-mail addresses, account data or appointments are returned.
