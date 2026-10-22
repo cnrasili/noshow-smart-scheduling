@@ -99,7 +99,7 @@ def chart(results: dict[str, pd.DataFrame]) -> Path:
         axes,
         [
             ("seen", "Patients seen per session"),
-            ("idle", "Physician idle time (min)"),
+            ("idle", "Idle time (min)"),
             ("mean_wait", "Mean patient waiting time (min)"),
         ],
         strict=False,

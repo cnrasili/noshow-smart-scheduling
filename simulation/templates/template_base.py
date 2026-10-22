@@ -28,6 +28,8 @@ class Template:
     overbook_slots: tuple[int, ...] | None = None
     offset: float = 0.0  # second patient starts this fraction of a slot later
     thresholds_to_try: tuple[float, ...] = ()  # candidate thresholds for tuning
+    risk_key: str | None = None  # use another risk column of the session data (e.g. "p_paper")
+    daily_limit: int = 4  # overbooked slots allowed per session
 
     def config(self, base: SessionConfig | None = None) -> SessionConfig:
         return dataclasses.replace(
@@ -42,7 +44,11 @@ class Template:
         )
 
     def policy(self) -> Policy:
-        return fixed_interval() if self.threshold is None else threshold_rule(self.threshold)
+        return (
+            fixed_interval()
+            if self.threshold is None
+            else threshold_rule(self.threshold, daily_limit=self.daily_limit)
+        )
 
     def with_threshold(self, t: float) -> Template:
         return dataclasses.replace(self, threshold=t)

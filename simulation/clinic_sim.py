@@ -1,7 +1,7 @@
 """Discrete-event simulation of one outpatient clinic session (SimPy).
 
 Compares fixed-interval booking with no-show-aware overbooking on the KPIs in
-docs/kpi-definitions.md: patient waiting time, physician idle time, overtime, utilization.
+docs/kpi-definitions.md: patient waiting time, idle time, overtime, utilization.
 
 All policies see the same booking requests, show-ups, arrival offsets and service times
 (common random numbers), so differences between policies are not sampling noise.
@@ -28,7 +28,7 @@ import simpy
 class SessionConfig:
     n_slots: int = 16  # slots in the session
     slot_min: float = 15.0  # slot length (minutes)
-    service_mean: float = 12.0  # mean consultation time (minutes)
+    service_mean: float = 7.5  # mean consultation time (minutes), decision of 17 October
     service_cv: float = 0.5  # coefficient of variation of consultation time
     punctuality_sd: float = 4.0  # sd of arrival offset around the slot start (minutes)
     extra_requests: int = 4  # booking requests beyond the number of slots (demand pressure)
@@ -79,6 +79,22 @@ def cost_rule(r: float, max_per_slot: int = 2, daily_limit: int = 4, capacity: i
 
     def allow(booked: Sequence[float], overbooks: int) -> bool:
         return len(booked) < max_per_slot and overbooks < daily_limit and q(booked) < 1 / (1 + r)
+
+    return allow
+
+
+def expected_value_rule(max_per_slot: int = 2, daily_limit: int = 4, capacity: int = 1) -> Policy:
+    """Airline-style baseline R5-B (docs/formulas/overbooking.md).
+
+    Add a patient while the expected number of arrivals of the slot stays below its capacity
+    (sum of show-up probabilities < capacity)."""
+
+    def allow(booked: Sequence[float], overbooks: int) -> bool:
+        return (
+            len(booked) < max_per_slot
+            and overbooks < daily_limit
+            and sum(1 - p for p in booked) < capacity
+        )
 
     return allow
 
@@ -154,7 +170,7 @@ def simulate_session(
 ) -> dict:
     slots, deferred = book(cfg, policy, d, layout)
     env = simpy.Environment()
-    doctor = simpy.Resource(env, capacity=1)
+    room = simpy.Resource(env, capacity=1)
     waits: list[float] = []
     busy: list[tuple[float, float]] = []
     log: list[dict] = []
@@ -163,7 +179,7 @@ def simulate_session(
         arrival = max(0.0, appt_time + d.arrival_offset[i])
         ready = max(appt_time, arrival)  # a consultation never starts before the appointment time
         yield env.timeout(ready)
-        with doctor.request() as req:
+        with room.request() as req:
             yield req
             start = env.now
             waits.append(start - ready)  # KPI: start - max(appointment time, arrival)

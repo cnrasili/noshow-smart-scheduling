@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Akıllı Randevu Simülasyonu</title>
+<style>
+:root{--bg:#eef6f8;--card:#fff;--ink:#12303a;--mute:#5d7882;--line:#d6e6eb;--acc:#12788f;--acc2:#0e5d70;--soft:#e4f2f5;--good:#16794a;--bad:#c2410c;
+ --planned:#c4d3d9;--waiting:#f2a93b;--room:#12788f;--done:#2f9e6b;--noshow:#d64545;--ob:#e07a5f;--shadow:0 1px 2px rgba(18,48,58,.06),0 4px 14px rgba(18,48,58,.06)}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0e171b;--card:#16242a;--ink:#e6f1f4;--mute:#8fa9b2;--line:#27404a;--acc:#4fb4cb;--acc2:#7cc9da;--soft:#1c2f36;--good:#4ade80;--bad:#fb923c;--planned:#3b525b;--shadow:none}}
+*{box-sizing:border-box}html,body{height:100%}body{margin:0;display:flex;flex-direction:column;height:100vh;overflow:hidden;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,sans-serif}
+.top{background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;padding:10px 24px 0;flex:none}
+.top h1{margin:0;font-size:21px;font-weight:700}.top p{margin:2px 0 8px;opacity:.9;font-size:13px}
+.tabs{display:flex;gap:6px}.tabs button{border:0;background:rgba(255,255,255,.16);color:#fff;padding:9px 18px;border-radius:10px 10px 0 0;font-size:14px;font-weight:600;cursor:pointer}
+.tabs button.on{background:var(--bg);color:var(--ink)}
+.layout{display:grid;grid-template-columns:minmax(520px,32vw) minmax(0,1fr);gap:14px;width:100%;max-width:1800px;margin:0 auto;padding:12px 18px;flex:1;min-height:0}.side{overflow:auto;min-height:0;padding-right:4px}main{min-height:0;overflow:auto;display:flex;flex-direction:column}
+.side{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start;align-content:start}.side .sc{display:flex;flex-direction:column;gap:10px;min-width:0}.side .box{margin:0}
+.side .grid2{grid-template-columns:1fr 1fr}@media (max-width:1250px){.layout{grid-template-columns:330px minmax(0,1fr)}.side{grid-template-columns:1fr}}
+@media (max-width:1050px),(max-height:700px){body{height:auto;overflow:auto}.layout{grid-template-columns:1fr;height:auto}.side,main{overflow:visible}#viewD{height:auto!important}.d-rooms{grid-template-columns:1fr!important}}
+.side .box,.card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+.side .box{padding:12px 14px;margin-bottom:12px}.side h3{margin:0 0 8px;font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--mute)}
+label{display:block;font-size:12px;color:var(--mute);margin:8px 0 3px}
+select,input[type=number]{width:100%;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:7px 9px;font-size:13px}
+input[type=range]{width:100%}.val{float:right;color:var(--ink);font-weight:700}
+button{font-family:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:7px 12px;font-size:13px;cursor:pointer}
+button:hover{border-color:var(--acc)}button.big{background:var(--acc);color:#fff;border-color:var(--acc);font-weight:700;padding:11px 16px;font-size:15px}
+button.big:hover{background:var(--acc2)}#presets{display:grid;grid-template-columns:1fr 1fr;gap:5px}#presets button{margin:0;padding:6px 8px;font-size:12px;text-align:left;line-height:1.25}.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px}.seg button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.hint{font-size:11.5px;line-height:1.35;color:var(--mute);background:var(--soft);border-radius:9px;padding:6px 8px;margin-top:6px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+details summary{cursor:pointer;color:var(--mute);font-size:13px}
+.card{padding:10px 14px;margin-bottom:10px}.card h2{margin:0 0 6px;font-size:14px}
+.ctl{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.clock{font-size:42px;font-weight:800;letter-spacing:.02em;margin-left:auto;color:var(--acc2)}
+.prog{height:12px;border-radius:8px;background:var(--soft);overflow:hidden;margin-top:12px}.prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--acc),#53c1d6)}
+.counters{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:10px;margin-bottom:10px}
+.counter{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:7px 12px;box-shadow:var(--shadow)}.counter small{color:var(--mute);font-size:11px}
+.counter b{display:block;font-size:26px;line-height:1.1}.counter span{font-size:11px;color:var(--mute)}
+.c-done b{color:var(--done)}.c-wait b{color:var(--waiting)}.c-no b{color:var(--noshow)}.c-ob b{color:var(--ob)}.c-w b{color:var(--acc2)}.c-idle b{color:var(--mute)}
+.strip{display:grid;gap:5px}.slot{background:var(--soft);border-radius:9px;padding:4px 2px;text-align:center;min-height:78px}.slot small{display:block;font-size:11px;color:var(--mute);margin-bottom:4px}
+.slot .chips{display:flex;flex-direction:column;align-items:center;gap:4px}
+.chip{width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;background:var(--planned);transition:background .25s,transform .25s;position:relative}
+.chip.waiting{background:var(--waiting)}.chip.inroom{background:var(--room);transform:scale(1.2);box-shadow:0 0 0 4px rgba(18,120,143,.25)}.chip.done{background:var(--done)}.chip.noshow{background:var(--noshow)}
+.chip.ob{outline:3px solid var(--ob);outline-offset:1px}.nowline{position:absolute;top:0;bottom:0;width:2px;background:var(--noshow);opacity:.7;pointer-events:none}
+.stripwrap{position:relative}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--mute);margin-top:10px}.legend i{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.rooms{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media (max-width:1000px){.rooms{grid-template-columns:1fr}}
+#viewD{display:flex;flex-direction:column;height:100%;min-height:0}.d-rooms{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.3fr);gap:10px}.d-rooms>.card,.d-right>.card{min-height:0;overflow:auto;margin-bottom:0}.d-right{display:flex;flex-direction:column;gap:10px;min-height:0;overflow:auto}.d-right>.card:first-child{flex:1 1 130px;min-height:130px;overflow:auto}.d-right>.card:last-child{flex:none;overflow:visible}.d-rooms>.card.room{overflow:auto}
+.room{}.room h2{display:flex;align-items:center;gap:8px}.empty{color:var(--mute);padding:34px 4px;text-align:center;font-size:15px}
+.pc{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px;background:var(--card)}
+.pc .av{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px;flex:none}
+.pc .meta{flex:1;min-width:0}.pc .meta b{display:block}.pc .meta small{color:var(--mute)}.tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--ob);color:#fff;margin-left:6px}
+.pc .t{font-weight:700;color:var(--waiting);white-space:nowrap}.pc.big{padding:16px}.pc.big .av{width:62px;height:62px;font-size:22px}
+.bar2{height:8px;border-radius:6px;background:var(--soft);overflow:hidden;margin-top:6px}.bar2 i{display:block;height:100%;background:var(--room)}
+.feed{font-size:13px}.feed div{padding:4px 0;border-bottom:1px solid var(--line)}.feed time{display:inline-block;width:48px;font-weight:700;color:var(--acc2)}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:5px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}td:first-child{white-space:normal}th:first-child,td:first-child{text-align:left}th{color:var(--mute);font-weight:600;position:sticky;top:0;background:var(--card)}
+tr.clk{cursor:pointer}tr.clk:hover td{background:var(--soft)}tr.tot td{font-weight:700;background:var(--soft)}.good{color:var(--good);font-weight:600}.bad{color:var(--bad);font-weight:600}.neu{color:var(--mute)}
+#status{padding:6px 12px;border-radius:10px;background:var(--soft);margin-bottom:8px;color:var(--ink);font-size:13px;flex:none}#status.err{background:#fde2e2;color:#7a1d1d}
+.kgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}.kc{background:var(--soft);border-radius:12px;padding:10px 14px}
+.kc h4{margin:0;font-size:12px;color:var(--mute);font-weight:600}.kc .v{font-size:26px;font-weight:800}.kc .s{font-size:12px;color:var(--mute)}.kc .d{font-size:13px;font-weight:700;margin-top:2px}
+.scroll{overflow:auto;max-height:440px}.pager{display:flex;gap:10px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+.viewsel{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--mute)}.viewsel button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.dateinfo{margin-left:auto;text-align:right;line-height:1.2}.dateinfo small{display:block;color:var(--mute);font-size:11px}.dateinfo b{font-size:15px}.sum{font-size:13px;color:var(--mute);flex:1;min-width:200px}.ctrl .clock{margin-left:14px}
+.clock{font-size:34px}.ctrl .ctl.sub{margin-top:8px}.pc.big{padding:10px}.empty{padding:16px 4px!important}
+#cmp{overflow-x:auto}#cmp th,#cmp td{padding:4px 5px;font-size:12px}
+[hidden]{display:none!important}
+</style></head><body>
+<div class="top">
+<h1>Akıllı Randevu Simülasyonu</h1>
+<p>Bir polikliniğin gün içindeki hasta akışını 15 dakikalık adımlarla izleyin; soldaki ayarlar değiştikçe sonuç kendiliğinden güncellenir.</p>
+<div class="tabs"><button id="tabD" class="on">Bir odanın günü</button><button id="tabO">Tüm odalar ve sonuçlar</button></div>
+</div>
+<div class="layout">
+<aside class="side">
+<div class="sc">
+<div class="box"><h3>Hazır ayarlar</h3><div id="presets"></div></div>
+<div class="box"><h3>1. Gün</h3><label for="day">Gün</label><select id="day"></select><div class="hint" id="dataHint"></div></div>
+<div class="box"><h3>2. Riski kim tahmin ediyor?</h3><select id="risk"></select><div class="hint" id="riskHint"></div></div>
+</div>
+<div class="sc">
+<div class="box"><h3>3. Overbooking kuralı</h3><div class="seg" id="ruleSeg"></div><div class="hint" id="ruleHint"></div>
+<div id="pThreshold"><label>Risk eşiği <span class="val" id="vThreshold"></span></label><input type="range" id="threshold" min="0.05" max="0.6" step="0.01" value="0.30"></div>
+<div id="pCost"><label>Maliyet oranı r (bekleme / boşta kalma) <span class="val" id="vR"></span></label><input type="range" id="costR" min="0.1" max="3" step="0.1" value="0.5"></div>
+<div id="pLimits" class="grid2"><div><label>Slotta en çok hasta</label><select id="cap"><option>1</option><option selected>2</option><option>3</option></select></div>
+<div><label>Oturumda overbook slot</label><input type="number" id="limit" min="0" max="99" value="4"></div></div></div>
+<div class="box"><details><summary>4. Randevu şablonu</summary>
+<div class="grid2"><div><label>Slot sayısı</label><input type="number" id="nSlots" min="4" max="40" value="16"></div><div><label>Slot süresi (dk)</label><input type="number" id="slotMin" min="5" max="60" value="15"></div>
+<div><label>2. hasta ne kadar sonra</label><select id="offset"><option value="0">Aynı anda</option><option value="0.25">Slotun çeyreği</option><option value="0.5">Slotun yarısı</option></select></div>
+<div><label>Boş tampon slot no</label><input type="number" id="buffer" min="0" max="40" value="0"></div>
+<div><label>Overbook şu slottan sonra</label><input type="number" id="zone" min="0" max="40" value="0"></div></div>
+<div class="hint">0 = kapalı. Örnek şablonlar 240 dakikalıktır (16 x 15 veya 20 x 12).</div></details></div>
+<div class="box"><details><summary>5. Varsayımlar (veride yok)</summary>
+<div class="grid2"><div><label>Oturum başına randevu isteği</label><input type="number" id="requests" min="4" max="40" value="20"></div>
+<div><label>Muayene süresi ort. (dk)</label><input type="number" id="svcMean" min="3" max="40" step="0.5" value="7.5"></div>
+<div><label>Muayene değişkenliği (CV)</label><input type="number" id="svcCv" min="0.1" max="1.5" step="0.1" value="0.5"></div>
+<div><label>Geç kalma sapması (dk)</label><input type="number" id="late" min="0" max="20" value="4"></div>
+<div><label>Rastgelelik tohumu</label><input type="number" id="seed" min="0" max="999" value="0"></div></div>
+<div class="hint">Veride hekim bilgisi, muayene süresi ve geç kalma yoktur. Sistem tek departmandır (General Practice); kapasite muayene odalarıyla temsil edilir ve bir günün hastaları odalara rastgele dağıtılır. Son iki değer simüle edilir.</div></details></div>
+<div class="hint" style="margin-bottom:6px">Ayarlar değiştikçe simülasyon kendiliğinden yeniden hesaplanır.</div>
+</div>
+</aside>
+
+<main>
+<div id="status">Hesaplanıyor...</div>
+
+<section id="viewD" hidden>
+<div class="card ctrl">
+ <div class="ctl">
+  <button class="big" id="play">Simülasyonu başlat</button><button id="step">Tek adım (+15 dk)</button><button id="reset">Sıfırla</button>
+  <label style="margin:0 0 0 4px">Hız</label><select id="speed" style="width:auto"><option value="4">Yavaş</option><option value="10" selected>Normal</option><option value="30">Hızlı</option></select>
+  <div class="dateinfo"><small>Seçilen gün</small><b id="dayLabel">-</b></div>
+  <div class="clock" id="clock">08:00</div></div>
+ <div class="prog" style="margin-top:6px"><i id="progbar"></i></div>
+ <div class="ctl sub"><span class="sum" id="sumLine"></span>
+  <label style="margin:0">Oda</label><select id="room" style="width:auto"></select><button id="rnd">Başka oda</button>
+  <div class="viewsel">Gösterilen: <button id="vRule" class="on">Seçilen kural</button><button id="vBase">Kural yok</button></div></div>
+</div>
+<div class="counters">
+ <div class="counter c-done"><small>Muayene tamamlandı</small><b id="cDone">0</b><span id="cDoneS"></span></div>
+ <div class="counter c-wait"><small>Bekleyen hasta</small><b id="cWait">0</b><span>şu an bekleme alanında</span></div>
+ <div class="counter c-no"><small>Gelmeyen hasta</small><b id="cNo">0</b><span id="cNoS"></span></div>
+ <div class="counter c-ob"><small>Açılan overbook</small><b id="cOb">0</b><span>fazladan yazılan hasta</span></div>
+ <div class="counter c-w"><small>Ortalama bekleme</small><b id="cAvg">0</b><span>dakika (muayeneye girenler)</span></div>
+ <div class="counter c-idle"><small>Oda boşta</small><b id="cIdle">0</b><span>dakika (mesai içinde)</span></div>
+</div>
+<div class="card"><h2 style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px">Randevu çizelgesi<span class="legend" style="margin:0"><span><i style="background:var(--planned)"></i>bekleniyor</span><span><i style="background:var(--waiting)"></i>bekleme alanında</span><span><i style="background:var(--room)"></i>muayenede</span><span><i style="background:var(--done)"></i>tamamlandı</span><span><i style="background:var(--noshow)"></i>gelmedi</span><span><i style="background:#fff;border:3px solid var(--ob)"></i>overbook</span></span></h2>
+ <div class="stripwrap"><div class="strip" id="strip"></div><div class="nowline" id="nowline"></div></div>
+ <div class="hint" id="noslot" style="margin-top:6px"></div></div>
+<div class="d-rooms">
+ <div class="card room"><h2>Muayene odası</h2><div id="roomBox"></div></div>
+ <div class="card room"><h2>Bekleme alanı</h2><div id="waitBox"></div></div>
+ <div class="d-right">
+  <div class="card"><h2>Olay günlüğü</h2><div class="feed" id="feed"></div></div>
+  <div class="card"><h2>Kural yok ile karşılaştırma</h2><div id="cmp"></div></div></div>
+</div>
+<small id="foot" style="color:var(--mute);margin-top:4px">Başlatmaya hazır</small>
+</section>
+
+<section id="viewO" hidden>
+<div class="card"><h2>Ne simüle edildi?</h2><div id="summary"></div></div>
+<div class="card"><h2>Kuralın kullandığı risk tahmini</h2><div class="kgrid" id="riskCards"></div><div class="hint" id="riskNote" hidden></div></div>
+<div class="card"><h2>Sonuç: "kural yok" ile karşılaştırma</h2><div class="kgrid" id="kpis"></div></div>
+<div class="card" id="allCard" hidden><h2>Gün gün sonuç</h2><p style="color:var(--mute);margin:0 0 8px">Bir güne tıklayın, o günü ayrıntılı çalıştırır.</p><div class="scroll"><table id="dtable"></table></div></div>
+<div class="card" id="recCard" hidden><h2>Günün tüm randevuları</h2>
+ <div class="pager"><select id="fstatus" style="width:auto"><option value="all">Tümü</option><option value="seen">Görülenler (kuralla)</option><option value="noshow">Gelmeyenler</option><option value="deferred">Yeri olmayanlar (kuralla)</option><option value="ob">Overbook edilenler</option></select>
+ <input id="fsearch" placeholder="Randevu no" style="width:130px"><button id="prev">&lt;</button><span id="pageinfo" style="color:var(--mute)"></span><button id="next">&gt;</button></div>
+ <div class="scroll"><table id="rtable"></table></div>
+ <p style="color:var(--mute);font-size:12px">Risk sütunları her kaynağın gelmeme olasılığıdır: RF rastgele orman, LR lojistik regresyon, R1 hasta geçmişi, R2 cinsiyet, R3 yaş grubu, R4 birleşik kurallar, Makale: dengelenmiş sınıflandırıcı. Simülasyon, 2. adımda seçtiğinizi kullanır.</p></div>
+</section>
+</main></div>
+<script>
+if(!CanvasRenderingContext2D.prototype.roundRect){CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h){this.rect(x,y,w,h);};}
+const $=id=>document.getElementById(id);
+const RULES={none:['Kural yok','Her slota en fazla bir hasta yazılır. Kimse fazladan randevuya alınmaz.'],
+ threshold:['Eşik kuralı','Bir slota ikinci hasta, o slottaki hastaların gelmeme riski eşiğin üstündeyse yazılır (overbooking servisindeki kural).'],
+ cost:['Maliyet kuralı','Slotun zaten dolu olma ihtimali 1/(1+r)\'den küçükse bir hasta daha eklenir. r: bekleyen hastanın, boşta kalan odaya göre ne kadar daha kötü olduğu.'],
+ ev:['Havayolu kuralı','Slota gelmesi beklenen hasta sayısı 1\'in altındaysa bir hasta daha eklenir (havayolu şirketlerinin mantığı).']};
+const PRESETS=[['Kural yok',{rule:'none'}],['Servis kuralı: eşik %30',{rule:'threshold',threshold:0.30,risk:'rf'}],['Maliyet kuralı r=0,5',{rule:'cost',costR:0.5,risk:'rf'}],
+ ['Havayolu kuralı',{rule:'ev',risk:'rf'}],['Makale yöntemi',{rule:'threshold',threshold:0.5,cap:2,limit:99,risk:'paper'}],['Şablon 1: kısa slotlar',{rule:'none',nSlots:20,slotMin:12}],
+ ['Şablon 2: kaydırmalı',{rule:'threshold',threshold:0.40,risk:'rf',offset:0.5}],['Şablon 3: tampon + geç',{rule:'threshold',threshold:0.30,risk:'rf',buffer:9,zone:10}]];
+const DEFAULTS={rule:'none',risk:'rf',threshold:0.30,costR:0.5,cap:2,limit:4,nSlots:16,slotMin:15,offset:0,buffer:0,zone:0};
+const RISKIDX={rf:4,lr:5,r1:6,r2:7,r3:8,r4:9,paper:10};
+const SRC_TR={rf:'Rastgele orman',lr:'Lojistik regresyon',r1:'Kural R1: hasta geçmişi',r2:'Kural R2: cinsiyet',r3:'Kural R3: yaş grubu',r4:'Kural R4: birleşik kurallar',paper:'Makale yöntemi (dengelenmiş sınıflandırıcı)'};
+let META,R=null,rule='none',sess=0,ver='r',t=0,playing=false,last=null,sd=null,lastMin=-1,page=0,rows=[],recSess=-1;
+let timer=null;const schedule=()=>{clearTimeout(timer);timer=setTimeout(run,350);};
+const n0=x=>Math.round(x).toLocaleString('tr-TR'),n1=x=>x.toLocaleString('tr-TR',{minimumFractionDigits:1,maximumFractionDigits:1});
+const fm=m=>{const x=Math.round(480+m);return String(Math.floor(x/60)).padStart(2,'0')+':'+String(x%60).padStart(2,'0');};
+const dayName=iso=>new Date(iso+'T00:00').toLocaleDateString('tr-TR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+
+/* ---------- settings ---------- */
+function setRule(r){rule=r;document.querySelectorAll('#ruleSeg button').forEach(b=>b.classList.toggle('on',b.dataset.r===r));$('ruleHint').textContent=RULES[r][1];
+  $('pThreshold').hidden=r!=='threshold';$('pCost').hidden=r!=='cost';$('pLimits').hidden=r==='none';}
+function apply(p){const v={...DEFAULTS,...p};setRule(v.rule);$('risk').value=v.risk;$('threshold').value=v.threshold;$('costR').value=v.costR;$('cap').value=v.cap;$('limit').value=v.limit;
+  $('nSlots').value=v.nSlots;$('slotMin').value=v.slotMin;$('offset').value=String(v.offset);$('buffer').value=v.buffer;$('zone').value=v.zone;sync();}
+function sync(){$('vThreshold').textContent='%'+Math.round(Number($('threshold').value)*100);$('vR').textContent=Number($('costR').value).toLocaleString('tr-TR',{minimumFractionDigits:1});
+  const s=META.sources[$('risk').value];$('riskHint').textContent=`AUC ${s.auc.toFixed(2).replace('.',',')} (0,5 şans, 1 mükemmel) · ortalama tahmin %${(s.mean*100).toFixed(0)}, gerçek oran %${(META.no_show_rate*100).toFixed(0)}`;}
+function config(){const n=Number;return {day:$('day').value,risk:$('risk').value,
+  rule:{type:rule,threshold:n($('threshold').value),r:n($('costR').value),max_per_slot:n($('cap').value),daily_limit:n($('limit').value)},
+  template:{n_slots:n($('nSlots').value),slot_min:n($('slotMin').value),offset:n($('offset').value),buffer:n($('buffer').value)||null,zone_start:n($('zone').value)||null},
+  session:{requests:n($('requests').value),service_mean:n($('svcMean').value),service_cv:n($('svcCv').value),lateness_sd:n($('late').value),seed:n($('seed').value)}};}
+async function run(){const cfg=config(),st=$('status');st.className='';st.innerHTML='SimPy çalışıyor'+(cfg.day==='all'?' (27 günün hepsi, birkaç saniye sürer)':'')+'...';
+  try{const res=await fetch('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg)});const j=await res.json();if(j.error)throw new Error(j.error);R=j;R.cfg=cfg;render();}
+  catch(e){st.className='err';st.textContent='Hata: '+e.message;}
+  }
+
+/* ---------- tabs ---------- */
+function tab(which){const d=which==='D';$('tabD').classList.toggle('on',d);$('tabO').classList.toggle('on',!d);$('viewD').hidden=!d||!R||R.cfg.day==='all';$('viewO').hidden=d&&R&&R.cfg.day!=='all'||!R;
+  if(d&&R&&R.cfg.day==='all'){$('viewO').hidden=false;$('status').textContent='Oda görünümü için tek bir gün seçin. Aşağıda 27 günün toplamı var; bir güne tıklayın.';}}
+
+/* ---------- one room ---------- */
+function build(sIdx,which){const o=which==='b'?13:18,tpl=R.cfg.template,slotMin=which==='b'?15:tpl.slot_min,nSlots=which==='b'?16:tpl.n_slots,T=R.session_min[which==='b'?'baseline':'rule'];
+  const ri=RISKIDX[R.cfg.risk],recs=R.records.filter(r=>r[12]===sIdx);
+  const ps=recs.map((r,i)=>{const p={n:i+1,id:r[0],age:r[2],lead:r[3],risk:r[ri],y:r[11],slot:r[o],ready:r[o+1],start:r[o+2],end:r[o+3],ob:!!r[o+4]};
+    p.st=p.slot<0?'noslot':(p.start==null?'noshow':'seen');p.appt=p.slot>=0?p.slot*slotMin:null;return p;});
+  const seen=ps.filter(p=>p.st==='seen'),noshow=ps.filter(p=>p.st==='noshow'),noslot=ps.filter(p=>p.st==='noslot');
+  let busy=0,maxEnd=T;for(const p of seen){busy+=Math.max(0,Math.min(p.end,T)-Math.min(p.start,T));maxEnd=Math.max(maxEnd,p.end);}
+  const perSlot={};for(const p of ps)if(p.slot>=0)perSlot[p.slot]=(perSlot[p.slot]||0)+1;
+  const m={seen:seen.length,noshow:noshow.length,noslot:noslot.length,wait:seen.length?seen.reduce((a,p)=>a+p.start-p.ready,0)/seen.length:0,idle:T-busy,ot:Math.max(0,maxEnd-T),obPatients:ps.filter(p=>p.ob).length,obSlots:Object.values(perSlot).filter(c=>c>1).length};
+  const ev=[];for(const p of ps){if(p.st==='seen'){ev.push([p.ready,`Hasta ${p.n} geldi${p.ob?' (overbook ile eklenmişti)':''}`]);ev.push([p.start,`Hasta ${p.n} muayeneye alındı${p.start-p.ready>=1?` — ${n0(p.start-p.ready)} dk bekledi`:''}`]);ev.push([p.end,`Hasta ${p.n} muayeneden çıktı`]);}
+    else if(p.st==='noshow')ev.push([p.appt,`Hasta ${p.n} gelmedi${p.ob?' (overbook ile eklenmişti)':''}`]);}
+  ev.sort((a,b)=>a[0]-b[0]);return {ps,seen,noshow,noslot,m,ev,T,slotMin,nSlots,tEnd:Math.max(T,maxEnd)+6};}
+function pickRoom(){let best=0,score=-1;const cnt={};for(const r of R.records){const s=r[12];cnt[s]=cnt[s]||0;if(r[22])cnt[s]+=10;if(r[20]==null&&r[18]>=0)cnt[s]+=1;}
+  for(const s in cnt)if(cnt[s]>score){score=cnt[s];best=Number(s);}return best;}
+function setupRoom(){const Sn=R.baseline.sessions;$('room').innerHTML=Array.from({length:Sn},(_,i)=>`<option value="${i}">${i+1}. oda</option>`).join('');
+  if(sess>=Sn||R.cfg.day!==setupRoom.lastDay){sess=pickRoom();}setupRoom.lastDay=R.cfg.day;$('room').value=sess;load();}
+function load(){$('dayLabel').textContent=dayName(R.cfg.day);$('sumLine').textContent=summaryLine();sd={b:build(sess,'b'),r:build(sess,'r')};const v=sd[ver];t=0;playing=false;lastMin=-1;last=null;$('play').textContent='Simülasyonu başlat';drawStrip();update(true);cmpTable();}
+function drawStrip(){const v=sd[ver],st=$('strip');st.style.gridTemplateColumns=`repeat(${v.nSlots},minmax(0,1fr))`;
+  st.innerHTML=Array.from({length:v.nSlots},(_,s)=>`<div class="slot"><small>${fm(s*v.slotMin)}</small><div class="chips" id="sl${s}"></div></div>`).join('');
+  for(const p of v.ps){if(p.slot>=0){const c=document.createElement('div');c.className='chip'+(p.ob?' ob':'');c.id='chip'+p.n;c.textContent=p.n;c.title=`Hasta ${p.n}: ${p.age} yaşında, risk %${Math.round(p.risk*100)}`;$('sl'+p.slot).appendChild(c);}}
+  $('noslot').hidden=!v.noslot.length;$('noslot').innerHTML=v.noslot.length?`<b>${v.noslot.length} hastaya bu odada yer bulunamadı</b> (başka güne yazılır): ${v.noslot.map(p=>'Hasta '+p.n).join(', ')}.`:'';}
+const avCol=s=>({waiting:'var(--waiting)',room:'var(--room)'}[s]||'var(--planned)');
+function update(force){const v=sd[ver],T=v.T;const mi=Math.floor(t);
+  $('clock').textContent=fm(t);$('progbar').style.width=Math.min(100,100*t/v.tEnd)+'%';
+  const nl=$('nowline'),sw=$('strip'),frac=Math.min(1,t/(v.nSlots*v.slotMin));nl.style.left=(sw.offsetLeft+frac*sw.offsetWidth)+'px';nl.style.display=t<=v.nSlots*v.slotMin?'':'none';
+  let done=0,wait=[],room=null,no=0,started=0,wsum=0;
+  for(const p of v.ps){const c=$('chip'+p.n);let s='planned';
+    if(p.st==='seen'){if(t>=p.end){s='done';done++;}else if(t>=p.start)s='room';else if(t>=p.ready)s='waiting';if(t>=p.start){started++;wsum+=p.start-p.ready;}if(s==='room')room=p;if(s==='waiting')wait.push(p);}
+    else if(p.st==='noshow'&&t>=p.appt){s='noshow';no++;}
+    if(c)c.className='chip'+(p.ob?' ob':'')+(s!=='planned'?' '+(s==='room'?'inroom':s):'');}
+  $('cDone').textContent=done;$('cDoneS').textContent='toplam '+v.m.seen+' hasta görülecek';$('cWait').textContent=wait.length;$('cNo').textContent=no;$('cNoS').textContent='toplam '+v.m.noshow+' hasta gelmeyecek';
+  $('cOb').textContent=v.m.obPatients;$('cAvg').textContent=started?n1(wsum/started):'0';
+  let idle=0;if(ver){const iv=v.seen.map(p=>[p.start,p.end]);const lim=Math.min(t,T);let b=0;for(const [s,e] of iv)b+=Math.max(0,Math.min(e,lim)-Math.min(s,lim));idle=lim-b;}$('cIdle').textContent=n0(idle);
+  if(force||mi!==lastMin){lastMin=mi;
+    $('roomBox').innerHTML=room?`<div class="pc big"><div class="av" style="background:var(--room)">${room.n}</div><div class="meta"><b>Hasta ${room.n}${room.ob?'<span class="tag">overbook</span>':''}</b><small>${room.age} yaşında · gelmeme riski %${Math.round(room.risk*100)} · randevuya ${room.lead} gün önce yazılmış</small><div class="bar2"><i style="width:${Math.min(100,100*(t-room.start)/(room.end-room.start))}%"></i></div><small>${n0(Math.max(0,room.end-t))} dk kaldı</small></div></div>`
+      :`<div class="empty">${t>=T&&done>=v.m.seen?'Mesai bitti, tüm hastalar görüldü.':(t>=T?'Mesai saati doldu.':'Oda yeni hastayı bekliyor.')}</div>`;
+    $('waitBox').innerHTML=wait.length?wait.sort((a,b)=>a.ready-b.ready).map(p=>`<div class="pc"><div class="av" style="background:var(--waiting)">${p.n}</div><div class="meta"><b>Hasta ${p.n}${p.ob?'<span class="tag">overbook</span>':''}</b><small>${p.age} yaşında · risk %${Math.round(p.risk*100)}</small></div><div class="t">${n0(t-p.ready)} dk</div></div>`).join(''):'<div class="empty">Bekleyen hasta yok.</div>';
+    const evs=v.ev.filter(e=>e[0]<=t).slice(-9).reverse();$('feed').innerHTML=evs.length?evs.map(e=>`<div><time>${fm(e[0])}</time>${e[1]}</div>`).join(''):'<div style="color:var(--mute)">Henüz bir şey olmadı.</div>';
+    $('foot').textContent=t<=0?'Başlatmaya hazır':(t>=v.tEnd?'Gün bitti.':(playing?'Simülasyon çalışıyor...':'Duraklatıldı.'));}}
+function cmpTable(){const b=sd.b.m,r=sd.r.m;const rows=[['Görülen hasta',b.seen,r.seen,0,1],['Gelmeyen hasta',b.noshow,r.noshow,0,0],['Yeri bulunamayan',b.noslot,r.noslot,0,-1],['Ort. bekleme (dk)',b.wait,r.wait,1,-1],['Oda boşta (dk)',b.idle,r.idle,0,-1],['Mesai aşımı (dk)',b.ot,r.ot,0,-1]];
+  $('cmp').innerHTML='<table><tr><th></th><th>Kural yok</th><th>Seçilen kural</th><th>Fark</th></tr>'+rows.map(([l,x,y,d,g])=>{const df=y-x,cls=(Math.abs(df)<1e-9||g===0)?'neu':(df*g>0?'good':'bad'),f=d?n1:n0;
+    return `<tr><td>${l}</td><td>${f(x)}</td><td>${f(y)}</td><td class="${cls}">${df>=0?'+':''}${f(df)}</td></tr>`;}).join('')+'</table>';}
+function frame(now){if(last===null)last=now;const dt=(now-last)/1000;last=now;
+  if(playing&&sd){t+=dt*Number($('speed').value);const v=sd[ver];if(t>=v.tEnd){t=v.tEnd;playing=false;$('play').textContent='Yeniden oynat';}update(false);}requestAnimationFrame(frame);}
+
+/* ---------- overview ---------- */
+const KP=[['seen','Görülen hasta',1],['noshow','Gelmeyen (yazılıp gelmeyen)',0],['noslot','Yeri bulunamayan',-1],['wait','Ortalama bekleme (dk)',-1],['wait_h','Toplam bekleme (saat)',-1],['idle_h','Oda boşta (saat)',-1],['ot_h','Mesai aşımı (saat)',-1],['utilization','Doktor kullanımı',1]];
+function delta(k,good,v,b){const d=v-b,p=b?100*d/b:null,cls=(Math.abs(d)<1e-9||good===0)?'neu':((d*good>0)?'good':'bad'),dec=['wait','wait_h','idle_h','ot_h'].includes(k);
+  return {txt:`${d>=0?'+':''}${dec?n1(d):n0(d)} (${p===null?'-':(p>=0?'+':'')+n1(p)+'%'})`,cls};}
+function renderOverview(){const c=R.cfg,rl=c.rule,tp=c.template;
+  const dayTxt=c.day==='all'?`27 günün hepsi`:dayName(c.day);
+  const ruleTxt={none:'kural yok',threshold:`eşik %${Math.round(rl.threshold*100)}, slotta en çok ${rl.max_per_slot} hasta, oturumda ${rl.daily_limit} overbook slot`,cost:`maliyet kuralı r = ${rl.r}, slotta en çok ${rl.max_per_slot} hasta, oturumda ${rl.daily_limit} overbook slot`,ev:`havayolu kuralı, slotta en çok ${rl.max_per_slot} hasta, oturumda ${rl.daily_limit} overbook slot`}[rl.type];
+  $('summary').innerHTML=`<b>${dayTxt}</b>: ${n0(R.baseline.appointments)} gerçek randevu, ${n0(R.baseline.sessions)} oda oturumuna (en çok ${R.requests} randevu isteği) dağıtıldı.<br>Risk tahmini: <b>${SRC_TR[c.risk]}</b>. Kural: <b>${ruleTxt}</b>. Şablon: <b>${tp.n_slots} slot x ${tp.slot_min} dk</b>${tp.offset?`, 2. hasta slotun %${tp.offset*100}'i kadar sonra`:''}${tp.buffer?`, ${tp.buffer}. slot boş`:''}${tp.zone_start?`, overbook ${tp.zone_start}. slottan sonra`:''}. ${n1(R.seconds)} saniyede hesaplandı.`;
+  const k=R.risk;$('riskCards').innerHTML=[['Randevu sayısı',n0(k.n),'gerçek kayıt'],['AUC',k.auc===null?'-':k.auc.toFixed(3).replace('.',','),'sıralama kalitesi'],['Ortalama tahmin','%'+n1(k.mean_risk*100),'gerçek oran %'+n1(k.no_show_rate*100)],['En yüksek risk','%'+Math.round(k.max_risk*100),'en riskli hasta']]
+    .concat(k.flagged_share!==undefined?[['Eşiğin üstündekiler','%'+n1(k.flagged_share*100),'kural yalnız bunlara işler']]:[]).map(x=>`<div class="kc"><h4>${x[0]}</h4><div class="v">${x[1]}</div><div class="s">${x[2]}</div></div>`).join('');
+  $('riskNote').hidden=!(k.mean_risk>k.no_show_rate*1.5);$('riskNote').textContent='Ortalama tahmin gerçek gelmeme oranından çok yüksek: bu olasılıklar kalibre değil, gerçek olasılık bekleyen kurallar gereğinden fazla overbook eder.';
+  $('kpis').innerHTML=KP.map(([key,label,good])=>{const m=key==='utilization'?100:1,v=R.rule[key]*m,b=R.baseline[key]*m,dd=delta(key,good,v,b),dec=['wait','wait_h','idle_h','ot_h'].includes(key),show=x=>key==='utilization'?'%'+n1(x):(dec?n1(x):n0(x));
+    const share=['seen','noshow','noslot'].includes(key)?`<div class="s">randevuların %${n1(100*R.rule[key]/R.rule.appointments)}'i</div>`:'';
+    return `<div class="kc"><h4>${label}</h4><div class="v">${show(v)}</div>${share}<div class="s">kural yok: ${show(b)}</div><div class="d ${dd.cls}">${dd.txt}</div></div>`;}).join('');
+  const all=c.day==='all';$('allCard').hidden=!all;$('recCard').hidden=all;
+  if(all){const hd='<tr><th>Gün</th><th>Randevu</th><th>Görülen: kural yok</th><th>Görülen: kural</th><th>Fark</th><th>Bekleme: kural yok</th><th>Bekleme: kural</th><th>Fark</th><th>Boşta (sa): kural yok</th><th>Boşta (sa): kural</th><th>Fark</th></tr>';
+    const row=(lab,b,r,cls,iso)=>{const s=delta('seen',1,r.seen,b.seen),w=delta('wait',-1,r.wait,b.wait),i=delta('idle_h',-1,r.idle_h,b.idle_h);
+      return `<tr class="${cls}" ${iso?`data-day="${iso}"`:''}><td>${lab}</td><td>${n0(r.appointments)}</td><td>${n0(b.seen)}</td><td>${n0(r.seen)}</td><td class="${s.cls}">${s.txt}</td><td>${n1(b.wait)}</td><td>${n1(r.wait)}</td><td class="${w.cls}">${w.txt}</td><td>${n0(b.idle_h)}</td><td>${n0(r.idle_h)}</td><td class="${i.cls}">${i.txt}</td></tr>`;};
+    $('dtable').innerHTML=hd+row('Tüm günler',R.baseline,R.rule,'tot','')+R.per_day.map((d,i)=>row(d.date,d.baseline,d.rule,'clk',META.dates[i])).join('');
+    document.querySelectorAll('#dtable tr.clk').forEach(tr=>tr.onclick=()=>{$('day').value=tr.dataset.day;run();});}
+  else{recSess=-1;page=0;applyFilter();}}
+const status=r=>r[18]<0?'Yeri yok':(r[20]==null?'Gelmedi':'Görüldü');
+function applyFilter(){const f=$('fstatus').value,q=$('fsearch').value.trim();
+  rows=R.records.filter(r=>(f==='all'||(f==='seen'&&status(r)==='Görüldü')||(f==='noshow'&&status(r)==='Gelmedi')||(f==='deferred'&&status(r)==='Yeri yok')||(f==='ob'&&r[22]))&&(!q||String(r[0]).includes(q)));page=0;renderRows();}
+function renderRows(){const PS=50,np=Math.max(1,Math.ceil(rows.length/PS));page=Math.min(page,np-1);$('pageinfo').textContent=(rows.length?page*PS+1:0)+'-'+Math.min(rows.length,(page+1)*PS)+' / '+rows.length;
+  const w=(a,b)=>a==null?'-':n1(a-b),pc=x=>'%'+Math.round(x*100);
+  $('rtable').innerHTML='<tr><th>Randevu no</th><th>Alındı</th><th>Yaş</th><th>Gün önce</th><th>RF</th><th>LR</th><th>R1</th><th>R2</th><th>R3</th><th>R4</th><th>Makale</th><th>Geldi mi</th><th>Oda</th><th>Slot (kural yok)</th><th>Bekleme</th><th>Slot (kural)</th><th>Bekleme</th><th>Overbook</th><th>Durum</th></tr>'+
+   rows.slice(page*PS,(page+1)*PS).map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${pc(r[4])}</td><td>${pc(r[5])}</td><td>${pc(r[6])}</td><td>${pc(r[7])}</td><td>${pc(r[8])}</td><td>${pc(r[9])}</td><td>${pc(r[10])}</td><td>${r[11]?'hayır':'evet'}</td><td>${r[12]+1}</td><td>${r[13]<0?'-':r[13]+1}</td><td>${w(r[15],r[14])}</td><td>${r[18]<0?'-':r[18]+1}</td><td>${w(r[20],r[19])}</td><td>${r[22]?'evet':''}</td><td>${status(r)}</td></tr>`).join('');}
+
+function ruleName(){const rl=R.cfg.rule;return {none:'Kural yok',threshold:`Eşik kuralı (risk ≥ %${Math.round(rl.threshold*100)})`,cost:`Maliyet kuralı (r = ${String(rl.r).replace('.',',')})`,ev:'Havayolu kuralı'}[rl.type];}
+function summaryLine(){const tp=R.cfg.template;return `Kural: ${ruleName()} · Risk: ${SRC_TR[R.cfg.risk]} · ${tp.n_slots} slot x ${tp.slot_min} dk`+(tp.offset?' · kaydırmalı':'')+(tp.buffer?' · tamponlu':'');}
+function render(){const resume=playing&&sd;renderOverview();const single=R.cfg.day!=='all';$('status').className='';
+  $('status').textContent=single?`Güncel: ${n0(R.baseline.appointments)} randevu ${n1(R.seconds)} saniyede simüle edildi. Bir odanın gününü başlatabilirsiniz.`:`Güncel: ${n0(R.baseline.appointments)} randevu ${n1(R.seconds)} saniyede simüle edildi.`;
+  if(single){$('viewD').hidden=false;$('viewO').hidden=true;$('tabD').classList.add('on');$('tabO').classList.remove('on');setupRoom();if(resume){playing=true;last=null;$('play').textContent='Duraklat';update(true);}}
+  else{$('viewD').hidden=true;$('viewO').hidden=false;$('tabO').classList.add('on');$('tabD').classList.remove('on');}}
+
+async function init(){META=await (await fetch('/api/meta')).json();
+  $('day').innerHTML='<option value="all">27 günün hepsi (birkaç saniye)</option>'+META.dates.map(d=>`<option value="${d}">${dayName(d)}</option>`).join('');
+  $('day').value=META.dates[META.dates.length-3];$('dataHint').textContent=`${META.records.toLocaleString('tr-TR')} gerçek randevu · gerçek gelmeme oranı %${(META.no_show_rate*100).toFixed(1).replace('.',',')} · riskler, günü görmemiş modellerle tahmin edildi`;
+  $('risk').innerHTML=Object.entries(META.sources).map(([k,s])=>`<option value="${k}">${SRC_TR[k]} (AUC ${s.auc.toFixed(2).replace('.',',')})</option>`).join('');
+  $('ruleSeg').innerHTML=Object.entries(RULES).map(([k,v])=>`<button data-r="${k}">${v[0]}</button>`).join('');document.querySelectorAll('#ruleSeg button').forEach(b=>b.onclick=()=>setRule(b.dataset.r));
+  $('presets').innerHTML=PRESETS.map((p,i)=>`<button class="pre" data-i="${i}">${p[0]}</button>`).join('');document.querySelectorAll('#presets button').forEach(b=>b.onclick=()=>{apply(PRESETS[b.dataset.i][1]);run();});
+  ['threshold','costR','risk'].forEach(id=>$(id).oninput=sync);['day','risk','cap','limit','nSlots','slotMin','offset','buffer','zone','requests','svcMean','svcCv','late','seed','threshold','costR'].forEach(id=>$(id).addEventListener('change',schedule));
+  document.querySelectorAll('#ruleSeg button').forEach(b=>b.addEventListener('click',schedule));
+  $('tabD').onclick=()=>{if(R&&R.cfg.day!=='all'){$('viewD').hidden=false;$('viewO').hidden=true;$('tabD').classList.add('on');$('tabO').classList.remove('on');}else $('status').textContent='Oda görünümü için tek bir gün seçip "Uygula ve çalıştır"a basın.';};
+  $('tabO').onclick=()=>{if(R){$('viewD').hidden=true;$('viewO').hidden=false;$('tabO').classList.add('on');$('tabD').classList.remove('on');}};
+  $('play').onclick=()=>{const v=sd[ver];if(t>=v.tEnd){t=0;lastMin=-1;}playing=!playing;last=null;$('play').textContent=playing?'Duraklat':(t>0?'Devam et':'Simülasyonu başlat');update(true);};
+  $('step').onclick=()=>{const v=sd[ver];playing=false;$('play').textContent='Devam et';t=Math.min(v.tEnd,(Math.floor(t/15)+1)*15);update(true);};
+  $('reset').onclick=()=>{t=0;playing=false;lastMin=-1;$('play').textContent='Simülasyonu başlat';update(true);};
+  $('room').onchange=()=>{sess=Number($('room').value);load();};$('rnd').onclick=()=>{sess=Math.floor(Math.random()*R.baseline.sessions);$('room').value=sess;load();};
+  $('vRule').onclick=()=>{ver='r';$('vRule').classList.add('on');$('vBase').classList.remove('on');load();};$('vBase').onclick=()=>{ver='b';$('vBase').classList.add('on');$('vRule').classList.remove('on');load();};
+  $('fstatus').onchange=applyFilter;$('fsearch').oninput=applyFilter;$('prev').onclick=()=>{page=Math.max(0,page-1);renderRows();};$('next').onclick=()=>{page++;renderRows();};
+  apply(PRESETS[1][1]);requestAnimationFrame(frame);run();}
+init();
+</script></body></html>
