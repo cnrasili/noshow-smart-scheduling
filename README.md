@@ -7,6 +7,15 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL 16](https://img.shields.io/badge/postgresql-16-4169E1?logo=postgresql&logoColor=white)
 
+> [!IMPORTANT]
+> **22 October 2026: recreate your local database.** The demo now has one department and the dataset's patients, and the national ID column is gone. A database that still holds the earlier demo does not take the new seed. Run from the repository root:
+>
+> 1. `git pull`
+> 2. `docker compose down -v` (deletes the local database; the dataset is loaded again at start)
+> 3. `docker compose up --build -d`
+> 4. `docker compose exec web-backend python -m web_backend.seed`
+> 5. `docker compose exec admin-service python -m admin_service.create_admin --email admin@hospital.local`
+
 > An appointment booking system that predicts which patients will miss their appointment, overbooks only where the risk is high, and measures the effect with discrete-event simulation.
 
 Outpatient clinics lose capacity when patients miss their appointments without notice, while overbooking every slot uniformly leads to congestion, long waiting times and physician overtime. This project builds a working appointment booking application in which a machine learning model estimates each patient's no-show probability at booking time. Slots are overbooked selectively, only where the no-show risk is high, and patients receive automated confirmation and reminder messages. The resulting schedules are evaluated with discrete-event simulation to show that both patient waiting time and physician idle time improve compared with fixed-interval booking, and the system reports utilization, idle time and overtime on a separate administration screen.
