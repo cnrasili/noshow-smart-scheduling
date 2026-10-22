@@ -1,37 +1,32 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { ApiError, api, errorText } from '../api'
-import { isValidNationalId } from '../nationalId'
-import { PATHS, loginFor } from '../routes'
-import { usePageTitle } from '../site/title'
+import { DEPARTMENT_NAME } from '../config'
+import { PATHS } from '../routes'
+import { usePageTitle } from '../title'
 import type { LoginCredentials, Me, Role } from '../types'
 
 // Backend answers for wrong credentials; both are shown with the form's own message
-const WRONG_CREDENTIALS = ['Wrong national ID number or password', 'Wrong email or password']
+const WRONG_CREDENTIALS = ['Wrong patient number or password', 'Wrong username or password']
 // Shown when the backend refuses logins after too many failures (429)
 const TOO_MANY_ATTEMPTS =
   'Çok fazla başarısız giriş denemesi yapıldı. Lütfen 15 dakika sonra tekrar deneyin.'
 
-const COPY: Record<
-  Role,
-  { title: string; description: string; other: string; wrongCredentials: string }
-> = {
+const COPY: Record<Role, { title: string; description: string; wrongCredentials: string }> = {
   patient: {
-    title: 'Hasta girişi',
-    description: 'Randevu almak ve randevularınızı görmek için giriş yapın.',
-    other: 'Hekim misiniz? Hekim girişi',
-    wrongCredentials: 'T.C. kimlik numarası veya şifre hatalı.',
+    title: 'Hasta Girişi',
+    description: 'Hasta numaranız ve şifrenizle giriş yapın',
+    wrongCredentials: 'Hasta numarası veya şifre hatalı.',
   },
-  doctor: {
-    title: 'Hekim girişi',
-    description: 'Günlük hasta listenize ve çalışma takviminize ulaşmak için giriş yapın.',
-    other: 'Hasta mısınız? Hasta girişi',
-    wrongCredentials: 'E-posta adresi veya şifre hatalı.',
+  department: {
+    title: 'Departman Girişi',
+    description: `${DEPARTMENT_NAME} departman paneli`,
+    wrongCredentials: 'Kullanıcı adı veya şifre hatalı.',
   },
 }
 
 export function LoginPage({ role, onSignedIn }: { role: Role; onSignedIn: (me: Me) => void }) {
-  // National ID number on the patient form, e-mail address on the doctor form
+  // Patient number on the patient form, username on the department form
   const [login, setLogin] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -42,12 +37,10 @@ export function LoginPage({ role, onSignedIn }: { role: Role; onSignedIn: (me: M
   async function submit(event: FormEvent) {
     event.preventDefault()
     const name = login.trim()
-    if (role === 'patient' && !isValidNationalId(name)) {
-      setError('Geçerli bir T.C. kimlik numarası girin (11 hane).')
-      return
-    }
     const credentials: LoginCredentials =
-      role === 'patient' ? { role, national_id: name, password } : { role, email: name, password }
+      role === 'patient'
+        ? { role, patient_number: name, password }
+        : { role, username: name, password }
     setBusy(true)
     setError(null)
     try {
@@ -62,62 +55,63 @@ export function LoginPage({ role, onSignedIn }: { role: Role; onSignedIn: (me: M
   }
 
   return (
-    <div className="login-main">
-      <form className="panel login-card" onSubmit={submit}>
-        <div className="panel-head">
-          <h1>{copy.title}</h1>
-          <p className="muted">{copy.description}</p>
-        </div>
-        <div className="panel-body stack-tight">
-          {role === 'patient' ? (
-            <label>
-              T.C. kimlik numarası
-              <input
-                type="text"
-                inputMode="numeric"
-                autoComplete="username"
-                maxLength={11}
-                value={login}
-                onChange={(event) => setLogin(event.target.value.replace(/\D/g, ''))}
-                required
-              />
-            </label>
-          ) : (
-            <label>
-              E-posta adresi
-              <input
-                type="email"
-                autoComplete="username"
-                value={login}
-                onChange={(event) => setLogin(event.target.value)}
-                required
-              />
-            </label>
-          )}
-          <label>
-            Şifre
+    <main className="gate">
+      <form className="gate-card" onSubmit={submit}>
+        <h1>{copy.title}</h1>
+        <p className="sub">{copy.description}</p>
+        {role === 'patient' ? (
+          <>
+            <label htmlFor="login-name">Hasta numarası</label>
             <input
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              id="login-name"
+              type="text"
+              inputMode="decimal"
+              autoComplete="username"
+              maxLength={20}
+              value={login}
+              // Patient numbers are digits; a few dataset numbers also contain a dot
+              onChange={(event) => setLogin(event.target.value.replace(/[^\d.]/g, ''))}
               required
             />
-          </label>
-          {error && (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
-          )}
-          <button type="submit" className="primary block" disabled={busy}>
-            {busy ? 'Giriş yapılıyor…' : 'Giriş yap'}
+          </>
+        ) : (
+          <>
+            <label htmlFor="login-name">Kullanıcı adı</label>
+            <input
+              id="login-name"
+              type="text"
+              autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
+              value={login}
+              onChange={(event) => setLogin(event.target.value)}
+              required
+            />
+          </>
+        )}
+        <label htmlFor="login-password">Şifre</label>
+        <input
+          id="login-password"
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          required
+        />
+        {error && (
+          <p className="gate-error" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="gate-row">
+          <Link to={PATHS.home} className="btn ghost">
+            Geri
+          </Link>
+          <button type="submit" className="btn" disabled={busy}>
+            {busy ? 'Giriş yapılıyor…' : 'Giriş'}
           </button>
         </div>
-        <div className="login-links">
-          <Link to={PATHS.home}>‹ Anasayfa</Link>
-          <Link to={loginFor(role === 'patient' ? 'doctor' : 'patient')}>{copy.other}</Link>
-        </div>
       </form>
-    </div>
+    </main>
   )
 }

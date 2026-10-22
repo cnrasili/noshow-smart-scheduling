@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from noshow_db.models.core import Appointment, Doctor, Patient, Slot
+from noshow_db.models.core import Appointment, Slot
 from web_backend.auth import PatientAccount
 from web_backend.clinic import CLINIC_TZ, as_utc, today
 from web_backend.db import get_db
@@ -27,8 +27,6 @@ class BookingRequest(BaseModel):
 class AppointmentOut(BaseModel):
     id: int
     slot_id: int
-    doctor_name: str
-    doctor_specialty: str | None
     start_at: datetime
     end_at: datetime
     appointment_date: date
@@ -36,12 +34,10 @@ class AppointmentOut(BaseModel):
     attended: bool | None
 
 
-def _appointment_out(appointment: Appointment, slot: Slot, doctor: Doctor) -> AppointmentOut:
+def _appointment_out(appointment: Appointment, slot: Slot) -> AppointmentOut:
     return AppointmentOut(
         id=appointment.id,
         slot_id=slot.id,
-        doctor_name=doctor.full_name,
-        doctor_specialty=doctor.specialty,
         start_at=as_utc(slot.start_at),
         end_at=as_utc(slot.end_at),
         appointment_date=appointment.appointment_date,
@@ -53,9 +49,8 @@ def _appointment_out(appointment: Appointment, slot: Slot, doctor: Doctor) -> Ap
 @router.get("/patients/me/appointments")
 def my_appointments(account: PatientAccount, db: DbSession) -> list[AppointmentOut]:
     rows = db.execute(
-        select(Appointment, Slot, Doctor)
+        select(Appointment, Slot)
         .join(Slot, Slot.id == Appointment.slot_id)
-        .join(Doctor, Doctor.id == Slot.doctor_id)
         .where(Appointment.patient_id == account.patient_id)
         .order_by(Slot.start_at)
     ).all()
@@ -113,10 +108,9 @@ def book(
         overbooking.appointment_booked,
         appointment.id,
         account.patient_id,
-        db.get(Patient, account.patient_id).email,
         start_at.astimezone(CLINIC_TZ),
     )
-    return _appointment_out(appointment, slot, db.get(Doctor, slot.doctor_id))
+    return _appointment_out(appointment, slot)
 
 
 @router.delete("/appointments/{appointment_id}", status_code=status.HTTP_204_NO_CONTENT)

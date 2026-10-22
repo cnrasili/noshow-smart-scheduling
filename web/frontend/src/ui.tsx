@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
-import { usePageTitle } from './site/title'
+import { usePageTitle } from './title'
 
 export interface NoticeState {
   kind: 'success' | 'error'
@@ -30,13 +30,8 @@ export function Notice({ notice, onClose }: { notice: NoticeState | null; onClos
   )
 }
 
-export type Tone = 'neutral' | 'info' | 'ok' | 'warn' | 'miss'
-
-export function Status({ tone, children }: { tone: Tone; children: ReactNode }) {
-  return <span className={`status status-${tone}`}>{children}</span>
-}
-
-export function PageHeader({
+/** Page heading in the main area; also names the browser tab. */
+export function PageTop({
   title,
   description,
   children,
@@ -45,13 +40,12 @@ export function PageHeader({
   description?: string
   children?: ReactNode
 }) {
-  // Every page with a header also names the browser tab
   usePageTitle(title)
   return (
-    <div className="page-header">
+    <div className="top">
       <div>
         <h1>{title}</h1>
-        {description && <p className="muted">{description}</p>}
+        {description && <p>{description}</p>}
       </div>
       {children}
     </div>

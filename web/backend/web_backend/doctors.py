@@ -1,4 +1,4 @@
-from datetime import UTC, date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -6,13 +6,15 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from noshow_db.models.core import Appointment, Doctor, DoctorSchedule, Patient, Slot
-from web_backend.auth import DoctorAccount, current_account
+from noshow_db.models.core import Appointment, DoctorSchedule, Patient, Slot
+from web_backend.auth import DepartmentAccount, current_account
 from web_backend.clinic import CLINIC_TZ, as_utc, today
 from web_backend.db import get_db
 from web_backend.slots import clinic_days_in_utc
 
-router = APIRouter(tags=["doctors"], dependencies=[Depends(current_account)])
+# Screens of the department's staff. The department is the one record in doctors, so the
+# paths in the API contract keep the doctor names; no doctor is named.
+router = APIRouter(tags=["department"], dependencies=[Depends(current_account)])
 
 DbSession = Annotated[Session, Depends(get_db)]
 
@@ -20,14 +22,9 @@ DbSession = Annotated[Session, Depends(get_db)]
 MAX_AGENDA_DAYS = 31
 
 
-class DoctorOut(BaseModel):
-    id: int
-    full_name: str
-    specialty: str | None
-
-
 class CalendarAppointment(BaseModel):
     id: int
+    # "Hasta <PatientId>"
     patient_name: str
     patient_age: int
     patient_gender: str
@@ -62,13 +59,14 @@ class AgendaAppointment(BaseModel):
 
 class AgendaDay(BaseModel):
     date: date
-    # 0 when the doctor has no slots that day
+    # 0 when the department has no slots that day
     slot_count: int
     appointments: list[AgendaAppointment]
 
 
 class AttendanceRequest(BaseModel):
-    attended: bool
+    # None takes a mark back
+    attended: bool | None
 
 
 def _calendar_appointment(appointment: Appointment, patient: Patient) -> CalendarAppointment:
@@ -82,15 +80,9 @@ def _calendar_appointment(appointment: Appointment, patient: Patient) -> Calenda
     )
 
 
-@router.get("/doctors")
-def list_doctors(db: DbSession) -> list[DoctorOut]:
-    doctors = db.scalars(select(Doctor).order_by(Doctor.full_name))
-    return [DoctorOut(id=d.id, full_name=d.full_name, specialty=d.specialty) for d in doctors]
-
-
 @router.get("/doctors/me/calendar")
 def my_calendar(
-    account: DoctorAccount,
+    account: DepartmentAccount,
     db: DbSession,
     day: Annotated[date | None, Query(alias="date")] = None,
 ) -> list[CalendarSlot]:
@@ -129,7 +121,7 @@ def my_calendar(
 
 @router.get("/doctors/me/agenda")
 def my_agenda(
-    account: DoctorAccount,
+    account: DepartmentAccount,
     db: DbSession,
     date_from: date,
     date_to: date,
@@ -182,7 +174,7 @@ def my_agenda(
 
 @router.patch("/appointments/{appointment_id}/attendance")
 def mark_attendance(
-    appointment_id: int, body: AttendanceRequest, account: DoctorAccount, db: DbSession
+    appointment_id: int, body: AttendanceRequest, account: DepartmentAccount, db: DbSession
 ) -> CalendarAppointment:
     row = db.execute(
         select(Appointment, Slot, Patient)
@@ -192,11 +184,12 @@ def mark_attendance(
     ).first()
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Appointment not found")
-    appointment, slot, patient = row
-    if as_utc(slot.start_at) > datetime.now(UTC):
+    appointment, _, patient = row
+    # The department marks attendance on the appointment day only
+    if appointment.appointment_date != today():
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT,
-            "Attendance can be marked once the appointment has started",
+            "Attendance can be marked only on the appointment day",
         )
 
     appointment.attended = body.attended
@@ -205,7 +198,7 @@ def mark_attendance(
 
 
 @router.get("/doctors/me/schedule")
-def my_schedule(account: DoctorAccount, db: DbSession) -> list[ScheduleDay]:
+def my_schedule(account: DepartmentAccount, db: DbSession) -> list[ScheduleDay]:
     """Weekly working hours that slots are generated from."""
     schedules = db.scalars(
         select(DoctorSchedule)

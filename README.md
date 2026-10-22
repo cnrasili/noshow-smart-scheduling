@@ -41,7 +41,7 @@ The project is developed as an interdisciplinary study combining industrial engi
 
 | Area | What it does |
 |---|---|
-| **Booking application** | Patients choose department → doctor → day → time and manage their appointments. Doctors see their daily patient list, record attendance and open slots from their working hours. Patients log in with their national ID number, doctors with their email address; accounts are created by the hospital, there is no registration. |
+| **Booking application** | Patients choose a day and a time of the department "Aile Hekimliği" and manage their appointments. The department's staff see the daily patient list, record attendance and open slots from the working hours. Patients log in with their dataset patient number, the department with its username; accounts are opened by the hospital, there is no registration. |
 | **No-show prediction** | Each booking is scored with the patient's no-show probability, computed only from information known at booking time. |
 | **Selective overbooking** | A booked slot accepts an extra patient only when every booked patient is likely to miss the appointment, within the slot capacity and a daily limit. Every decision is logged with its reason. |
 | **Confirmation and reminders** | A confirmation SMS is sent at booking and a reminder SMS before the appointment; cancelled appointments stop their reminders. The SMS are demo messages addressed by the patient number and shown in the admin service; no phone number or e-mail address is used. |
@@ -54,7 +54,7 @@ The project is developed as an interdisciplinary study combining industrial engi
 
 ```mermaid
 flowchart LR
-    U([Patient / Doctor]) --> FE[Web frontend<br/>React]
+    U([Patient / Department staff]) --> FE[Web frontend<br/>React]
     A([Administrator]) --> ADM
     FE --> BE[Web backend<br/>FastAPI]
     BE -->|booking decision<br/>booking events| OS[Overbooking service<br/>FastAPI]
@@ -102,7 +102,7 @@ Requirements: Docker Desktop (Windows, macOS) or Docker Engine with Compose (Lin
    docker compose exec web-backend python -m web_backend.seed
    ```
 
-   The seed creates a fictional clinic with doctors, patients, login accounts and slots. The KPI screen and the model decisions fill with the bookings made in the web application; see the [demo scenario](overbooking-service/README.md#demo-scenario).
+   The seed invents nothing: it creates the department "Aile Hekimliği" with its working hours, staff account and slots, and opens login accounts for five dataset patients. The KPI screen and the model decisions fill with the bookings made in the web application; see the [demo scenario](overbooking-service/README.md#demo-scenario).
 
 3. Create an administrator for the admin service; the command asks for a password twice:
 
@@ -112,14 +112,18 @@ Requirements: Docker Desktop (Windows, macOS) or Docker Engine with Compose (Lin
 
 4. Open the web application at http://localhost:5173 and log in with a demo account. All demo accounts use the password `demo1234`:
 
-   | Role | Login |
-   |---|---|
-   | Patient | National ID number `99999000184` |
-   | Doctor | Email `doktor@demo.local` |
+   | Account | Login | History in the dataset |
+   |---|---|---|
+   | Department "Aile Hekimliği" | Username `aile.hekimligi` | — |
+   | Patient | Patient number `1421986987763` | 18 appointments, all missed |
+   | Patient | Patient number `26886125921145` | 70 appointments, all attended |
+   | Patient | Patient number `93779.52927` | 1 appointment |
+   | Patient | Patient number `1411446711177` | 9 appointments, 3 missed |
+   | Patient | Patient number `11241475371456` | 4 appointments, 1 missed |
 
-   The other demo accounts are listed in the [web backend README](web/backend/README.md#demo-data); their national ID numbers are fictional. The admin service at http://localhost:8002 uses the administrator from step 3.
+   The patients are real patients of the public dataset, shown as `Hasta <PatientId>`. A database seeded by the earlier multi-department demo has to be recreated first: `docker compose down -v`, then `docker compose up --build -d`. The admin service at http://localhost:8002 uses the administrator from step 3.
 
-5. Optional: creating patient and doctor accounts in the admin service needs a shared secret. Without it the admin service shows the KPIs, but account management is disabled. Generate a random value:
+5. Optional: opening patient accounts and resetting passwords in the admin service needs a shared secret. Without it the admin service shows the KPIs, but account management is disabled. Generate a random value:
 
    ```bash
    docker compose exec web-backend python -c "import secrets; print(secrets.token_urlsafe(32))"
@@ -166,7 +170,7 @@ Default settings work without configuration. To change them, copy `.env.example`
 
 | Folder | Content |
 |---|---|
-| [`web/frontend/`](web/frontend/) | Patient and doctor interfaces |
+| [`web/frontend/`](web/frontend/) | Patient and department interfaces |
 | [`web/backend/`](web/backend/) | Booking API, login, slot generation, demo data |
 | [`overbooking-service/`](overbooking-service/) | Model-serving REST API, overbooking rule engine, reminder jobs, A/B logging, KPI calculation |
 | [`admin-service/`](admin-service/) | Administration screen: administrator login, KPI screen, audit log |
@@ -245,7 +249,7 @@ Components depend on each other through the files below. Changes to them are agr
 
 | Component | Status |
 |---|---|
-| Booking application | Working: login, booking, cancellation, doctor views, attendance |
+| Booking application | Working: login by patient number, booking, cancellation, department views, attendance |
 | Overbooking service | Working: prediction, overbooking decision, messages, A/B test, KPIs |
 | Admin service | Working: administrator login, internal network restriction, KPI screen, account management, audit log |
 | Prediction model | Delivered: random forest (`random_forest-v1`), installed in the overbooking service |

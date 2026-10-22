@@ -28,8 +28,8 @@ class Patient(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     # PatientId of the public dataset; NULL for patients created in the application
     patient_number: Mapped[str | None] = mapped_column(String(20), unique=True, index=True)
-    # Turkish national ID number and the patient's login name; dataset patients have none.
-    # The check digits are validated by the web backend.
+    # Not used since the dataset rules: patients log in with patient_number. The column is
+    # dropped by a later migration (#58).
     national_id: Mapped[str | None] = mapped_column(String(11), unique=True, index=True)
     full_name: Mapped[str] = mapped_column(String(255))
     # Contact address for messages
@@ -112,7 +112,11 @@ class Appointment(Base):
 
 
 class UserAccount(Base):
-    """Login of a patient or a doctor; kept apart from the patient and doctor records."""
+    """Login of a patient or of the department's staff; kept apart from their records.
+
+    The department is the one record in doctors and its staff account has the role "doctor".
+    Patients log in with their patient number; the department's login name is kept in email.
+    """
 
     __tablename__ = "user_accounts"
     __table_args__ = (
@@ -150,7 +154,7 @@ class AuthSession(Base):
 class LoginFailure(Base):
     """A failed website login, counted per login name and per client address to limit guessing.
 
-    The login name (national ID number or e-mail address) is stored only as a SHA-256 hash.
+    The login name (patient number or username) is stored only as a SHA-256 hash.
     """
 
     __tablename__ = "login_failures"

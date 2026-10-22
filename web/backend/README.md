@@ -10,8 +10,8 @@ REST API of the appointment booking application.
 
 ## Scope
 
-- Patients, doctors, slots and appointments (tables in `db/noshow_db/models/core.py`)
-- Calendar/slot algorithm: slot generation from doctor working hours, conflict checks, more than one patient per slot for overbooking
+- Patients, the department, slots and appointments (tables in `db/noshow_db/models/core.py`). Patients are the patients of the public dataset; the system has one department, "Aile Hekimliği" (`General Practice` in the database), and no doctor. The department is the one record in `doctors`, so tables, columns and some API paths keep the doctor names.
+- Calendar/slot algorithm: slot generation from the department's working hours, conflict checks, more than one patient per slot for overbooking
 - Calls the overbooking service at booking time (see [API contract](../../docs/api-contract.md))
 
 ## Development
@@ -35,17 +35,17 @@ NOSHOW_TEST_DATABASE_URL=postgresql+psycopg://noshow:noshow@localhost:5432/nosho
 
 ## Slot Length
 
-`SLOT_MINUTES` sets the length of newly generated slots in minutes, both for doctors opening slots and for the demo seed. It defaults to `20` and must be a whole number from 5 to 120; any other value stops the web backend at startup with a clear message. The value itself is one of the session parameters decided by IEN-1.
+`SLOT_MINUTES` sets the length of newly generated slots in minutes, both for the department opening slots and for the demo seed. It defaults to `15`, which gives 16 slots in the session from 08:00 to 12:00 (#9), and must be a whole number from 5 to 120; any other value stops the web backend at startup with a clear message.
 
 ```bash
-SLOT_MINUTES=15 uvicorn web_backend.main:app --reload
+SLOT_MINUTES=20 uvicorn web_backend.main:app --reload
 ```
 
 Existing slots are not changed. Generating slots again after a change only fills working hours that no existing slot covers, so slots of different lengths never overlap.
 
 ## Demo Data
 
-`web_backend.seed` creates a fictional city hospital through the account module: twenty doctors in nine departments (two or three each, for example Dahiliye, Kardiyoloji, Göz Hastalıkları, Çocuk Sağlığı ve Hastalıkları) with their own working hours, eight patients, the login accounts, slots from three weeks ago to two weeks ahead and a few example appointments per doctor. Running it again only adds missing doctors, patients and slots, so it also upgrades a database seeded by an earlier version. The first four doctors (`doktor@demo.local`, `can.ozkan@demo.local`, `leyla.aksoy@demo.local`, `ebru.kaplan@demo.local`) and the eight patients are the original demo and stay unchanged.
+The patients and their appointment history come from the public dataset, which the `migrate` service loads (`python -m noshow_db.load_dataset`). `web_backend.seed` invents nothing: it creates the department with its working hours (Monday to Friday, 08:00–12:00) and staff account, opens the department's slots for the next four weeks, and opens login accounts for five dataset patients with different histories. Running it again only adds what is missing.
 
 ```bash
 python -m web_backend.seed
@@ -53,37 +53,33 @@ python -m web_backend.seed
 docker compose exec web-backend python -m web_backend.seed
 ```
 
-Doctors sign in at `/giris/hekim` with their e-mail address (for example `doktor@demo.local`; the others are printed by the seed command) and patients at `/giris/hasta` with their national ID number. All demo accounts use the password `demo1234`; these are local demo values only.
+The seed needs the dataset patients, and it refuses a database that still holds the doctors of the earlier multi-department demo; recreate such a database with `docker compose down -v` and `docker compose up --build -d`.
 
-The demo patients' national ID numbers are **fictional**. They are valid by the check digit rules but start with the fixed prefix `99999`, followed by a four-digit sequence number and the check digits (`web_backend/national_id.py`). Never use real people's numbers in demo or test data.
+All demo accounts use the password `demo1234`; these are local demo values only.
 
-| Patient      | National ID number (fictional) | Contact e-mail      |
-| ------------ | ------------------------------ | ------------------- |
-| Ayşe Kaya    | `99999000184`                  | `ayse@demo.local`   |
-| Mehmet Demir | `99999000252`                  | `mehmet@demo.local` |
-| Zeynep Çelik | `99999000320`                  | `zeynep@demo.local` |
-| Ali Şahin    | `99999000498`                  | `ali@demo.local`    |
-| Elif Arslan  | `99999000566`                  | `elif@demo.local`   |
-| Burak Koç    | `99999000634`                  | `burak@demo.local`  |
-| Selin Aydın  | `99999000702`                  | `selin@demo.local`  |
-| Hasan Öztürk | `99999000870`                  | `hasan@demo.local`  |
-
-The migration that adds the national ID column gives existing patients a fictional number built from their id with the same pattern, so a database seeded before it gets the numbers above. Alternatively, recreate the database, run `alembic upgrade head` and the seed again.
+| Account | Login | History in the dataset |
+| --- | --- | --- |
+| Department "Aile Hekimliği" | Username `aile.hekimligi` | — |
+| Patient | Patient number `1421986987763` | 18 appointments, all missed |
+| Patient | Patient number `26886125921145` | 70 appointments, all attended |
+| Patient | Patient number `93779.52927` | 1 appointment |
+| Patient | Patient number `1411446711177` | 9 appointments, 3 missed |
+| Patient | Patient number `11241475371456` | 4 appointments, 1 missed |
 
 ## Public Hospital Site
 
-`GET /public/doctors` lists every doctor with department and weekly working hours, without sign-in, for the hospital site's department, doctor and working list pages. It returns no e-mail addresses or other account data (see the [API contract](../../docs/api-contract.md#get-publicdoctors-web-backend)).
+`GET /public/doctors` returns the department's record with its weekly working hours, without sign-in. It returns no account data (see the [API contract](../../docs/api-contract.md#get-publicdoctors-web-backend)).
 
 ## Authentication
 
 `POST /auth/login` takes the role of the login form and the credentials of that role:
 
-- Patients: `{"role": "patient", "national_id": "…", "password": "…"}`. Every patient has exactly one record, identified by the Turkish national ID number (11 digits, first digit not 0, official check digits); the database rejects a second patient with the same number. The patient's e-mail address is only a contact address for messages and is not a login name.
-- Doctors: `{"role": "doctor", "email": "…", "password": "…"}`.
+- Patients: `{"role": "patient", "patient_number": "…", "password": "…"}`. The patient number is the dataset's `PatientId` as stored in `patients.patient_number`, for example `93779.52927` for a number written in exponent form in the dataset. Patients have no national ID number, phone number or e-mail address of their own.
+- The department's staff: `{"role": "department", "username": "…", "password": "…"}`. The staff account has the role `doctor` in the database and keeps its username in `user_accounts.email`.
 
-Wrong credentials, an invalid national ID number and a login through the other role's form all get the same `401` ("Wrong national ID number or password" or "Wrong email or password"). There is no self-registration; accounts are created by the hospital. A successful login returns a bearer token that is valid for 12 hours; send it as `Authorization: Bearer <token>`. Passwords are hashed with scrypt and only a hash of each token is stored (`user_accounts` and `auth_sessions` tables).
+Wrong credentials and a login through the other role's form get the same `401` ("Wrong patient number or password" or "Wrong username or password"). There is no self-registration; accounts are opened by the hospital. A successful login returns a bearer token that is valid for 12 hours; send it as `Authorization: Bearer <token>`. `GET /auth/me` returns the role and the name: `Hasta <PatientId>` for patients, the department's name for its staff. Passwords are hashed with scrypt and only a hash of each token is stored (`user_accounts` and `auth_sessions` tables).
 
-Failed logins are limited to slow down password guessing. After 5 failures within 15 minutes for one login name (national ID number or e-mail address, known or not), further logins for that name get `429` ("Too many failed login attempts; try again later") until the window has passed, even with the correct password. Other accounts are not affected, so a few wrong passwords on a shared computer, or from browsers that reach the backend through the same address (a hospital gateway, or every browser on a Docker Desktop host), do not lock anyone else. A much higher limit per client address, 50 failures within 15 minutes across any login names, still stops one client from trying many names. Failures are kept in the `login_failures` table with a SHA-256 hash of the role and login name instead of the name itself; a successful login clears the failures of its name.
+Failed logins are limited to slow down password guessing. After 5 failures within 15 minutes for one login name (patient number or username, known or not), further logins for that name get `429` ("Too many failed login attempts; try again later") until the window has passed, even with the correct password. Other accounts are not affected, so a few wrong passwords on a shared computer, or from browsers that reach the backend through the same address (a hospital gateway, or every browser on a Docker Desktop host), do not lock anyone else. A much higher limit per client address, 50 failures within 15 minutes across any login names, still stops one client from trying many names. Failures are kept in the `login_failures` table with a SHA-256 hash of the role and login name instead of the name itself; a successful login clears the failures of its name.
 
 Both limits are settings; any value other than a whole number from 1 to 10000 stops the web backend at startup with a clear message:
 
@@ -96,18 +92,28 @@ Every response carries the headers `X-Content-Type-Options: nosniff`, `Referrer-
 
 ## Accounts
 
-Patients and doctors cannot register themselves; the hospital creates their accounts. The account rules (national ID number, unique e-mail, password hashing, the doctor's department and working hours) are in `web_backend/accounts.py`, which both the demo seed and the internal account API use.
+Nobody can register; the hospital opens the accounts. The account rules (one account per dataset patient, unique login names, password hashing, the department's working hours) are in `web_backend/accounts.py`, which both the demo seed and the internal account API use.
 
-The internal account API (`/internal/accounts/...`) lets the hospital's admin service create patients and doctors and reset passwords. Every request needs the service token from the `INTERNAL_API_TOKEN` environment variable in the `X-Internal-Token` header; without the variable the API is disabled and answers `503`. The public frontend never calls it, and it is left out of the public API documentation at `/docs`. Requests, responses and errors are described in the [API contract](../../docs/api-contract.md#internal-account-api-web-backend).
+The internal account API (`/internal/accounts/...`) lets the hospital's admin service open login accounts for dataset patients by patient number and reset passwords; it never creates a patient. Every request needs the service token from the `INTERNAL_API_TOKEN` environment variable in the `X-Internal-Token` header; without the variable the API is disabled and answers `503`. The public frontend never calls it, and it is left out of the public API documentation at `/docs`. Requests, responses and errors are described in the [API contract](../../docs/api-contract.md#internal-account-api-web-backend).
 
 ```bash
 INTERNAL_API_TOKEN=change-me uvicorn web_backend.main:app --reload
 ```
 
+## Patient Messages
+
+`GET /patients/me/messages` returns the signed-in patient's demo SMS for "Randevularım": only their own messages with the status `sent`, newest first, with `kind` (`confirmation` or `reminder`), `sent_at` and `body`. The web backend only reads the overbooking service's `messages` table (see the [API contract](../../docs/api-contract.md#messages)); nothing about the A/B test is returned.
+
+## Department Panel
+
+- `GET /doctors/me/calendar?date=…` and `GET /doctors/me/agenda` give the department's days and weeks (the paths keep the doctor names of the API contract).
+- `PATCH /appointments/{id}/attendance` with `{"attended": true}`, `false` or `null` (takes a mark back) works only on the appointment day; other days get `422`.
+- `GET /department/dataset-days` lists the days of the dataset with their number of appointments and no-shows, and `GET /department/dataset-days/{date}` returns every appointment of such a day with the patient (`Hasta <PatientId>`), the age and the recorded outcome. They read `dataset_appointments` and are read-only.
+
 ## Overbooking
 
 Before booking, `POST /appointments` asks the overbooking service (`OVERBOOKING_SERVICE_URL`, default `http://localhost:8001`) for a `/booking-decision`. A rejected booking returns `409`. If the service does not answer within 3 seconds or returns an error, empty slots are still booked but booked slots are never overbooked. A slot that has reached its `max_patients` is rejected without asking the service.
 
-`GET /slots` marks a slot `available` while it is below capacity, so partly booked slots can be requested as extra appointments; the service decides when the patient books.
+`GET /slots` lists the department's upcoming slots (by default the next two weeks; `date_from` and `date_to` choose a range) as the patient sees them: `available` ("Müsait") or not ("Dolu"), and `booked_by_me`. A booked slot below its capacity stays available, because the service decides when the patient books; the number of patients in a slot and any risk are not sent.
 
-After a booking or a cancellation is saved, the web backend sends `/events/appointment-booked` or `/events/appointment-cancelled` so the service schedules or cancels the confirmation and reminder messages. The events are sent after the response; if one fails it is logged and the booking change stays.
+After a booking or a cancellation is saved, the web backend sends `/events/appointment-booked` (appointment, patient and start time) or `/events/appointment-cancelled` so the service schedules or cancels the confirmation and reminder messages. The events are sent after the response; if one fails it is logged and the booking change stays.
