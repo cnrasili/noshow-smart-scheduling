@@ -1,5 +1,5 @@
 """Re-run the evaluation protocol of Batool et al. (2020), "Predicting Hospital No-Shows Using Machine Learning",
-on the cleaned Kaggle data and compare it with a leak-free protocol. See docs/LITERATUR_INCELEMESI.md.
+on the cleaned Kaggle data and compare it with a leak-free protocol.
 
 This script needs imbalanced-learn, which pulls newer numpy/scikit-learn versions. Run it in a separate environment
 so that the project environment is not changed:
