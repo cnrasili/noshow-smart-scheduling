@@ -1,6 +1,6 @@
 # KPI Definitions
 
-**Status:** Agreed on the IEN side on 17 October 2026 (review in pull request #62). The session parameters below are decisions of the team; slot length, consultation time and the other values still need an academic source, see `docs/KARAR_LISTESI.md`.
+**Status:** Agreed on the IEN side on 17 October 2026 (review in pull request #62). The session parameters below are decisions of the team; slot length, consultation time and the other values still need an academic source, see `docs/decision-list.md`.
 
 The simulation and the KPI screen of the admin service use the same definitions so that their results can be compared.
 

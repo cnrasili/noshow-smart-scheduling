@@ -1,13 +1,13 @@
-# Formüller
+# Formulas
 
-Projede kullanılan hesaplama formülleri. Her formül için ayrı bir bölüm açın:
+The calculation formulas used in the project. Open one section per formula:
 
 ```
-## Formül adı
-- Formül: $...$
-- Değişkenler: ...
-- Kaynak: Forecast dersi, hafta X
-- Kod: `path/to/file.py`
+## Formula name
+- Formula: $...$
+- Variables: ...
+- Source: Forecast course, week X
+- Code: `path/to/file.py`
 ```
 
-Dosyalar: `forecast.md` (tahmin formülleri), `overbooking.md` (overbooking hesapları), `rules.md` (hasta, bölüm ve yaş gruplarına göre gelme olasılığı kuralları), `probability.md` (olasılık dersi formülleri ve hesap kontrolleri), `statistics.md` (hipotez testleri, korelasyon ve regresyon; veri üzerinde testler), `quality-control.md` (kontrol grafikleri, süreç yeterliliği ve gelmeme oranı izleme).
+Files: `forecast.md` (forecast formulas), `overbooking.md` (overbooking calculations), `rules.md` (show-up probability rules by patient, department and age group), `probability.md` (formulas of the probability course and checks of the project's calculations), `statistics.md` (hypothesis tests, correlation and regression; tests on the data), `quality-control.md` (control charts, process capability and monitoring of the no-show rate).
