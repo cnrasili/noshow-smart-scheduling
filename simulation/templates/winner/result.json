@@ -1,0 +1,28 @@
+{
+  "template": "Template 1 - Short slots (12 min), no overbooking",
+  "key": "t1_short_slots",
+  "threshold": null,
+  "slots": 20,
+  "slot_min": 12,
+  "blocked": [],
+  "overbook_slots": null,
+  "offset": 0.0,
+  "rule": "feasible = mean wait <= 5.0 and overtime <= 5.0; most patients seen",
+  "sessions": 5536,
+  "metrics": {
+    "seen": 15.933,
+    "mean_wait": 0.624,
+    "idle": 121.514,
+    "overtime": 1.039,
+    "utilization": 0.498,
+    "overbooked_slots": 0.0
+  },
+  "vs_current_fixed": {
+    "seen": 3.781,
+    "mean_wait": 0.418,
+    "idle": -27.686,
+    "overtime": 0.682,
+    "utilization": 0.118,
+    "overbooked_slots": 0.0
+  }
+}

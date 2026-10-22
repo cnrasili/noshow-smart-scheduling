@@ -48,7 +48,7 @@ def tradeoff_chart(cfg: SessionConfig, reps: int = 1000, seed: int = 42) -> Path
             xytext=(6, 6),
             fontsize=9,
         )
-    a.set_xlabel("Physician idle time per session (min)")
+    a.set_xlabel("Idle time per session (min)")
     a.set_ylabel("Mean patient waiting time (min)")
     a.set_title("Overbooking trades waiting time for idle time")
     a.grid(alpha=0.3)

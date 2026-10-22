@@ -19,13 +19,44 @@ METRICS = [
     ("noslot", "No free slot", -1),
     ("wait", "Mean wait (min)", -1),
     ("wait_h", "Total waiting (hours)", -1),
-    ("idle_h", "Doctor idle (hours)", -1),
+    ("idle_h", "Idle (hours)", -1),
     ("ot_h", "Overtime (hours)", -1),
 ]
 ALL = "All days"
 
 
-def scenarios(tuned: list[Template]) -> list[tuple[str, object]]:
+def paper_templates(has_paper_risk: bool) -> list[Template]:
+    """Overbooking policy of Batool et al. (2020): overbook every slot whose patient the classifier flags as a no-show
+    (p >= 0.5), with no cap on overbooked slots. Shown with our calibrated model and with a classifier trained on
+    rebalanced data, as in the paper."""
+    out = [
+        Template(
+            "paper_cal",
+            "Literature - classifier flag p >= 0.5, calibrated model",
+            "",
+            16,
+            15,
+            threshold=0.5,
+            daily_limit=99,
+        )
+    ]
+    if has_paper_risk:
+        out.append(
+            Template(
+                "paper_bal",
+                "Literature - classifier flag p >= 0.5, rebalanced training (as in the paper)",
+                "",
+                16,
+                15,
+                threshold=0.5,
+                daily_limit=99,
+                risk_key="p_paper",
+            )
+        )
+    return out
+
+
+def scenarios(tuned: list[Template], has_paper_risk: bool = False) -> list[tuple[str, object]]:
     """(label, template or rule name) pairs; the first one is the baseline without any rule."""
     out = [
         ("No rule: fixed interval 15 min", Template("baseline", "No rule", "", 16, 15)),
@@ -36,12 +67,18 @@ def scenarios(tuned: list[Template]) -> list[tuple[str, object]]:
         ("Rule: cost-based R5-A, r = 0.5", "cost0.5"),
         ("Rule: cost-based R5-A, r = 1.0", "cost1.0"),
     ]
+    out += [
+        (t.name.replace("Literature - ", "Literature: "), t)
+        for t in paper_templates(has_paper_risk)
+    ]
     out += [(f"Template {i + 1}: {t.name.split(' - ', 1)[1]}", t) for i, t in enumerate(tuned)]
     return out
 
 
-def run_policy(what, cfg: SessionConfig, draws, part_len: int):
-    """simulate_session result for one scenario."""
+def run_policy(what, cfg: SessionConfig, draws, part_len: int, alt=None):
+    """simulate_session result for one scenario. alt: other risk columns of the session (by name)."""
+    if getattr(what, "risk_key", None) and alt:
+        draws = dataclasses.replace(draws, risk=alt[what.risk_key])
     if what in ("cost0.5", "cost1.0"):
         return simulate_session(
             dataclasses.replace(cfg, requests=part_len), cost_rule(float(what[4:])), draws
@@ -68,14 +105,16 @@ def build_sessions(pool: pd.DataFrame, cfg: SessionConfig) -> dict:
                 risk=part["p"].to_numpy(),
                 shows=(part["y"].to_numpy() == 0),
             )
-            sessions.append((draws, len(part)))
+            alt = {"p_paper": part["p_paper"].to_numpy()} if "p_paper" in part.columns else {}
+            sessions.append((draws, len(part), alt))
         out[f"{date:%d %b %Y}"] = sessions
     return out
 
 
 def compute(by_date: dict, tuned: list[Template], cfg: SessionConfig) -> tuple[list[str], dict]:
     """data[date or ALL][scenario label] = metrics (sums over all sessions of the date)."""
-    scs = scenarios(tuned)
+    has_paper = any(alt for sessions in by_date.values() for _, _, alt in sessions[:1])
+    scs = scenarios(tuned, has_paper)
     labels = [s[0] for s in scs]
     sums = {}
     for key, sessions in by_date.items():
@@ -85,9 +124,9 @@ def compute(by_date: dict, tuned: list[Template], cfg: SessionConfig) -> tuple[l
             )
             for lab in labels
         }
-        for draws, plen in sessions:
+        for draws, plen, alt in sessions:
             for lab, what in scs:
-                r = run_policy(what, cfg, draws, plen)
+                r = run_policy(what, cfg, draws, plen, alt)
                 a = tot[lab]
                 a["appointments"] += plen
                 a["seen"] += r["seen"]
@@ -204,7 +243,7 @@ def section_html(labels: list[str], data: dict, winner_label: str, risk_name: st
 The first row is the <b>baseline with no rule or algorithm</b>: fixed 15-minute slots, one patient per slot, no overbooking. Each other row applies one rule or template
 to the same patients on the same day. Under each number: the change against the baseline as a count and a percentage.
 <span class="d g">Green</span> = better, <span class="d b">orange</span> = worse, grey = neutral. Open a day to see its table.</p>
-<p><small>The data has no doctor information: a day's patients are dealt randomly to clinic sessions of {REQUESTS} booking requests (16 slots), so about 4 requests per session find no free slot.
+<p><small>The data names no physician (the system is one department): a day's patients are dealt randomly to clinic sessions of {REQUESTS} booking requests (16 slots), so about 4 requests per session find no free slot.
 "No-shows" counts only patients who were booked into a slot and did not come; "No free slot" patients are booked for another day. Consultation length and lateness are simulated.</small></p>
 <p><button onclick="document.querySelectorAll('details').forEach(d=>d.open=true)">Open all days</button>
 <button onclick="document.querySelectorAll('details').forEach(d=>d.open=false)">Close all days</button></p>

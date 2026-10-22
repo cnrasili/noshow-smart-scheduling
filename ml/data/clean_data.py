@@ -9,6 +9,8 @@ RAW = Path(__file__).parent / "raw" / "KaggleV2-May-2016.csv"
 OUT = Path(__file__).parent / "processed" / "appointments_clean.xlsx"
 AGE_BINS = [-1, 17, 24, 34, 54, 200]
 AGE_LABELS = ["A0 <18", "A1 18-24", "A2 25-34", "A3 35-54", "A4 55+"]
+# One department for the whole dataset (project rule of 15 October); it is not a dataset column
+DEPARTMENT = "General Practice"
 
 
 def main() -> None:
@@ -42,6 +44,7 @@ def main() -> None:
     df["Weekday"] = df["AppointmentDay"].dt.dayofweek  # 0 = Monday
     df["AgeBand"] = pd.cut(df["Age"], AGE_BINS, labels=AGE_LABELS)
     df["ShowUp"] = 1 - df["NoShow"]
+    df["Department"] = DEPARTMENT
 
     # History features: only appointments whose date is before this booking date (outcome known)
     df = df.sort_values(
@@ -66,6 +69,7 @@ def main() -> None:
     cols = [
         "AppointmentID",
         "PatientId",
+        "Department",
         "ScheduledDay",
         "AppointmentDay",
         "LeadDays",
@@ -94,10 +98,16 @@ def main() -> None:
             f"{df.AppointmentDay.min():%Y-%m-%d} to {df.AppointmentDay.max():%Y-%m-%d}",
         ),
         ("Unique patients", df["PatientId"].nunique()),
+        ("Department (every row)", DEPARTMENT),
     ]
     notes = pd.DataFrame(
         [
             ("NoShow", "1 = patient missed the appointment (target)"),
+            (
+                "Department",
+                "Added by the project: 'General Practice' in every row. Not a dataset column and "
+                "not a model feature; capacity and results belong to the department",
+            ),
             ("ShowUp", "1 - NoShow"),
             ("LeadDays", "AppointmentDay date minus ScheduledDay date, in days"),
             ("Weekday", "0 = Monday ... 6 = Sunday"),

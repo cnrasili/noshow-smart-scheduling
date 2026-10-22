@@ -7,5 +7,12 @@ select = ["E", "F", "I", "B", "UP"]
 
 [lint.per-file-ignores]
 # Report pages are built from embedded HTML, CSS and JavaScript strings
-"simulation/{dashboard,live_day,main,real_days}.py" = ["E501"]
-"simulation/templates/{compare_templates,day_by_day,template_base}.py" = ["E501"]
+"simulation/{app,dashboard,live_day,main,real_days}.py" = ["E501"]
+"simulation/templates/**/*.py" = ["E501"]
+# Console reports and long explanatory docstrings of the replication script
+"ml/paper_replication.py" = ["E501"]
+# Generated Turkish report texts
+"ml/evaluate_models.py" = ["E501"]
+"simulation/experiments.py" = ["E501"]
+"ml/leakage_check.py" = ["E501"]
+"simulation/wait_distribution.py" = ["E501"]
