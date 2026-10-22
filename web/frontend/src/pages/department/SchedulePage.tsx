@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api, errorText } from '../../api'
 import { WEEKDAY_NAMES, addDays, formatClock, formatShortDate, todayKey } from '../../format'
 import type { ScheduleDay } from '../../types'
-import { Notice, PageHeader, type NoticeState } from '../../ui'
+import { DEPARTMENT_NAME } from '../../config'
+import { Notice, PageTop, type NoticeState } from '../../ui'
 
 const GENERATION_DAYS = 14
 
@@ -46,28 +47,27 @@ export function SchedulePage() {
 
   return (
     <>
-      <Notice notice={notice} onClose={closeNotice} />
-      <PageHeader
-        title="Çalışma Takvimi"
-        description="Haftalık çalışma saatleri ve randevu slotlarının açılması."
-      />
-
-      <div className="columns">
-        <section className="panel">
-          <div className="panel-head">
-            <h2>Haftalık çalışma saatleri</h2>
-          </div>
+      <main className="main">
+        <Notice notice={notice} onClose={closeNotice} />
+        <PageTop
+          title="Çalışma takvimi"
+          description={`${DEPARTMENT_NAME}: haftalık çalışma saatleri ve randevu slotlarının açılması`}
+        />
+        <section className="card" aria-labelledby="hours-title">
+          <h2 id="hours-title">Haftalık çalışma saatleri</h2>
           {schedule === null ? (
-            <p className="muted panel-body">Yükleniyor…</p>
+            <p className="muted">Yükleniyor…</p>
           ) : (
-            <table className="table compact">
+            <table>
               <tbody>
                 {WEEKDAY_NAMES.map((name, weekday) => {
                   const hours = byWeekday.get(weekday)
                   return (
-                    <tr key={name} className={hours ? '' : 'row-empty'}>
-                      <td className="strong">{name}</td>
-                      <td className="mono">
+                    <tr key={name}>
+                      <td>
+                        <b>{name}</b>
+                      </td>
+                      <td>
                         {hours ? (
                           `${formatClock(hours.start_time)}–${formatClock(hours.end_time)}`
                         ) : (
@@ -81,46 +81,41 @@ export function SchedulePage() {
             </table>
           )}
         </section>
-
-        <section className="panel">
-          <div className="panel-head">
-            <h2>Slot aç</h2>
+      </main>
+      <aside className="side" aria-label="Slot aç">
+        <h2>Slot aç</h2>
+        <form onSubmit={generate}>
+          <p className="muted">
+            Seçilen tarih aralığında çalışma saatlerine göre slotlar açılır. Daha önce açılmış
+            slotlar ve alınmış randevular değişmez.
+          </p>
+          <div className="form-row">
+            <label>
+              Başlangıç
+              <input
+                type="date"
+                value={dateFrom}
+                min={todayKey()}
+                onChange={(event) => setDateFrom(event.target.value)}
+                required
+              />
+            </label>
+            <label>
+              Bitiş
+              <input
+                type="date"
+                value={dateTo}
+                min={dateFrom}
+                onChange={(event) => setDateTo(event.target.value)}
+                required
+              />
+            </label>
           </div>
-          <form className="panel-body stack" onSubmit={generate}>
-            <p className="muted">
-              Seçilen tarih aralığında çalışma saatlerine göre slotlar açılır. Daha önce açılmış
-              slotlar ve alınmış randevular değişmez.
-            </p>
-            <div className="filters">
-              <label>
-                Başlangıç
-                <input
-                  type="date"
-                  value={dateFrom}
-                  min={todayKey()}
-                  onChange={(event) => setDateFrom(event.target.value)}
-                  required
-                />
-              </label>
-              <label>
-                Bitiş
-                <input
-                  type="date"
-                  value={dateTo}
-                  min={dateFrom}
-                  onChange={(event) => setDateTo(event.target.value)}
-                  required
-                />
-              </label>
-            </div>
-            <div>
-              <button type="submit" className="primary" disabled={busy}>
-                {busy ? 'Açılıyor…' : 'Slotları aç'}
-              </button>
-            </div>
-          </form>
-        </section>
-      </div>
+          <button type="submit" className="btn" disabled={busy}>
+            {busy ? 'Açılıyor…' : 'Slotları aç'}
+          </button>
+        </form>
+      </aside>
     </>
   )
 }

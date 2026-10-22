@@ -29,6 +29,17 @@ const keyDate = (key: string) => new Date(`${key}T12:00:00+03:00`)
 
 export const formatTime = (iso: string) => timeFormat.format(new Date(iso))
 
+const dateTimeFormat = format({
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+})
+
+/** "17 Ekim 2026 14:05" in clinic time */
+export const formatDateTime = (iso: string) => dateTimeFormat.format(new Date(iso))
+
 export const formatTimeRange = (start: string, end: string) =>
   `${formatTime(start)}–${formatTime(end)}`
 
@@ -42,6 +53,13 @@ export const formatLongDate = (key: string) => longDateFormat.format(keyDate(key
 
 /** "02.10.2026" */
 export const formatShortDate = (key: string) => shortDateFormat.format(keyDate(key))
+
+const dayMonthFormat = format({ day: 'numeric', month: 'long' })
+const yearFormat = format({ year: 'numeric' })
+
+/** "19 Ekim – 23 Ekim 2026" */
+export const weekLabel = (first: string, last: string) =>
+  `${dayMonthFormat.format(keyDate(first))} – ${dayMonthFormat.format(keyDate(last))} ${yearFormat.format(keyDate(last))}`
 
 export const dayParts = (key: string) => ({
   weekday: weekdayFormat.format(keyDate(key)),
@@ -78,5 +96,3 @@ export const appointmentNumber = (id: number) => `R-${String(id).padStart(6, '0'
 
 export const genderLabel = (gender: string) =>
   gender === 'F' ? 'Kadın' : gender === 'M' ? 'Erkek' : '—'
-
-export const branchLabel = (specialty: string | null) => specialty ?? 'Genel'

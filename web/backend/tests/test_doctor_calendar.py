@@ -7,13 +7,13 @@ from web_backend.clinic import CLINIC_TZ, today
 
 
 @pytest.fixture
-def doctor(make_doctor):
-    return make_doctor()
+def doctor(make_department):
+    return make_department()
 
 
 @pytest.fixture
 def doctor_headers(doctor, login):
-    return login("doctor@example.com")
+    return login("aile.hekimligi")
 
 
 def _slot(db, doctor_id: int, start: datetime) -> Slot:
@@ -61,8 +61,8 @@ def test_calendar_lists_the_days_slots_with_patients(
     assert entry["attended"] is None
 
 
-def test_calendar_shows_only_own_slots(db, client, doctor_headers, make_doctor):
-    other = make_doctor(email="other@example.com")
+def test_calendar_shows_only_own_slots(db, client, doctor_headers, make_department):
+    other = make_department(username="other.department")
     _slot(db, other.id, datetime.combine(today(), time(9, 0), CLINIC_TZ))
 
     assert client.get("/doctors/me/calendar", headers=doctor_headers).json() == []
@@ -76,11 +76,17 @@ def test_patients_cannot_open_the_calendar(client, make_patient, login):
     assert response.status_code == 403
 
 
+def _today_at(hour: int) -> datetime:
+    return datetime.combine(today(), time(hour), CLINIC_TZ)
+
+
 @pytest.mark.parametrize("attended", [True, False])
-def test_doctor_marks_attendance_after_start(
-    db, client, doctor, doctor_headers, make_patient, attended
+@pytest.mark.parametrize("hour", [0, 23])
+def test_department_marks_attendance_on_the_day(
+    db, client, doctor, doctor_headers, make_patient, attended, hour
 ):
-    slot = _slot(db, doctor.id, datetime.now(UTC) - timedelta(minutes=30))
+    # Also later today: a patient may arrive before the appointment time
+    slot = _slot(db, doctor.id, _today_at(hour))
     appointment = _appointment(db, make_patient().id, slot)
 
     response = client.patch(
@@ -95,8 +101,22 @@ def test_doctor_marks_attendance_after_start(
     assert appointment.attended is attended
 
 
-def test_attendance_cannot_be_marked_before_start(db, client, doctor, doctor_headers, make_patient):
-    slot = _slot(db, doctor.id, datetime.now(UTC) + timedelta(hours=2))
+def test_a_mark_can_be_taken_back(db, client, doctor, doctor_headers, make_patient) -> None:
+    appointment = _appointment(db, make_patient().id, _slot(db, doctor.id, _today_at(0)))
+    path = f"/appointments/{appointment.id}/attendance"
+    client.patch(path, json={"attended": False}, headers=doctor_headers)
+
+    response = client.patch(path, json={"attended": None}, headers=doctor_headers)
+
+    assert response.status_code == 200
+    assert response.json()["attended"] is None
+
+
+@pytest.mark.parametrize("days", [-1, 1])
+def test_attendance_is_marked_only_on_the_appointment_day(
+    db, client, doctor, doctor_headers, make_patient, days
+):
+    slot = _slot(db, doctor.id, _today_at(9) + timedelta(days=days))
     appointment = _appointment(db, make_patient().id, slot)
 
     response = client.patch(
@@ -106,13 +126,14 @@ def test_attendance_cannot_be_marked_before_start(db, client, doctor, doctor_hea
     )
 
     assert response.status_code == 422
+    assert response.json()["detail"] == "Attendance can be marked only on the appointment day"
 
 
 def test_doctor_cannot_mark_other_doctors_appointments(
-    db, client, doctor_headers, make_doctor, make_patient
+    db, client, doctor_headers, make_department, make_patient
 ):
-    other = make_doctor(email="other@example.com")
-    slot = _slot(db, other.id, datetime.now(UTC) - timedelta(minutes=30))
+    other = make_department(username="other.department")
+    slot = _slot(db, other.id, _today_at(0))
     appointment = _appointment(db, make_patient().id, slot)
 
     response = client.patch(
@@ -182,8 +203,8 @@ def test_agenda_lists_every_day_with_slots_and_appointments(
     assert "email" not in str(busy_day)
 
 
-def test_agenda_shows_only_own_slots(db, client, doctor_headers, make_doctor, make_patient):
-    other = make_doctor(email="other@example.com", name="Dr. Other")
+def test_agenda_shows_only_own_slots(db, client, doctor_headers, make_department, make_patient):
+    other = make_department(username="other.department", name="Other Department")
     day = today() + timedelta(days=2)
     _appointment(
         db, make_patient().id, _slot(db, other.id, datetime.combine(day, time(9), CLINIC_TZ))

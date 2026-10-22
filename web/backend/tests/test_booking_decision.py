@@ -10,8 +10,8 @@ from web_backend.clinic import today
 
 
 @pytest.fixture
-def slot(db, make_doctor) -> Slot:
-    doctor = make_doctor()
+def slot(db, make_department) -> Slot:
+    doctor = make_department()
     start = datetime.now(UTC).replace(microsecond=0) + timedelta(days=2)
     slot = Slot(doctor_id=doctor.id, start_at=start, end_at=start + timedelta(minutes=20))
     db.add(slot)
@@ -146,12 +146,13 @@ def test_full_slot_is_rejected_without_asking_the_service(
 
 
 def test_full_slot_is_listed_as_unavailable(
-    client, overbooking, slot, first_patient, second_patient
+    client, overbooking, slot, first_patient, second_patient, make_patient, login
 ):
     overbooking.allow(overbook=True)
     _book(client, first_patient[1], slot.id)
     _book(client, second_patient[1], slot.id)
 
-    listed = client.get("/slots", params={"doctor_id": slot.doctor_id}, headers=first_patient[1])
+    third = login(make_patient(email="third@example.com").email)
+    listed = client.get("/slots", headers=third).json()
 
-    assert [(s["booked_count"], s["available"]) for s in listed.json()] == [(2, False)]
+    assert [(s["available"], s["booked_by_me"]) for s in listed] == [(False, False)]

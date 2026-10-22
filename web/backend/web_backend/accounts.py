@@ -1,38 +1,38 @@
-"""Account creation rules for patients and doctors, used by the demo seed and the internal API.
+"""Account rules for patients and the department, used by the demo seed and the internal API.
 
-Patients and doctors cannot register themselves; the hospital creates their accounts.
-The functions add the records to the session and flush; the caller commits.
+Nobody can register; the hospital opens the accounts. Patients are the patients of the public
+dataset and already exist; their account only adds a login. The functions add the records to
+the session and flush; the caller commits.
 """
 
 import re
 from datetime import time
-from typing import Annotated, Literal
+from typing import Annotated
 
 from pydantic import AfterValidator, BaseModel, Field, StringConstraints, model_validator
 from sqlalchemy import delete, exists, select
 from sqlalchemy.orm import Session
 
 from noshow_db.models.core import AuthSession, Doctor, DoctorSchedule, Patient, UserAccount
-from web_backend.national_id import is_valid_national_id
 from web_backend.security import hash_password
 
 MIN_PASSWORD_LENGTH = 8
+# The system's only department; "Aile Hekimliği" on the screens
+DEPARTMENT_NAME = "General Practice"
 
 _EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 class DuplicateAccountError(Exception):
-    """The national ID number or the e-mail address already belongs to an account."""
+    """The patient or the e-mail address already belongs to an account."""
 
 
 class AccountNotFoundError(Exception):
     pass
 
 
-def _national_id(value: str) -> str:
-    if not is_valid_national_id(value):
-        raise ValueError("Invalid national ID number")
-    return value
+class PatientNotFoundError(Exception):
+    pass
 
 
 def _email(value: str) -> str:
@@ -42,25 +42,13 @@ def _email(value: str) -> str:
     return value
 
 
-NationalId = Annotated[str, StringConstraints(strip_whitespace=True), AfterValidator(_national_id)]
 Email = Annotated[str, StringConstraints(strip_whitespace=True), AfterValidator(_email)]
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)]
+# PatientId of the dataset as stored in patients.patient_number
+PatientNumber = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=20)
+]
 Password = Annotated[str, Field(min_length=MIN_PASSWORD_LENGTH, max_length=128)]
-
-
-class NewPatient(BaseModel):
-    national_id: NationalId
-    full_name: Name
-    # Contact address for messages; patients log in with the national ID number
-    email: Email
-    age: int = Field(ge=0, le=130)
-    gender: Literal["F", "M"]
-    scholarship: bool = False
-    hipertension: bool = False
-    diabetes: bool = False
-    alcoholism: bool = False
-    handcap: int = Field(0, ge=0, le=4)
-    password: Password
 
 
 class WorkingHours(BaseModel):
@@ -98,19 +86,23 @@ def _email_taken(db: Session, email: str) -> bool:
     )
 
 
-def create_patient(db: Session, new: NewPatient) -> UserAccount:
-    """Create a patient record with its login account."""
-    if db.scalar(select(exists().where(Patient.national_id == new.national_id))):
-        raise DuplicateAccountError("National ID number already registered")
-    if _email_taken(db, new.email):
+def open_patient_account(db: Session, patient_number: str, password: str) -> UserAccount:
+    """Open the login account of an existing dataset patient; no patient is created.
+
+    The account takes the e-mail address of the patient record; the patient logs in with the
+    patient number.
+    """
+    patient = db.scalar(select(Patient).where(Patient.patient_number == patient_number))
+    if patient is None:
+        raise PatientNotFoundError("Patient not found")
+    if db.scalar(select(exists().where(UserAccount.patient_id == patient.id))):
+        raise DuplicateAccountError("Patient already has an account")
+    if db.scalar(select(exists().where(UserAccount.email == patient.email))):
         raise DuplicateAccountError("Email already in use")
 
-    patient = Patient(**new.model_dump(exclude={"password"}))
-    db.add(patient)
-    db.flush()
     account = UserAccount(
-        email=new.email,
-        password_hash=hash_password(new.password),
+        email=patient.email,
+        password_hash=hash_password(password),
         role="patient",
         patient_id=patient.id,
     )
@@ -141,6 +133,40 @@ def create_doctor(db: Session, new: NewDoctor) -> UserAccount:
         password_hash=hash_password(new.password),
         role="doctor",
         doctor_id=doctor.id,
+    )
+    db.add(account)
+    db.flush()
+    return account
+
+
+def create_department(
+    db: Session, username: str, password: str, working_hours: list[WorkingHours]
+) -> UserAccount:
+    """Create the department with its staff account and weekly working hours.
+
+    The department is stored as the one record in doctors, and its staff account has the
+    doctor role; the login name is kept in user_accounts.email. Slots are not generated.
+    """
+    if _email_taken(db, username):
+        raise DuplicateAccountError("Username already in use")
+
+    department = Doctor(full_name=DEPARTMENT_NAME, specialty=DEPARTMENT_NAME)
+    db.add(department)
+    db.flush()
+    db.add_all(
+        DoctorSchedule(
+            doctor_id=department.id,
+            weekday=hours.weekday,
+            start_time=hours.start_time,
+            end_time=hours.end_time,
+        )
+        for hours in working_hours
+    )
+    account = UserAccount(
+        email=username,
+        password_hash=hash_password(password),
+        role="doctor",
+        doctor_id=department.id,
     )
     db.add(account)
     db.flush()
