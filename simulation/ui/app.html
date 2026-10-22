@@ -227,7 +227,7 @@ function frame(now){if(last===null)last=now;const dt=(now-last)/1000;last=now;
   if(playing&&sd){t+=dt*Number($('speed').value);const v=sd[ver];if(t>=v.tEnd){t=v.tEnd;playing=false;$('play').textContent='Yeniden oynat';}update(false);}requestAnimationFrame(frame);}
 
 /* ---------- overview ---------- */
-const KP=[['seen','Görülen hasta',1],['noshow','Gelmeyen (yazılıp gelmeyen)',0],['noslot','Yeri bulunamayan',-1],['wait','Ortalama bekleme (dk)',-1],['wait_h','Toplam bekleme (saat)',-1],['idle_h','Oda boşta (saat)',-1],['ot_h','Mesai aşımı (saat)',-1],['utilization','Doktor kullanımı',1]];
+const KP=[['seen','Görülen hasta',1],['noshow','Gelmeyen (yazılıp gelmeyen)',0],['noslot','Yeri bulunamayan',-1],['wait','Ortalama bekleme (dk)',-1],['wait_h','Toplam bekleme (saat)',-1],['idle_h','Oda boşta (saat)',-1],['ot_h','Mesai aşımı (saat)',-1],['utilization','Oda doluluğu',1]];
 function delta(k,good,v,b){const d=v-b,p=b?100*d/b:null,cls=(Math.abs(d)<1e-9||good===0)?'neu':((d*good>0)?'good':'bad'),dec=['wait','wait_h','idle_h','ot_h'].includes(k);
   return {txt:`${d>=0?'+':''}${dec?n1(d):n0(d)} (${p===null?'-':(p>=0?'+':'')+n1(p)+'%'})`,cls};}
 function renderOverview(){const c=R.cfg,rl=c.rule,tp=c.template;
