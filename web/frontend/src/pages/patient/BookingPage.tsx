@@ -41,6 +41,8 @@ const BOOKING_ERRORS: Record<string, string> = {
   'Slot is already booked': SLOT_UNAVAILABLE,
   'Slot is no longer available': SLOT_UNAVAILABLE,
   'You already booked this slot': 'Bu saatte zaten randevunuz var.',
+  'You already have an appointment on this day':
+    'Bu gün için zaten bir randevunuz var. Aynı gün yalnızca bir randevu alabilirsiniz.',
   'Slot has already started': 'Bu saatin randevu zamanı geçti, başka bir saat seçin.',
 }
 
