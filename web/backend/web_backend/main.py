@@ -10,7 +10,6 @@ from web_backend import (
     doctors,
     internal_accounts,
     messages,
-    public,
     slots,
 )
 
@@ -47,7 +46,6 @@ app.include_router(appointments.router)
 app.include_router(messages.router)
 app.include_router(department.router)
 app.include_router(internal_accounts.router)
-app.include_router(public.router)
 
 
 @app.get("/health")

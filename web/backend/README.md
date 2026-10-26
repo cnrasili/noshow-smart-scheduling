@@ -66,10 +66,6 @@ All demo accounts use the password `demo1234`; these are local demo values only.
 | Patient | Patient number `1411446711177` | 9 appointments, 3 missed |
 | Patient | Patient number `11241475371456` | 4 appointments, 1 missed |
 
-## Public Hospital Site
-
-`GET /public/doctors` returns the department's record with its weekly working hours, without sign-in. It returns no account data (see the [API contract](../../docs/api-contract.md#get-publicdoctors-web-backend)).
-
 ## Authentication
 
 `POST /auth/login` takes the role of the login form and the credentials of that role:
@@ -107,12 +103,14 @@ INTERNAL_API_TOKEN=change-me uvicorn web_backend.main:app --reload
 ## Department Panel
 
 - `GET /doctors/me/calendar?date=…` and `GET /doctors/me/agenda` give the department's days and weeks (the paths keep the doctor names of the API contract).
-- `PATCH /appointments/{id}/attendance` with `{"attended": true}`, `false` or `null` (takes a mark back) works only on the appointment day; other days get `422`.
+- `PATCH /appointments/{id}/attendance` with `{"attended": true}`, `false` or `null` (takes a mark back) works only on the appointment day; other days get `422`. A no-show (`false`) can be marked only once the slot has started, so an early mark also gets `422`; `true` and `null` are accepted during the whole appointment day.
 - `GET /department/dataset-days` lists the days of the dataset with their number of appointments and no-shows, and `GET /department/dataset-days/{date}` returns every appointment of such a day with the patient (`Hasta <PatientId>`), the age and the recorded outcome. They read `dataset_appointments` and are read-only.
 
 ## Overbooking
 
 Before booking, `POST /appointments` asks the overbooking service (`OVERBOOKING_SERVICE_URL`, default `http://localhost:8001`) for a `/booking-decision`. A rejected booking returns `409`. If the service does not answer within 3 seconds or returns an error, empty slots are still booked but booked slots are never overbooked. A slot that has reached its `max_patients` is rejected without asking the service.
+
+A patient holds at most one appointment with the department per day; a second booking on the same day gets `409` (`You already have an appointment on this day`) without asking the service. While a booking waits for the decision, the other bookings of the same department day wait for it (a transaction-level PostgreSQL advisory lock on the department and the day), because the service counts the day's overbooks from committed appointments; this keeps its daily overbook limit under concurrent bookings. The lock is skipped on other databases, so its test needs `NOSHOW_TEST_DATABASE_URL`.
 
 `GET /slots` lists the department's upcoming slots (by default the next two weeks; `date_from` and `date_to` choose a range) as the patient sees them: `available` ("Müsait") or not ("Dolu"), and `booked_by_me`. A booked slot below its capacity stays available, because the service decides when the patient books; the number of patients in a slot and any risk are not sent.
 

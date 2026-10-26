@@ -112,6 +112,23 @@ describe('booking', () => {
     expect(screen.queryByRole('heading', { name: 'Randevunuz alındı ✓' })).not.toBeInTheDocument()
   })
 
+  it('explains that a patient books one appointment per day', async () => {
+    backend(() => ({
+      status: 409,
+      body: { detail: 'You already have an appointment on this day' },
+    }))
+    const user = await openBooking()
+
+    await user.click(cell(MONDAY, '08:00'))
+    await user.click(screen.getByRole('button', { name: 'Randevuyu onayla' }))
+
+    expect(
+      await screen.findByText(
+        'Bu gün için zaten bir randevunuz var. Aynı gün yalnızca bir randevu alabilirsiniz.',
+      ),
+    ).toBeInTheDocument()
+  })
+
   it('browses the following weeks but not the past', async () => {
     const calls = backend()
     const user = await openBooking()

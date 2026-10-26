@@ -8,11 +8,15 @@ import { Notice, PageTop, type NoticeState } from '../../ui'
 // Dataset days have thousands of records; the columns grow on request
 const FIRST_SHOWN = 150
 const MORE_SHOWN = 300
+// How often today's board checks which appointments have started
+const CLOCK_TICK_MS = 30_000
 
 interface Entry {
   key: string
   // Clinic time; dataset records have none
   time: string | null
+  // Slot start (UTC); a no-show can be marked only after it
+  startAt: string | null
   name: string
   age: number
   attended: boolean | null
@@ -27,6 +31,7 @@ const fromCalendar = (slots: CalendarSlot[]): Entry[] =>
     slot.appointments.map((a) => ({
       key: `a${a.id}`,
       time: formatTime(slot.start_at),
+      startAt: slot.start_at,
       name: a.patient_name,
       age: a.patient_age,
       attended: a.attended,
@@ -38,6 +43,7 @@ const fromDataset = (records: DatasetRecord[]): Entry[] =>
   records.map((r, index) => ({
     key: `r${index}`,
     time: null,
+    startAt: null,
     name: r.patient_name,
     age: r.patient_age,
     attended: r.attended,
@@ -70,14 +76,18 @@ const COLUMNS: Record<Mode, Column[]> = {
 function Ticket({
   entry,
   live,
+  now,
   busy,
   onMark,
 }: {
   entry: Entry
   live: boolean
+  // Current time in milliseconds
+  now: number
   busy: boolean
   onMark: (entry: Entry, attended: boolean | null) => void
 }) {
+  const started = entry.startAt !== null && Date.parse(entry.startAt) <= now
   return (
     <li className="tk">
       <b>{entry.time ?? 'Randevu'}</b> · {entry.name}
@@ -94,7 +104,7 @@ function Ticket({
               Geldi
             </button>
           )}
-          {entry.attended !== false && (
+          {entry.attended !== false && started && (
             <button
               type="button"
               onClick={() => onMark(entry, false)}
@@ -129,6 +139,7 @@ export function PanelPage() {
   const [todayEntries, setTodayEntries] = useState<Entry[] | null>(null)
   const [shown, setShown] = useState(FIRST_SHOWN)
   const [busyKey, setBusyKey] = useState<string | null>(null)
+  const [now, setNow] = useState(() => Date.now())
   const [notice, setNotice] = useState<NoticeState | null>(null)
   const closeNotice = useCallback(() => setNotice(null), [])
   const showError = useCallback(
@@ -145,6 +156,11 @@ export function PanelPage() {
         ? 'future'
         : 'past'
   const monday = weekStart(day)
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), CLOCK_TICK_MS)
+    return () => clearInterval(timer)
+  }, [])
 
   useEffect(() => {
     api.datasetDays().then(setDatasetDays).catch(showError)
@@ -192,7 +208,8 @@ export function PanelPage() {
   }, [day, mode, datasetDays, showError])
 
   function changeDay(next: string) {
-    if (!next) return
+    // The selected day is already loaded; clearing it would leave the list empty
+    if (!next || next === day) return
     if (weekStart(next) !== monday) setWeek(null)
     setEntries(null)
     setShown(FIRST_SHOWN)
@@ -325,6 +342,7 @@ export function PanelPage() {
                         key={entry.key}
                         entry={entry}
                         live={mode === 'today'}
+                        now={now}
                         busy={busyKey === entry.key}
                         onMark={mark}
                       />
@@ -366,8 +384,9 @@ export function PanelPage() {
           <p className="muted">Bekleyen hasta yok.</p>
         )}
         <p className="note">
-          Hastalar yalnızca numarayla gösterilir. “Geldi / Gelmedi” yalnızca bugün işaretlenir; veri
-          setindeki günlerin sonuçları kayıttan gelir ve değiştirilemez.
+          Hastalar yalnızca numarayla gösterilir. “Geldi / Gelmedi” yalnızca bugün işaretlenir;
+          “Gelmedi” randevu saati gelince seçilebilir. Veri setindeki günlerin sonuçları kayıttan
+          gelir ve değiştirilemez.
         </p>
       </aside>
     </>
