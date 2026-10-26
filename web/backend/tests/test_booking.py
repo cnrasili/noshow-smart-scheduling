@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, time, timedelta
 
 import pytest
 from sqlalchemy import func, select
@@ -144,3 +144,38 @@ def test_started_appointments_cannot_be_cancelled(client, db, make_slot, patient
     response = client.delete(f"/appointments/{appointment_id}", headers=patient_headers)
 
     assert response.status_code == 422
+
+
+def _slot_at(db, doctor_id: int, day, hour: int) -> Slot:
+    start = datetime.combine(day, time(hour), CLINIC_TZ).astimezone(UTC)
+    slot = Slot(doctor_id=doctor_id, start_at=start, end_at=start + timedelta(minutes=15))
+    db.add(slot)
+    db.commit()
+    return slot
+
+
+def test_a_patient_books_one_appointment_per_day(client, db, doctor, patient_headers) -> None:
+    day = today() + timedelta(days=3)
+    morning = _slot_at(db, doctor.id, day, 9)
+    later = _slot_at(db, doctor.id, day, 11)
+    next_day = _slot_at(db, doctor.id, day + timedelta(days=1), 9)
+    assert _book(client, patient_headers, morning.id).status_code == 201
+
+    response = _book(client, patient_headers, later.id)
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "You already have an appointment on this day"
+    assert _book(client, patient_headers, next_day.id).status_code == 201
+    assert db.scalar(select(func.count()).select_from(Appointment)) == 2
+
+
+def test_another_patient_may_book_the_same_day(
+    client, db, doctor, patient_headers, make_patient, login
+) -> None:
+    day = today() + timedelta(days=3)
+    _book(client, patient_headers, _slot_at(db, doctor.id, day, 9).id)
+    other_headers = login(make_patient(email="other@example.com").email)
+
+    response = _book(client, other_headers, _slot_at(db, doctor.id, day, 11).id)
+
+    assert response.status_code == 201
