@@ -3,6 +3,7 @@ from datetime import UTC, datetime, time, timedelta
 import pytest
 
 from noshow_db.models.core import Appointment, DoctorSchedule, Slot
+from web_backend import clinic, doctors
 from web_backend.clinic import CLINIC_TZ, today
 
 
@@ -76,17 +77,35 @@ def test_patients_cannot_open_the_calendar(client, make_patient, login):
     assert response.status_code == 403
 
 
-def _today_at(hour: int) -> datetime:
-    return datetime.combine(today(), time(hour), CLINIC_TZ)
+def _today_at(hour: int, minute: int = 0) -> datetime:
+    return datetime.combine(today(), time(hour, minute), CLINIC_TZ)
 
 
-@pytest.mark.parametrize("attended", [True, False])
-@pytest.mark.parametrize("hour", [0, 23])
+@pytest.fixture
+def ten_oclock(monkeypatch) -> None:
+    """The clinic's clock shows 10:00 today."""
+    moment = _today_at(10)
+    monkeypatch.setattr(clinic, "now", lambda: moment)
+    monkeypatch.setattr(doctors, "now", lambda: moment)
+
+
+@pytest.mark.usefixtures("ten_oclock")
+@pytest.mark.parametrize(
+    ("attended", "start"),
+    [
+        (True, (8, 0)),
+        # A patient may arrive before the appointment time
+        (True, (11, 45)),
+        (False, (8, 0)),
+        # The slot has just started
+        (False, (10, 0)),
+        (None, (11, 45)),
+    ],
+)
 def test_department_marks_attendance_on_the_day(
-    db, client, doctor, doctor_headers, make_patient, attended, hour
+    db, client, doctor, doctor_headers, make_patient, attended, start
 ):
-    # Also later today: a patient may arrive before the appointment time
-    slot = _slot(db, doctor.id, _today_at(hour))
+    slot = _slot(db, doctor.id, _today_at(*start))
     appointment = _appointment(db, make_patient().id, slot)
 
     response = client.patch(
@@ -127,6 +146,24 @@ def test_attendance_is_marked_only_on_the_appointment_day(
 
     assert response.status_code == 422
     assert response.json()["detail"] == "Attendance can be marked only on the appointment day"
+
+
+@pytest.mark.usefixtures("ten_oclock")
+def test_a_no_show_is_not_marked_before_the_appointment_time(
+    db, client, doctor, doctor_headers, make_patient
+):
+    appointment = _appointment(db, make_patient().id, _slot(db, doctor.id, _today_at(11, 45)))
+
+    response = client.patch(
+        f"/appointments/{appointment.id}/attendance",
+        json={"attended": False},
+        headers=doctor_headers,
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "A no-show can be marked only after the appointment time"
+    db.refresh(appointment)
+    assert appointment.attended is None
 
 
 def test_doctor_cannot_mark_other_doctors_appointments(

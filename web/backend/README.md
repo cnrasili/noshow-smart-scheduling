@@ -103,7 +103,7 @@ INTERNAL_API_TOKEN=change-me uvicorn web_backend.main:app --reload
 ## Department Panel
 
 - `GET /doctors/me/calendar?date=…` and `GET /doctors/me/agenda` give the department's days and weeks (the paths keep the doctor names of the API contract).
-- `PATCH /appointments/{id}/attendance` with `{"attended": true}`, `false` or `null` (takes a mark back) works only on the appointment day; other days get `422`.
+- `PATCH /appointments/{id}/attendance` with `{"attended": true}`, `false` or `null` (takes a mark back) works only on the appointment day; other days get `422`. A no-show (`false`) can be marked only once the slot has started, so an early mark also gets `422`; `true` and `null` are accepted during the whole appointment day.
 - `GET /department/dataset-days` lists the days of the dataset with their number of appointments and no-shows, and `GET /department/dataset-days/{date}` returns every appointment of such a day with the patient (`Hasta <PatientId>`), the age and the recorded outcome. They read `dataset_appointments` and are read-only.
 
 ## Overbooking
