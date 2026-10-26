@@ -192,7 +192,8 @@ export function PanelPage() {
   }, [day, mode, datasetDays, showError])
 
   function changeDay(next: string) {
-    if (!next) return
+    // The selected day is already loaded; clearing it would leave the list empty
+    if (!next || next === day) return
     if (weekStart(next) !== monday) setWeek(null)
     setEntries(null)
     setShown(FIRST_SHOWN)

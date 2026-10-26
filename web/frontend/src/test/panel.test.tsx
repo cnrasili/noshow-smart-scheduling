@@ -158,6 +158,23 @@ describe('department panel', () => {
     expect(await screen.findByRole('heading', { name: formatLongDate(TODAY) })).toBeVisible()
   })
 
+  it('keeps the list when the selected day is clicked again', async () => {
+    const nextWeek = addDays(TODAY, 7)
+    backend([], {
+      [nextWeek]: [calendarSlot(5, nextWeek, '09:00', [appointment(20, '26886125921145')])],
+    })
+    renderApp('/departman')
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: 'Sonraki hafta ›' }))
+    await screen.findByRole('region', { name: 'Randevular' })
+    await user.click(
+      screen.getByRole('button', { name: new RegExp(`^${formatLongDate(nextWeek)}`) }),
+    )
+
+    expect(await within(column('Randevular')).findByText(/Hasta 26886125921145/)).toBeVisible()
+  })
+
   it('shows long dataset days in parts', async () => {
     const many: DatasetRecord[] = Array.from({ length: 160 }, (_, n) => ({
       patient_name: `Hasta ${n}`,
