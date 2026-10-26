@@ -66,10 +66,6 @@ All demo accounts use the password `demo1234`; these are local demo values only.
 | Patient | Patient number `1411446711177` | 9 appointments, 3 missed |
 | Patient | Patient number `11241475371456` | 4 appointments, 1 missed |
 
-## Public Hospital Site
-
-`GET /public/doctors` returns the department's record with its weekly working hours, without sign-in. It returns no account data (see the [API contract](../../docs/api-contract.md#get-publicdoctors-web-backend)).
-
 ## Authentication
 
 `POST /auth/login` takes the role of the login form and the credentials of that role:

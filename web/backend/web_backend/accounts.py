@@ -5,11 +5,10 @@ dataset and already exist; their account only adds a login. The functions add th
 the session and flush; the caller commits.
 """
 
-import re
 from datetime import time
 from typing import Annotated
 
-from pydantic import AfterValidator, BaseModel, Field, StringConstraints, model_validator
+from pydantic import BaseModel, Field, StringConstraints, model_validator
 from sqlalchemy import delete, exists, select
 from sqlalchemy.orm import Session
 
@@ -19,8 +18,6 @@ from web_backend.security import hash_password
 MIN_PASSWORD_LENGTH = 8
 # The system's only department; "Aile Hekimliği" on the screens
 DEPARTMENT_NAME = "General Practice"
-
-_EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 class DuplicateAccountError(Exception):
@@ -35,15 +32,6 @@ class PatientNotFoundError(Exception):
     pass
 
 
-def _email(value: str) -> str:
-    value = value.lower()
-    if len(value) > 255 or not _EMAIL.match(value):
-        raise ValueError("Invalid email address")
-    return value
-
-
-Email = Annotated[str, StringConstraints(strip_whitespace=True), AfterValidator(_email)]
-Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)]
 # PatientId of the dataset as stored in patients.patient_number
 PatientNumber = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1, max_length=20)
@@ -61,22 +49,6 @@ class WorkingHours(BaseModel):
     def _ends_after_start(self) -> "WorkingHours":
         if self.end_time <= self.start_time:
             raise ValueError("end_time must be after start_time")
-        return self
-
-
-class NewDoctor(BaseModel):
-    full_name: Name
-    # Department shown to patients when they choose a doctor
-    specialty: Name
-    email: Email
-    password: Password
-    working_hours: list[WorkingHours] = Field(min_length=1, max_length=7)
-
-    @model_validator(mode="after")
-    def _one_interval_per_weekday(self) -> "NewDoctor":
-        weekdays = [hours.weekday for hours in self.working_hours]
-        if len(set(weekdays)) != len(weekdays):
-            raise ValueError("At most one working interval per weekday")
         return self
 
 
@@ -105,34 +77,6 @@ def open_patient_account(db: Session, patient_number: str, password: str) -> Use
         password_hash=hash_password(password),
         role="patient",
         patient_id=patient.id,
-    )
-    db.add(account)
-    db.flush()
-    return account
-
-
-def create_doctor(db: Session, new: NewDoctor) -> UserAccount:
-    """Create a doctor with login account and weekly working hours; slots are not generated."""
-    if _email_taken(db, new.email):
-        raise DuplicateAccountError("Email already in use")
-
-    doctor = Doctor(full_name=new.full_name, specialty=new.specialty)
-    db.add(doctor)
-    db.flush()
-    db.add_all(
-        DoctorSchedule(
-            doctor_id=doctor.id,
-            weekday=hours.weekday,
-            start_time=hours.start_time,
-            end_time=hours.end_time,
-        )
-        for hours in new.working_hours
-    )
-    account = UserAccount(
-        email=new.email,
-        password_hash=hash_password(new.password),
-        role="doctor",
-        doctor_id=doctor.id,
     )
     db.add(account)
     db.flush()

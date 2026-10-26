@@ -53,8 +53,6 @@ class AgendaAppointment(BaseModel):
     start_at: datetime
     end_at: datetime
     patient_name: str
-    # Booked into a slot that already had a patient (overbooking)
-    extra: bool
 
 
 class AgendaDay(BaseModel):
@@ -155,7 +153,6 @@ def my_agenda(
         .where(*in_range)
         .order_by(Slot.start_at, Appointment.created_at, Appointment.id)
     )
-    seen_slots: set[int] = set()
     for appointment, slot, patient_name in rows:
         start_at = as_utc(slot.start_at)
         days[start_at.astimezone(CLINIC_TZ).date()].appointments.append(
@@ -165,10 +162,8 @@ def my_agenda(
                 start_at=start_at,
                 end_at=as_utc(slot.end_at),
                 patient_name=patient_name,
-                extra=slot.id in seen_slots,
             )
         )
-        seen_slots.add(slot.id)
     return list(days.values())
 
 

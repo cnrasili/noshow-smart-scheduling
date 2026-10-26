@@ -72,8 +72,6 @@ export interface AgendaAppointment {
   start_at: string
   end_at: string
   patient_name: string
-  // Part of the API contract; the department's screens do not show it
-  extra: boolean
 }
 
 export interface AgendaDay {

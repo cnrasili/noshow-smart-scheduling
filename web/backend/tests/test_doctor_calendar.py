@@ -183,7 +183,7 @@ def test_agenda_lists_every_day_with_slots_and_appointments(
     _slot(db, doctor.id, datetime.combine(busy, time(9, 0), CLINIC_TZ))
     _slot(db, doctor.id, datetime.combine(start, time(9, 0), CLINIC_TZ))
     regular = _appointment(db, make_patient(name="Ayse Demo").id, first)
-    extra = _appointment(db, make_patient(email="ali@example.com", name="Ali Demo").id, first)
+    second = _appointment(db, make_patient(email="ali@example.com", name="Ali Demo").id, first)
 
     response = _agenda(client, doctor_headers, start, start + timedelta(days=13))
 
@@ -196,10 +196,12 @@ def test_agenda_lists_every_day_with_slots_and_appointments(
     assert by_date[(start + timedelta(days=2)).isoformat()]["slot_count"] == 0
     busy_day = by_date[busy.isoformat()]
     assert busy_day["slot_count"] == 2
-    assert [(a["id"], a["patient_name"], a["extra"]) for a in busy_day["appointments"]] == [
-        (regular.id, "Ayse Demo", False),
-        (extra.id, "Ali Demo", True),
+    assert [(a["id"], a["patient_name"]) for a in busy_day["appointments"]] == [
+        (regular.id, "Ayse Demo"),
+        (second.id, "Ali Demo"),
     ]
+    # Nothing tells which appointment is an overbook (#66)
+    assert all("extra" not in a for a in busy_day["appointments"])
     assert "email" not in str(busy_day)
 
 
