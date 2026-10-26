@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { addDays, formatLongDate, todayKey, weekStart } from '../format'
 import type { AgendaDay, CalendarAppointment, CalendarSlot, DatasetRecord } from '../types'
 import { DEPARTMENT, fakeBackend, renderApp, signIn } from './backend'
@@ -64,7 +64,17 @@ function backend(today: CalendarSlot[], others: Record<string, CalendarSlot[]> =
 
 const column = (name: string) => screen.getByRole('region', { name })
 
+/** The clinic's clock shows the given time today; timers keep running. */
+function clockAt(clock: string) {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(at(TODAY, clock)))
+}
+
 describe('department panel', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it("shows today's program in waiting, attended and missed columns", async () => {
     backend([
       calendarSlot(1, TODAY, '08:00', [appointment(10, '1421986987763')]),
@@ -86,6 +96,7 @@ describe('department panel', () => {
   })
 
   it('marks attendance for today and takes a mark back', async () => {
+    clockAt('10:00')
     let attended: boolean | null = null
     const calls = fakeBackend({
       ...signIn(DEPARTMENT),
@@ -113,6 +124,23 @@ describe('department panel', () => {
         .filter((c) => c.method === 'PATCH')
         .map((c) => (c.body as { attended: unknown }).attended),
     ).toEqual([false, null])
+  })
+
+  it('offers "Gelmedi" only once the appointment time has come', async () => {
+    clockAt('10:00')
+    backend([
+      calendarSlot(1, TODAY, '09:45', [appointment(10, '1421986987763')]),
+      calendarSlot(2, TODAY, '11:45', [appointment(11, '93779.52927')]),
+    ])
+    renderApp('/departman')
+
+    expect(
+      await screen.findByRole('button', { name: 'Hasta 1421986987763: gelmedi' }),
+    ).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Hasta 93779.52927: geldi' })).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: 'Hasta 93779.52927: gelmedi' }),
+    ).not.toBeInTheDocument()
   })
 
   it('shows a dataset day read-only with the recorded outcome', async () => {

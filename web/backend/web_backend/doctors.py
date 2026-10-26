@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from noshow_db.models.core import Appointment, DoctorSchedule, Patient, Slot
 from web_backend.auth import DepartmentAccount, current_account
-from web_backend.clinic import CLINIC_TZ, as_utc, today
+from web_backend.clinic import CLINIC_TZ, as_utc, now, today
 from web_backend.db import get_db
 from web_backend.slots import clinic_days_in_utc
 
@@ -179,12 +179,19 @@ def mark_attendance(
     ).first()
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Appointment not found")
-    appointment, _, patient = row
+    appointment, slot, patient = row
     # The department marks attendance on the appointment day only
     if appointment.appointment_date != today():
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT,
             "Attendance can be marked only on the appointment day",
+        )
+    # A patient may arrive early, but is missing only once the slot has started; an early
+    # no-show mark would distort the A/B test, the KPIs and the patient's history
+    if body.attended is False and now() < as_utc(slot.start_at):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "A no-show can be marked only after the appointment time",
         )
 
     appointment.attended = body.attended
