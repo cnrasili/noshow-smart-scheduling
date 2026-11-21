@@ -64,4 +64,4 @@ So `dummy-v0` goes out of use (the `model_version` in the response is the new mo
 
 The end-to-end check (prediction → decision → booking → KPI) was therefore left open as work together with CEN.
 
-**Update (17 October 2026, later).** The random forest reached `main` and was installed in the service (PR #65, `94f9c93`); `dummy-v0` and `make_dummy_model.py` were removed, and `test_predict_api.py` was updated to expect the new version. The 2 failing tests of this report therefore no longer apply. The service settings (limit 4, 7.5 min) reached `main` with PR #64 the same day.
+**Update (17 October 2026, later).** The random forest reached `main` and was installed in the service (PR #65, `0d5df95`); `dummy-v0` and `make_dummy_model.py` were removed, and `test_predict_api.py` was updated to expect the new version. The 2 failing tests of this report therefore no longer apply. The service settings (limit 4, 7.5 min) reached `main` with PR #64 the same day.

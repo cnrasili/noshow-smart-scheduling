@@ -78,8 +78,8 @@ The command predicts the 27 days with the chosen model, passes the model through
 
 ## 5. Handed over to CEN
 
-1. **Model:** the random forest is installed on `main` (PR #65 and `94f9c93`: `ml/models/` and `overbooking-service/models/`, scikit-learn 1.9.1, `random_forest-v1`); the service's `dummy-v0` was removed.
+1. **Model:** the random forest is installed on `main` (PR #65 and `0d5df95`: `ml/models/` and `overbooking-service/models/`, scikit-learn 1.9.1, `random_forest-v1`); the service's `dummy-v0` was removed.
 2. **Service settings:** on `main` since PR #64 (`config.yaml`: daily limit 4, `service_minutes` 7.5; the README and the related tests were updated).
-3. **The 2 tests that expected `dummy-v0`** (`tests/test_predict_api.py`) were updated by the maintainer in `94f9c93`.
+3. **The 2 tests that expected `dummy-v0`** (`tests/test_predict_api.py`) were updated by the maintainer in `0d5df95`.
 4. **Rule code:** the service's `rules.decide` function and the simulation's rule make the same decision (no difference in 20,000 random slots); no code change is needed.
 5. **Connecting to the model through the API (CEN2):** the feature names are in `ml/models/feature_schema.json`.

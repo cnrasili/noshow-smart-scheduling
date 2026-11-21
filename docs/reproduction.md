@@ -134,5 +134,5 @@ Earlier reproduction: 17 October 2026, `IEN` branch, Windows, Python 3.11.2, pan
 
 | Date | Person | Operating system | Python / pandas / scikit-learn | Commit (short) | Result (matches / differs) | Note |
 |---|---|---|---|---|---|---|
-| 2026-10-22 | Project manager | Windows 11 | 3.11.9 / 3.0.6 / 1.9.1 | `c052a80` | Matches: the results summary, the waiting distribution and the experiment results are exactly the same; the model comparison (21 values) and the temporal leakage check (1 value) differ in the third decimal | The reports were regenerated in English by the translated scripts; the model files came out unchanged |
+| 2026-10-22 | Project manager | Windows 11 | 3.11.9 / 3.0.6 / 1.9.1 | `fd3c5f0` | Matches: the results summary, the waiting distribution and the experiment results are exactly the same; the model comparison (21 values) and the temporal leakage check (1 value) differ in the third decimal | The reports were regenerated in English by the translated scripts; the model files came out unchanged |
 | | | | | | | |
