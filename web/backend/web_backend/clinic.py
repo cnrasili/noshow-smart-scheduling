@@ -5,8 +5,12 @@ from zoneinfo import ZoneInfo
 CLINIC_TZ = ZoneInfo("Europe/Istanbul")
 
 
+def now() -> datetime:
+    return datetime.now(CLINIC_TZ)
+
+
 def today() -> date:
-    return datetime.now(CLINIC_TZ).date()
+    return now().date()
 
 
 def as_utc(moment: datetime) -> datetime:

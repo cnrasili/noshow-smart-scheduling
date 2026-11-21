@@ -6,7 +6,6 @@ Without the variable the API is disabled.
 
 import hmac
 import os
-from datetime import timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
@@ -16,10 +15,8 @@ from sqlalchemy.orm import Session
 
 from noshow_db.models.core import Patient
 from web_backend import accounts
-from web_backend.accounts import NewDoctor, Password, PatientNumber
-from web_backend.clinic import today
+from web_backend.accounts import Password, PatientNumber
 from web_backend.db import get_db
-from web_backend.slots import DEFAULT_LISTING_DAYS, generate_slots
 
 
 def require_service_token(
@@ -56,16 +53,6 @@ class PatientAccountOpened(BaseModel):
     email: str
 
 
-class DoctorCreated(BaseModel):
-    account_id: int
-    doctor_id: int
-    full_name: str
-    specialty: str
-    email: str
-    # Slots generated from the working hours for the next two weeks
-    slots_created: int
-
-
 class PasswordReset(BaseModel):
     password: Password
 
@@ -95,29 +82,6 @@ def open_patient_account(body: PatientAccountRequest, db: DbSession) -> PatientA
         patient_number=patient.patient_number,
         full_name=patient.full_name,
         email=account.email,
-    )
-
-
-@router.post("/doctors", status_code=status.HTTP_201_CREATED)
-def create_doctor(body: NewDoctor, db: DbSession) -> DoctorCreated:
-    try:
-        account = accounts.create_doctor(db, body)
-        slots = generate_slots(
-            db, account.doctor_id, today(), today() + timedelta(days=DEFAULT_LISTING_DAYS - 1)
-        )
-        db.commit()
-    except accounts.DuplicateAccountError as error:
-        raise _conflict(error) from error
-    except IntegrityError as error:
-        db.rollback()
-        raise _conflict(accounts.DuplicateAccountError("Account already exists")) from error
-    return DoctorCreated(
-        account_id=account.id,
-        doctor_id=account.doctor_id,
-        full_name=body.full_name,
-        specialty=body.specialty,
-        email=account.email,
-        slots_created=len(slots),
     )
 
 

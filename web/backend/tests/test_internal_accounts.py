@@ -1,15 +1,10 @@
-from datetime import time
-
 import pytest
 from sqlalchemy import func, select
 
-from noshow_db.models.core import AuthSession, DoctorSchedule, Patient, Slot, UserAccount
+from noshow_db.models.core import AuthSession, Patient, UserAccount
 from web_backend.accounts import (
     DuplicateAccountError,
-    NewDoctor,
     PatientNotFoundError,
-    WorkingHours,
-    create_doctor,
     open_patient_account,
 )
 from web_backend.security import verify_password
@@ -20,17 +15,6 @@ HEADERS = {"X-Internal-Token": TOKEN}
 NUMBER = "29872499824296"
 EMAIL = f"{NUMBER}@hasta.sehirhastanesi.example"
 PATIENT = {"patient_number": NUMBER, "password": "initial-pass"}
-
-DOCTOR = {
-    "full_name": "Dr. Demo",
-    "specialty": "Dahiliye",
-    "email": "dr.demo@example.com",
-    "password": "initial-pass",
-    # Every day, so the next two weeks always get slots
-    "working_hours": [
-        {"weekday": day, "start_time": "09:00", "end_time": "10:00"} for day in range(7)
-    ],
-}
 
 
 @pytest.fixture(autouse=True)
@@ -122,35 +106,6 @@ def test_the_patient_email_must_be_unused(client, make_department, patient) -> N
     assert response.json()["detail"] == "Email already in use"
 
 
-def test_creates_a_doctor_with_working_hours_and_slots(client, db) -> None:
-    response = client.post("/internal/accounts/doctors", json=DOCTOR, headers=HEADERS)
-
-    assert response.status_code == 201
-    created = response.json()
-    doctor_id = created["doctor_id"]
-    assert created["specialty"] == "Dahiliye"
-    assert db.scalar(select(func.count()).where(DoctorSchedule.doctor_id == doctor_id)) == 7
-    slots = db.scalar(select(func.count()).where(Slot.doctor_id == doctor_id))
-    assert slots == created["slots_created"] > 0
-
-    login = client.post(
-        "/auth/login",
-        json={"role": "department", "username": "dr.demo@example.com", "password": "initial-pass"},
-    )
-    assert login.status_code == 200
-
-
-def test_doctor_email_must_be_unused(client, patient) -> None:
-    response = client.post(
-        "/internal/accounts/doctors",
-        json={**DOCTOR, "email": EMAIL},
-        headers=HEADERS,
-    )
-
-    assert response.status_code == 409
-    assert response.json()["detail"] == "Email already in use"
-
-
 @pytest.mark.parametrize(
     "body",
     [
@@ -167,26 +122,6 @@ def test_invalid_requests_are_rejected(client, db, patient, body) -> None:
 
     assert response.status_code == 422
     assert db.scalar(select(func.count()).select_from(UserAccount)) == 0
-
-
-@pytest.mark.parametrize(
-    "hours",
-    [
-        [],
-        [{"weekday": 7, "start_time": "09:00", "end_time": "10:00"}],
-        [{"weekday": 0, "start_time": "10:00", "end_time": "09:00"}],
-        [
-            {"weekday": 0, "start_time": "09:00", "end_time": "10:00"},
-            {"weekday": 0, "start_time": "13:00", "end_time": "14:00"},
-        ],
-    ],
-)
-def test_invalid_working_hours_are_rejected(client, hours) -> None:
-    response = client.post(
-        "/internal/accounts/doctors", json={**DOCTOR, "working_hours": hours}, headers=HEADERS
-    )
-
-    assert response.status_code == 422
 
 
 def test_password_reset_replaces_the_password_and_ends_sessions(client, db, patient) -> None:
@@ -229,7 +164,6 @@ def test_password_reset_checks_the_length(client) -> None:
 
 REQUESTS = [
     ("post", "/internal/accounts/patients", PATIENT),
-    ("post", "/internal/accounts/doctors", DOCTOR),
     ("put", "/internal/accounts/1/password", {"password": "new-password"}),
 ]
 
@@ -282,17 +216,8 @@ def test_account_module_never_creates_a_patient(db) -> None:
     assert _patient_count(db) == 0
 
 
-def test_account_module_creates_a_doctor_without_slots(db) -> None:
-    account = create_doctor(
-        db,
-        NewDoctor(
-            full_name="Dr. Module",
-            specialty="Kardiyoloji",
-            email="module@example.com",
-            password="initial-pass",
-            working_hours=[WorkingHours(weekday=1, start_time=time(9), end_time=time(12))],
-        ),
-    )
-
-    assert account.role == "doctor"
-    assert db.scalar(select(func.count()).select_from(Slot)) == 0
+@pytest.mark.parametrize(
+    ("method", "path"), [("post", "/internal/accounts/doctors"), ("get", "/public/doctors")]
+)
+def test_removed_doctor_endpoints_answer_404(client, method, path) -> None:
+    assert client.request(method, path, json={}, headers=HEADERS).status_code == 404

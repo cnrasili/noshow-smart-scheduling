@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import exists, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -46,6 +46,23 @@ def _appointment_out(appointment: Appointment, slot: Slot) -> AppointmentOut:
     )
 
 
+def _lock_department_day(db: Session, doctor_id: int, day: date) -> None:
+    """Hold a transaction-level lock on the department's day; other databases skip it."""
+    if db.get_bind().dialect.name == "postgresql":
+        db.execute(select(func.pg_advisory_xact_lock(doctor_id, day.toordinal())))
+
+
+def _has_appointment_on(db: Session, patient_id: int, doctor_id: int, day: date) -> bool:
+    """Whether the patient already has an appointment with the department on the day."""
+    return db.scalar(
+        select(
+            exists()
+            .where(Appointment.patient_id == patient_id, Appointment.appointment_date == day)
+            .where(Appointment.slot_id == Slot.id, Slot.doctor_id == doctor_id)
+        )
+    )
+
+
 @router.get("/patients/me/appointments")
 def my_appointments(account: PatientAccount, db: DbSession) -> list[AppointmentOut]:
     rows = db.execute(
@@ -65,17 +82,26 @@ def book(
     overbooking: Overbooking,
     background: BackgroundTasks,
 ) -> AppointmentOut:
-    # Lock the slot so two concurrent bookings cannot both see it empty (PostgreSQL)
-    slot = db.scalar(select(Slot).where(Slot.id == body.slot_id).with_for_update())
+    slot = db.get(Slot, body.slot_id)
     if slot is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Slot not found")
     start_at = as_utc(slot.start_at)
     if start_at <= datetime.now(UTC):
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Slot has already started")
+    day = start_at.astimezone(CLINIC_TZ).date()
+
+    # Bookings of the same department day wait for each other until commit: the overbooking
+    # service counts the day's overbooks from committed appointments, so its daily limit only
+    # holds if no other booking of the day is being decided meanwhile (PostgreSQL)
+    _lock_department_day(db, slot.doctor_id, day)
+    # Lock the slot so two concurrent bookings cannot both see it empty (PostgreSQL)
+    db.refresh(slot, with_for_update=True)
 
     patients = set(db.scalars(select(Appointment.patient_id).where(Appointment.slot_id == slot.id)))
     if account.patient_id in patients:
         raise HTTPException(status.HTTP_409_CONFLICT, "You already booked this slot")
+    if _has_appointment_on(db, account.patient_id, slot.doctor_id, day):
+        raise HTTPException(status.HTTP_409_CONFLICT, "You already have an appointment on this day")
     if len(patients) >= slot.max_patients:
         raise HTTPException(status.HTTP_409_CONFLICT, "Slot is full")
 
@@ -93,7 +119,7 @@ def book(
     appointment = Appointment(
         patient_id=account.patient_id,
         slot_id=slot.id,
-        appointment_date=start_at.astimezone(CLINIC_TZ).date(),
+        appointment_date=day,
         booking_date=booking_date,
     )
     db.add(appointment)
