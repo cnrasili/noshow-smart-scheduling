@@ -24,6 +24,27 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # Commit messages carry no co-author or generated-by lines
+      - name: Check commit messages
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then
+            range="HEAD^1..HEAD^2"
+          elif [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            range="HEAD"
+          else
+            range="$BEFORE..HEAD"
+          fi
+          found=$(git log --format='%h %s%n%b' "$range" | grep -i -E '^co-authored-by:|generated (by|with) ' || true)
+          if [ -n "$found" ]; then
+            echo "Commit messages must not contain co-author or generated-by lines:"
+            git log --format='%h %s%n%b' "$range" | grep -i -B3 -E '^co-authored-by:|generated (by|with) '
+            exit 1
+          fi
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
